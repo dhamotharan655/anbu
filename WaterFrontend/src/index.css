@@ -1,0 +1,199 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Fraunces:ital,wght@0,400;0,600;1,400;1,600&display=swap');
+
+/* ============================================================
+   GLOBAL RESPONSIVE RESET
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  /* Font */
+  --font-family-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family-heading: 'Fraunces', serif;
+
+  /* Brand Colors — Purple-Blue Glassmorphic */
+  --color-primary: #7c5cbf;
+  --color-primary-hover: #6a4daa;
+  --color-primary-light: #9b6fe8;
+  --color-secondary: #6baee0;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #9b6fe8 0%, #6baee0 100%);
+  --gradient-bg: linear-gradient(135deg, #f0e6ff 0%, #dceeff 40%, #ffe6f0 100%);
+  --gradient-hero: linear-gradient(135deg, #9b6fe8 0%, #6baee0 60%, #a8d4ff 100%);
+
+  /* Glass Effect */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-strong: rgba(255, 255, 255, 0.88);
+  --glass-border: rgba(255, 255, 255, 0.8);
+  --glass-blur: blur(20px);
+
+  /* Text */
+  --color-text: #1e1b2e;
+  --color-text-secondary: #8b85a1;
+  --color-white: #ffffff;
+  --color-border: rgba(124, 92, 191, 0.12);
+  --color-background: linear-gradient(135deg, #f0e6ff 0%, #dceeff 40%, #ffe6f0 100%);
+
+  /* Status */
+  --color-success: #6baee0;
+  --color-warning: #c77b00;
+  --color-danger: #eb5968;
+  --color-info: #3a7fc1;
+
+  /* Spacing */
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 1rem;
+  --spacing-4: 1.5rem;
+  --spacing-5: 2rem;
+  --spacing-6: 3rem;
+
+  /* Border Radius */
+  --border-radius-sm: 8px;
+  --border-radius-md: 14px;
+  --border-radius-lg: 20px;
+  --border-radius-xl: 28px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(124, 92, 191, 0.08);
+  --shadow-md: 0 4px 20px rgba(124, 92, 191, 0.12);
+  --shadow-lg: 0 12px 36px rgba(124, 92, 191, 0.18);
+  --shadow-primary: 0 6px 24px rgba(124, 92, 191, 0.32);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family-sans);
+  background: var(--gradient-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-width: 280px;
+  overflow-x: hidden;
+}
+
+/* Prevent horizontal overflow globally */
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Responsive images */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Responsive container */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  padding: 16px;
+  margin: 0 auto;
+}
+
+/* Page responsive container */
+.page-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+@media (min-width: 576px) {
+  .container {
+    max-width: 540px;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 720px;
+  }
+}
+
+@media (min-width: 992px) {
+  .container {
+    max-width: 960px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .container {
+    max-width: 1140px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .container {
+    max-width: 1320px;
+  }
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  font-weight: 600;
+}
+
+a {
+  text-decoration: none;
+  color: var(--color-primary);
+  transition: color 0.2s ease-in-out;
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+}
+
+/* Warranty section (Customer History) */
+.warranty-section {
+  margin-top: var(--spacing-4);
+  padding: var(--spacing-3);
+  background: linear-gradient(135deg, rgba(155, 111, 232, 0.08) 0%, rgba(107, 174, 224, 0.08) 100%);
+  border-radius: var(--border-radius-md);
+  border: 1px solid rgba(124, 92, 191, 0.2);
+}
+
+.warranty-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-2);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.warranty-photo-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+}
+
+.warranty-photo-link {
+  color: var(--color-primary) !important;
+  font-weight: 500;
+  text-decoration: underline;
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--border-radius-sm);
+  transition: all 0.2s ease;
+}
+
+.warranty-photo-link:hover {
+  background: var(--gradient-primary);
+  color: white !important;
+  text-decoration: none;
+}

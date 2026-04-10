@@ -1,0 +1,4 @@
+﻿--- Testing Motor Stock Reduction & Recalculation ---
+Adding brands: Siemens (10) and Crompton (20)
+Initial Total Quantity: 30
+Reducing Siemens by 5...

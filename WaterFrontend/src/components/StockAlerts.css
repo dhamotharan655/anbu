@@ -1,0 +1,286 @@
+/* ================================================
+   STOCK ALERTS — Glassmorphic Purple-Blue Theme
+   ================================================ */
+
+.stock-alerts-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 27, 46, 0.52);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.stock-alerts-modal {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 500px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 32px 80px rgba(124, 92, 191, 0.22);
+  animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* --- Header --- */
+.stock-alerts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(124, 92, 191, 0.1);
+  border-radius: 24px 24px 0 0;
+}
+
+.stock-alerts-header h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #1e1b2e;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.close-btn {
+  background: rgba(124, 92, 191, 0.08);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #7c5cbf;
+  transition: all 0.2s ease;
+  font-family: monospace;
+}
+
+.close-btn:hover {
+  background: rgba(124, 92, 191, 0.15);
+}
+
+/* --- Content --- */
+.stock-alerts-content {
+  padding: 1.5rem;
+}
+
+.loading-message {
+  text-align: center;
+  color: #8b85a1;
+  font-size: 0.9rem;
+  padding: 2rem;
+}
+
+.alert-description {
+  font-size: 0.92rem;
+  color: #1e1b2e;
+  margin: 0 0 1.25rem 0;
+  line-height: 1.6;
+}
+
+/* --- Alerts List --- */
+.alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.alert-item {
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 14px;
+  padding: 1rem;
+  border-left: 4px solid rgba(124, 92, 191, 0.15);
+  transition: all 0.2s ease;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.alert-item.danger {
+  border-left-color: #eb5968;
+  background: rgba(235, 89, 104, 0.06);
+}
+
+.alert-item.warning {
+  border-left-color: #c77b00;
+  background: rgba(199, 123, 0, 0.06);
+}
+
+.alert-item.info {
+  border-left-color: #2d9e6b;
+  background: rgba(45, 158, 107, 0.06);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* --- Alert Item Parts --- */
+.alert-item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.alert-icon {
+  font-size: 1.2rem;
+}
+
+.alert-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e1b2e;
+  flex: 1;
+}
+
+.alert-status {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 100px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.alert-status.danger {
+  background: rgba(235, 89, 104, 0.12);
+  color: #eb5968;
+  border: 1px solid rgba(235, 89, 104, 0.2);
+}
+
+.alert-status.warning {
+  background: rgba(199, 123, 0, 0.12);
+  color: #c77b00;
+  border: 1px solid rgba(199, 123, 0, 0.2);
+}
+
+.alert-status.info {
+  background: rgba(45, 158, 107, 0.12);
+  color: #2d9e6b;
+  border: 1px solid rgba(45, 158, 107, 0.2);
+}
+
+.alert-details {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.82rem;
+  color: #8b85a1;
+}
+
+.alert-quantity {
+  font-weight: 700;
+  color: #1e1b2e;
+}
+
+.alert-threshold {
+  font-weight: 500;
+}
+
+/* --- Actions Footer --- */
+.stock-alerts-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid rgba(124, 92, 191, 0.1);
+  justify-content: flex-end;
+}
+
+/* Buttons (scoped to stock-alerts) */
+.stock-alerts-actions .btn-primary {
+  background: linear-gradient(135deg, #9b6fe8 0%, #6baee0 100%);
+  color: white;
+  border: none;
+  padding: 0.55rem 1.25rem;
+  border-radius: 100px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.28s ease;
+  box-shadow: 0 4px 14px rgba(124, 92, 191, 0.3);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stock-alerts-actions .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(124, 92, 191, 0.42);
+}
+
+.stock-alerts-actions .btn-secondary {
+  background: rgba(255, 255, 255, 0.82);
+  color: #7c5cbf;
+  border: 1.5px solid rgba(124, 92, 191, 0.25);
+  padding: 0.55rem 1.25rem;
+  border-radius: 100px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.stock-alerts-actions .btn-secondary:hover {
+  background: rgba(124, 92, 191, 0.08);
+}
+
+/* --- Messages --- */
+.success-message {
+  background: rgba(45, 158, 107, 0.1);
+  border: 1px solid rgba(45, 158, 107, 0.25);
+  color: #2d9e6b;
+  padding: 1rem;
+  border-radius: 14px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.error-message {
+  background: rgba(235, 89, 104, 0.1);
+  border: 1px solid rgba(235, 89, 104, 0.25);
+  color: #eb5968;
+  padding: 1rem;
+  border-radius: 14px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .stock-alerts-overlay {
+    padding: 0.5rem;
+  }
+
+  .stock-alerts-modal {
+    max-height: 85vh;
+  }
+
+  .alert-details {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .stock-alerts-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}

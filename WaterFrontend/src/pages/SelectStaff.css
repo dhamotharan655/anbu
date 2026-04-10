@@ -1,0 +1,198 @@
+/* Select Staff Page Enhanced Styles */
+
+/* Smooth card hover animation */
+.staff-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.staff-card:hover:not(.selected) {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* Search bar focus effect */
+.search-input-container:focus-within {
+  border-color: #667eea;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.15);
+}
+
+/* Input focus animation */
+input:focus {
+  outline: none;
+}
+
+/* Gradient button hover effect */
+.assign-button {
+  transition: all 0.3s ease;
+}
+
+.assign-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.assign-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Filter card active state */
+.filter-card {
+  transition: all 0.3s ease;
+}
+
+/* Profile photo ring animation on hover */
+.profile-photo-container {
+  position: relative;
+}
+
+/* Status badge pulse animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.status-badge {
+  animation: pulse 2s infinite;
+}
+
+/* Card selection animation */
+@keyframes selectPulse {
+  0% {
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25);
+  }
+  50% {
+    box-shadow: 0 8px 30px rgba(102, 126, 234, 0.4);
+  }
+  100% {
+    box-shadow: 0 8px 30px rgba(102, 126, 234, 0.25);
+  }
+}
+
+.selected-card {
+  animation: selectPulse 2s infinite;
+}
+
+/* Empty state animation */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.empty-icon {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Gradient text effect for header */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Loading spinner */
+.spinner {
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid #fff;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+  margin-right: 10px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive grid */
+@media (min-width: 768px) {
+  .grid-desktop {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-desktop {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+}
+
+/* Glassmorphism effect */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Icon container styling */
+.icon-container {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Modern input styling */
+.modern-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 15px;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.modern-input::placeholder {
+  color: #9ca3af;
+}
+
+/* Complaint box styling */
+.complaint-box {
+  transition: all 0.2s ease;
+}
+
+.complaint-box:hover {
+  background-color: rgba(102, 126, 234, 0.08);
+  border-color: rgba(102, 126, 234, 0.2);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #5a71d4 0%, #6a4190 100%);
+}

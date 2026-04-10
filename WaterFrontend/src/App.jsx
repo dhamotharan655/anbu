@@ -1,0 +1,139 @@
+import React from 'react';
+import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import Layout from './Layout';
+import AdminLogin from './pages/AdminLogin';
+import Home from './pages/Home';
+import Dashboard from './pages/Dashboard';
+import Booking from './pages/Booking';
+import Staff from './pages/Staff';
+import History from './pages/History';
+import Selectstaff from './pages/Selectstaff';
+import StaffPerformance from './pages/StaffPerformance';
+import DailyPerformance from './pages/DailyPerformance';
+import PrivateRoute from './components/PrivateRoute';
+import Customers from './pages/Customers/Customers'
+import './App.css';
+import CustomerHistory from './pages/Customers/CustomerHistory';
+import PermissionPage from './pages/PermissionPage';
+import ProtectedRoute from "./pages/ProtectedRoute";
+import AddCustomer from './pages/Customers/AddCustomer';
+import StockManagement from './pages/StockManagement/StockManagement';
+import { GlobalRefreshProvider } from './context/GlobalRefreshContext';
+import Invoice from './pages/Invoice';
+import InvoicesList from './pages/InvoicesList';
+import MotorDetails from './pages/MotorDetails/MotorDetails';
+import MotorHistory from './pages/MotorDetails/MotorHistory';
+import PaymentDue from './pages/PaymentDue';
+import Payroll from './pages/Payroll';
+import PendingMessages from './pages/PendingMessages';
+
+function App() {
+  return (
+    <Router>
+      <GlobalRefreshProvider>
+        <Routes>
+          {/* Default page = Admin Login */}
+          <Route path="/" element={<Navigate to="/admin-login" replace />} />
+
+          {/* Login page */}
+          <Route path="/admin-login" element={<AdminLogin />} />
+
+          {/* Public invoice route - no authentication required */}
+          <Route path="/invoice/:complaintId" element={<Invoice />} />
+
+          {/* Protected routes */}
+          <Route element={<PrivateRoute />}>
+            <Route element={<Layout />}>
+              <Route path="/home" element={<Home />} />
+              <Route path="/dashboard" element={
+                <ProtectedRoute page="dashboard">
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/booking" element={
+                <ProtectedRoute page="booking">
+                  <Booking />
+                </ProtectedRoute>
+              } />
+              <Route path="/staff" element={
+                <ProtectedRoute page="staff">
+                  <Staff />
+                </ProtectedRoute>
+              } />
+              <Route path="/history" element={
+                <ProtectedRoute page="history">
+                  <History />
+                </ProtectedRoute>
+              } />
+              <Route path="/select-staff" element={<Selectstaff />} />
+
+              <Route path="/add-customer" element={
+                <ProtectedRoute page="add-customer">
+                  <AddCustomer />
+                </ProtectedRoute>
+              } />
+
+
+              <Route path="/staff-performance" element={<StaffPerformance />} />
+              <Route path="/staff-performance" element={
+                <ProtectedRoute page="staff-performance">
+                  <StaffPerformance />
+                </ProtectedRoute>
+              } />
+              <Route path="/daily-performance" element={<DailyPerformance />} />
+              <Route path="/customers" element={
+                <ProtectedRoute page="customers">
+                  <Customers />
+                </ProtectedRoute>
+              } />
+              <Route path="/customerhistory" element={<CustomerHistory />} />
+              <Route path="/permissions" element={
+                <ProtectedRoute page="PermissionPage">
+                  <PermissionPage />
+                </ProtectedRoute>
+              }
+              />
+              <Route path="/stock-management" element={
+                <ProtectedRoute page="stock-management">
+                  <StockManagement />
+                </ProtectedRoute>
+              } />
+              <Route path="/invoices" element={
+                <ProtectedRoute page="invoices">
+                  <InvoicesList />
+                </ProtectedRoute>
+              } />
+              <Route path="/motor-details" element={
+                <ProtectedRoute page="motor-details">
+                  <MotorDetails />
+                </ProtectedRoute>
+              } />
+              <Route path="/motor-history" element={
+                <ProtectedRoute page="motor-history">
+                  <MotorHistory />
+                </ProtectedRoute>
+              } />
+              <Route path="/payment-due" element={
+                <ProtectedRoute page="dashboard">
+                  <PaymentDue />
+                </ProtectedRoute>
+              } />
+              <Route path="/payroll" element={
+                <ProtectedRoute page="payroll">
+                  <Payroll />
+                </ProtectedRoute>
+              } />
+              <Route path="/whatsapp-pending" element={<PendingMessages />} />
+            </Route>
+          </Route>
+
+          {/* Catch-all redirect */}
+          <Route path="*" element={<Navigate to="/admin-login" replace />} />
+
+        </Routes>
+      </GlobalRefreshProvider>
+    </Router>
+  );
+}
+
+export default App;

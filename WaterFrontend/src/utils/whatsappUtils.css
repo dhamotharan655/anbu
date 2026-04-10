@@ -1,0 +1,369 @@
+/* ================================================
+   WHATSAPP & PRODUCT PURCHASE — Glassmorphic Theme
+   ================================================ */
+
+/* --- WhatsApp Button --- */
+.whatsapp-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.7rem;
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  color: white;
+  border: none;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.28);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  pointer-events: auto;
+  width: 100%;
+  justify-content: center;
+}
+
+.whatsapp-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.4);
+}
+
+.whatsapp-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.28);
+}
+
+.whatsapp-button svg { width: 14px; height: 14px; }
+
+.whatsapp-button:focus {
+  outline: 2px solid #25d366;
+  outline-offset: 2px;
+}
+
+.whatsapp-button:disabled {
+  background: #c8c0d8;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* --- WhatsApp Actions Container --- */
+.whatsapp-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.customer-card-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+/* --- Product Purchase Card --- */
+.product-purchase-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 20px rgba(124, 92, 191, 0.12);
+  margin-top: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.product-purchase-card .card-header {
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(124, 92, 191, 0.1);
+  padding-bottom: 1rem;
+}
+
+.product-purchase-card .card-header h3 {
+  margin: 0 0 0.5rem 0;
+  color: #7c5cbf;
+  font-family: 'Fraunces', serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.product-purchase-card .card-header p {
+  margin: 0;
+  color: #8b85a1;
+  font-size: 0.85rem;
+}
+
+/* --- Purchase Form --- */
+.purchase-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* --- Payment Methods --- */
+.payment-methods {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.payment-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  border: 1.5px solid rgba(124, 92, 191, 0.18);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.payment-option:hover {
+  border-color: rgba(124, 92, 191, 0.35);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.payment-option input[type="radio"] { margin: 0; }
+
+.payment-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #1e1b2e;
+}
+
+.payment-option input[type="radio"]:checked + .payment-label {
+  color: #7c5cbf;
+  font-weight: 600;
+}
+
+.payment-option input[type="radio"]:checked {
+  accent-color: #7c5cbf;
+}
+
+/* --- Purchase & Cancel Buttons --- */
+.purchase-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #9b6fe8, #6baee0);
+  color: white;
+  border: none;
+  padding: 0.55rem 1.25rem;
+  border-radius: 100px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 14px rgba(124, 92, 191, 0.3);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.purchase-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(124, 92, 191, 0.42);
+}
+
+.purchase-button:disabled {
+  background: #c8c0d8;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.cancel-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.82);
+  color: #7c5cbf;
+  border: 1.5px solid rgba(124, 92, 191, 0.25);
+  padding: 0.55rem 1.25rem;
+  border-radius: 100px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.cancel-button:hover {
+  background: rgba(124, 92, 191, 0.08);
+}
+
+/* --- Toggle Button --- */
+.toggle-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 1rem;
+  background: linear-gradient(135deg, #9b6fe8, #6baee0);
+  color: white;
+  border: none;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 3px 10px rgba(124, 92, 191, 0.28);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.toggle-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(124, 92, 191, 0.38);
+}
+
+.toggle-button.active {
+  background: linear-gradient(135deg, #eb5968, #d44050);
+  box-shadow: 0 3px 10px rgba(235, 89, 104, 0.28);
+}
+
+.toggle-button.active:hover {
+  box-shadow: 0 5px 16px rgba(235, 89, 104, 0.38);
+}
+
+/* --- Section Header --- */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+/* --- Stock Info --- */
+.stock-info {
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+}
+
+.stock-status {
+  padding: 0.2rem 0.5rem;
+  border-radius: 100px;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.stock-status.available {
+  background: rgba(45, 158, 107, 0.12);
+  color: #2d9e6b;
+  border: 1px solid rgba(45, 158, 107, 0.2);
+}
+
+.stock-status.low {
+  background: rgba(199, 123, 0, 0.12);
+  color: #c77b00;
+  border: 1px solid rgba(199, 123, 0, 0.2);
+}
+
+.stock-error {
+  background: rgba(235, 89, 104, 0.12);
+  color: #eb5968;
+  border: 1px solid rgba(235, 89, 104, 0.2);
+  padding: 0.2rem 0.5rem;
+  border-radius: 100px;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+/* --- Completion Info --- */
+.completion-info {
+  margin-top: 0.75rem;
+  padding: 0.85rem;
+  background: rgba(155, 111, 232, 0.05);
+  border: 1px solid rgba(124, 92, 191, 0.12);
+  border-radius: 14px;
+}
+
+.completion-note {
+  margin: 0.2rem 0;
+  font-size: 0.78rem;
+  color: #8b85a1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.completion-icon {
+  color: #7c5cbf;
+  width: 14px;
+  height: 14px;
+}
+
+/* --- Error Message --- */
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(235, 89, 104, 0.1);
+  border: 1px solid rgba(235, 89, 104, 0.25);
+  color: #eb5968;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.error-message svg { color: #eb5968; }
+
+/* --- Spinner --- */
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .whatsapp-button {
+    padding: 0.32rem 0.7rem;
+    font-size: 0.75rem;
+  }
+
+  .whatsapp-button svg { width: 14px; height: 14px; }
+
+  .customer-card-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .form-row { grid-template-columns: 1fr; }
+
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .purchase-button,
+  .cancel-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .product-purchase-card { padding: 1rem; }
+
+  .toggle-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .section-header {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+  }
+}
