@@ -3,7 +3,7 @@ import api from '../api';
 import { useScrollToRef } from "../hooks/useScrollToRef";
 import { FiDownload, FiAward, FiClock, FiFileText, FiX, FiSend, FiMessageCircle, FiFilePlus } from 'react-icons/fi';
 import { openWhatsAppWithDefaultMessage } from '../utils/whatsappUtils';
-import logoImage from '../assets/Ruban-Electricals-Logo.jpeg';
+import logoImage from '../assets/main_logo.jpg';
 import html2pdf from 'html2pdf.js';
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
@@ -13,10 +13,10 @@ const styles = `
   /* Payroll UI Styles - Soft Pastel Background */
   .payroll-page {
     min-height: 100vh;
-    background: linear-gradient(135deg, #f5e6ff 0%, #e6f0ff 50%, #ffe6f5 100%);
+    background: var(--color-background);
     position: relative;
     overflow-x: hidden;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-family-sans);
   }
 
   .payroll-blob {
@@ -31,14 +31,20 @@ const styles = `
 
   .payroll-blob1 { 
     width: 600px; height: 600px; 
-    background: radial-gradient(circle, #e0d4ff, #d4e4ff); 
+    background: radial-gradient(circle, var(--color-primary-light), transparent); 
     top: -200px; left: -150px; 
+    opacity: 0.15;
   }
   .payroll-blob2 { 
     width: 500px; height: 500px; 
-    background: radial-gradient(circle, #ffe4ec, #fff4d4); 
+    background: radial-gradient(circle, var(--color-gold-light), transparent); 
     bottom: -150px; right: -100px; 
     animation-delay: -4s; 
+    opacity: 0.15;
+  }
+
+  :root {
+    --gradient-secondary: linear-gradient(135deg, #10b981 0%, #059669 100%);
   }
 
   @keyframes blobFloat {
@@ -74,16 +80,16 @@ const styles = `
   }
 
   .payroll-title {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-family-heading);
     font-size: 32px;
     font-weight: 600;
-    color: #2d2440;
+    color: var(--color-text);
     letter-spacing: -0.5px;
   }
 
   .payroll-title em {
     font-style: italic;
-    background: linear-gradient(135deg, #9b6fe8, #6baee0);
+    background: var(--gradient-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -104,16 +110,16 @@ const styles = `
     padding: 12px 16px;
     font-family: 'Plus Jakarta Sans', sans-serif;
     font-size: 14px;
-    color: #2d2440;
+    color: var(--color-text);
     outline: none;
-    box-shadow: 0 4px 20px rgba(124,92,191,0.08);
+    box-shadow: 0 4px 20px rgba(11, 102, 120, 0.08);
     transition: all 0.3s;
     cursor: pointer;
   }
 
   .payroll-select:focus {
-    border-color: rgba(155,111,232,0.5);
-    box-shadow: 0 8px 30px rgba(124,92,191,0.15);
+    border-color: var(--color-primary-light);
+    box-shadow: 0 8px 30px rgba(11, 102, 120, 0.15);
   }
 
   .payroll-tabs {
@@ -133,24 +139,24 @@ const styles = `
     background: rgba(255,255,255,0.85);
     backdrop-filter: blur(20px);
     border: 2px solid rgba(255,255,255,0.95);
-    box-shadow: 0 4px 20px rgba(124,92,191,0.08);
+    box-shadow: 0 4px 20px rgba(11, 102, 120, 0.08);
     cursor: pointer;
     transition: all 0.35s;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--color-text-secondary);
   }
 
   .payroll-tab:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(124,92,191,0.15);
-    color: #9b6fe8;
+    box-shadow: 0 8px 25px rgba(11, 102, 120, 0.15);
+    color: var(--color-primary);
   }
 
   .payroll-tab.active-tab {
-    background: linear-gradient(135deg, #9b6fe8 0%, #7c5cbf 100%);
+    background: var(--gradient-primary);
     color: white;
     border-color: transparent;
-    box-shadow: 0 8px 25px rgba(124,92,191,0.3);
+    box-shadow: 0 8px 25px rgba(11, 102, 120, 0.3);
   }
 
   .payroll-tab svg {
@@ -179,14 +185,14 @@ const styles = `
   }
 
   .payroll-btn-primary {
-    background: linear-gradient(135deg, #9b6fe8 0%, #7c5cbf 100%);
+    background: var(--gradient-primary);
     color: white;
-    box-shadow: 0 4px 15px rgba(124,92,191,0.3);
+    box-shadow: 0 4px 15px rgba(11, 102, 120, 0.3);
   }
 
   .payroll-btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(124,92,191,0.4);
+    box-shadow: 0 8px 25px rgba(11, 102, 120, 0.4);
   }
 
   .payroll-btn-primary:disabled {
@@ -203,12 +209,12 @@ const styles = `
 
   .payroll-btn-secondary:hover {
     background: white;
-    color: #9b6fe8;
-    border-color: #9b6fe8;
+    color: var(--color-primary);
+    border-color: var(--color-primary);
   }
 
   .payroll-btn-success {
-    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    background: var(--gradient-secondary);
     color: white;
     box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
   }
@@ -231,7 +237,7 @@ const styles = `
     -webkit-backdrop-filter: blur(24px);
     border-radius: 28px;
     padding: 28px;
-    box-shadow: 0 8px 32px rgba(124,92,191,0.1), 0 2px 8px rgba(0,0,0,0.04);
+    box-shadow: 0 8px 32px rgba(11, 102, 120, 0.1), 0 2px 8px rgba(0,0,0,0.04);
     border: 1px solid rgba(255,255,255,0.95);
     margin-bottom: 24px;
     animation: rise 0.5s cubic-bezier(0.16,1,0.3,1);
@@ -248,7 +254,7 @@ const styles = `
     bottom: 0;
     border-radius: 28px;
     padding: 2px;
-    background: linear-gradient(135deg, rgba(155,111,232,0.3), rgba(107,174,224,0.3));
+    background: linear-gradient(135deg, rgba(11, 102, 120, 0.3), rgba(241, 179, 42, 0.3));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
@@ -278,7 +284,7 @@ const styles = `
     border-radius: 20px;
     padding: 20px 24px;
     border: 1px solid rgba(255,255,255,0.95);
-    box-shadow: 0 8px 24px rgba(124,92,191,0.1);
+    box-shadow: 0 8px 24px rgba(11, 102, 120, 0.1);
     transition: all 0.3s;
     position: relative;
     overflow: hidden;
@@ -291,25 +297,25 @@ const styles = `
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, #9b6fe8, #6baee0);
+    background: var(--gradient-primary);
   }
 
   .payroll-summary-item:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(124,92,191,0.2);
+    box-shadow: 0 12px 32px rgba(11, 102, 120, 0.2);
   }
 
-  .payroll-summary-item.staff { background: linear-gradient(135deg, rgba(155,111,232,0.1) 0%, rgba(107,174,224,0.1) 100%); }
+  .payroll-summary-item.staff { background: linear-gradient(135deg, rgba(11, 102, 120, 0.1) 0%, rgba(241, 179, 42, 0.1) 100%); }
   .payroll-summary-item.present { background: linear-gradient(135deg, rgba(72,199,142,0.1) 0%, rgba(109,211,160,0.1) 100%); }
   .payroll-summary-item.halfday { background: linear-gradient(135deg, rgba(255,179,71,0.1) 0%, rgba(255,197,107,0.1) 100%); }
   .payroll-summary-item.leave { background: linear-gradient(135deg, rgba(244,114,182,0.1) 0%, rgba(252,165,211,0.1) 100%); }
-  .payroll-summary-item.salary { background: linear-gradient(135deg, rgba(124,92,191,0.15) 0%, rgba(107,174,224,0.15) 100%); }
+  .payroll-summary-item.salary { background: linear-gradient(135deg, rgba(11, 102, 120, 0.15) 0%, rgba(241, 179, 42, 0.15) 100%); }
 
-  .payroll-summary-item.staff::before { background: linear-gradient(90deg, #9b6fe8, #7c5cbf); }
-  .payroll-summary-item.present::before { background: linear-gradient(90deg, #48c78e, #3ab07a); }
-  .payroll-summary-item.halfday::before { background: linear-gradient(90deg, #ffb347, #ff9500); }
+  .payroll-summary-item.staff::before { background: var(--gradient-primary); }
+  .payroll-summary-item.present::before { background: linear-gradient(90deg, var(--color-success), #3ab07a); }
+  .payroll-summary-item.halfday::before { background: linear-gradient(90deg, #ffb347, var(--color-secondary)); }
   .payroll-summary-item.leave::before { background: linear-gradient(90deg, #f472b6, #ec4899); }
-  .payroll-summary-item.salary::before { background: linear-gradient(90deg, #9b6fe8, #6baee0); }
+  .payroll-summary-item.salary::before { background: var(--gradient-secondary); }
 
   .payroll-summary-label {
     font-size: 12px;
@@ -321,10 +327,10 @@ const styles = `
   }
 
   .payroll-summary-value {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-family-heading);
     font-size: 26px;
     font-weight: 700;
-    color: #2d2440;
+    color: var(--color-text);
   }
 
   /* Enhanced Table Styles */
@@ -333,7 +339,7 @@ const styles = `
     backdrop-filter: blur(24px);
     border-radius: 28px;
     overflow: hidden;
-    box-shadow: 0 8px 32px rgba(124,92,191,0.1), 0 2px 8px rgba(0,0,0,0.04);
+    box-shadow: 0 8px 32px rgba(11, 102, 120, 0.1), 0 2px 8px rgba(0,0,0,0.04);
     border: 1px solid rgba(255,255,255,0.95);
     position: relative;
   }
@@ -347,12 +353,25 @@ const styles = `
     bottom: 0;
     border-radius: 28px;
     padding: 2px;
-    background: linear-gradient(135deg, rgba(155,111,232,0.2), rgba(107,174,224,0.2));
+    background: linear-gradient(135deg, rgba(11, 102, 120, 0.2), rgba(241, 179, 42, 0.2));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
+    z-index: 2;
+  }
+
+  .payroll-table-scroll {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 500px;
+    width: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(11, 102, 120, 0.3) transparent;
+    border-radius: 28px;
+    position: relative;
+    z-index: 1;
   }
 
   .payroll-table {
@@ -362,15 +381,15 @@ const styles = `
   }
 
   .payroll-table thead {
-    background: linear-gradient(135deg, #f5e6ff 0%, #e6f0ff 100%);
+    background: linear-gradient(135deg, #f0f7f8 0%, #eef5f6 100%);
   }
 
   .payroll-table th {
     padding: 18px 20px;
     text-align: left;
     font-weight: 700;
-    color: #2d2440;
-    border-bottom: 2px solid rgba(124,92,191,0.2);
+    color: var(--color-text);
+    border-bottom: 2px solid rgba(11, 102, 120, 0.2);
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -378,8 +397,8 @@ const styles = `
 
   .payroll-table td {
     padding: 16px 20px;
-    border-bottom: 1px solid rgba(124,92,191,0.08);
-    color: #4b5563;
+    border-bottom: 1px solid rgba(11, 102, 120, 0.08);
+    color: var(--color-text-secondary);
     transition: all 0.2s;
   }
 
@@ -388,11 +407,11 @@ const styles = `
   }
 
   .payroll-table tbody tr:hover td {
-    background: rgba(124,92,191,0.04);
+    background: rgba(11, 102, 120, 0.04);
   }
 
   .payroll-table tbody tr:hover {
-    background: linear-gradient(135deg, rgba(155,111,232,0.03) 0%, rgba(107,174,224,0.03) 100%);
+    background: linear-gradient(135deg, rgba(11, 102, 120, 0.03) 0%, rgba(241, 179, 42, 0.03) 100%);
   }
 
   .payroll-table .staff-name {
@@ -424,13 +443,13 @@ const styles = `
   }
 
   .payroll-table .present-badge {
-    background: linear-gradient(135deg, rgba(72,199,142,0.15) 0%, rgba(109,211,160,0.15) 100%);
-    color: #059669;
+    background: rgba(45, 158, 107, 0.1);
+    color: var(--color-success);
   }
 
   .payroll-table .halfday-badge {
-    background: linear-gradient(135deg, rgba(255,179,71,0.15) 0%, rgba(255,197,107,0.15) 100%);
-    color: #d97706;
+    background: rgba(241, 179, 42, 0.1);
+    color: var(--color-secondary);
   }
 
   .payroll-table .leave-badge {
@@ -445,7 +464,7 @@ const styles = `
 
   .payroll-input {
     background: rgba(255,255,255,0.9);
-    border: 2px solid rgba(124,92,191,0.15);
+    border: 2px solid rgba(11, 102, 120, 0.15);
     border-radius: 10px;
     padding: 10px 14px;
     font-size: 14px;
@@ -456,8 +475,8 @@ const styles = `
   }
 
   .payroll-input:focus {
-    border-color: #9b6fe8;
-    box-shadow: 0 0 0 4px rgba(124,92,191,0.1);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px rgba(11, 102, 120, 0.1);
   }
 
   .payroll-action-btn {
@@ -471,15 +490,15 @@ const styles = `
     cursor: pointer;
     transition: all 0.3s;
     border: none;
-    background: linear-gradient(135deg, rgba(124,92,191,0.1) 0%, rgba(107,174,224,0.1) 100%);
-    color: #7c5cbf;
+    background: linear-gradient(135deg, rgba(11, 102, 120, 0.1) 0%, rgba(241, 179, 42, 0.1) 100%);
+    color: var(--color-primary);
   }
 
   .payroll-action-btn:hover {
-    background: linear-gradient(135deg, #9b6fe8 0%, #7c5cbf 100%);
+    background: var(--gradient-primary);
     color: white;
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(124,92,191,0.3);
+    box-shadow: 0 6px 20px rgba(11, 102, 120, 0.3);
   }
 
   .payroll-empty {
@@ -496,7 +515,7 @@ const styles = `
     font-size: 56px;
     margin-bottom: 20px;
     opacity: 0.4;
-    color: #9b6fe8;
+    color: var(--color-primary);
   }
 
   .payroll-message {
@@ -564,8 +583,8 @@ const styles = `
   }
 
   .payroll-rank-badge.default {
-    background: rgba(124, 92, 191, 0.1);
-    color: #7c5cbf;
+    background: rgba(11, 102, 120, 0.1);
+    color: var(--color-primary);
   }
 
   .payroll-attendance-badge {
@@ -593,7 +612,7 @@ const styles = `
   }
 
   .payroll-row-highlight {
-    background: linear-gradient(135deg, rgba(155,111,232,0.05) 0%, rgba(107,174,224,0.05) 100%) !important;
+    background: linear-gradient(135deg, rgba(11, 102, 120, 0.05) 0%, rgba(241, 179, 42, 0.05) 100%) !important;
   }
 
   .payroll-row-gold {
@@ -711,15 +730,16 @@ const Payroll = () => {
         const totalSalary = staff.total_salary || 0;  // Calculated salary (per_day × multiplier)
         const bonus = staff.bonus || 0;
         const deduction = staff.deduction || 0;
-        const netSalary = totalSalary + bonus - deduction;
-        
+        const netSalary = totalSalary + bonus - deduction + (staff.total_incentives || 0);
+
         return {
           'Name': staff.staff_name,
           'Phone': staff.phone || '',
           'Per Day Salary (₹)': perDaySalary,
           'Present Days': staff.present_days || 0,
           'Half Days': staff.half_days || 0,
-          'Holiday Days': staff.holiday_days || 0,
+          'Paid Holiday': staff.paid_holiday_days || 0,
+          'Unpaid Holiday': staff.unpaid_holiday_days || 0,
           'Leave Days': staff.leave_days || 0,
           'Absent Days': staff.absent_days || 0,
           'Total Multiplier': staff.total_multiplier || 0,
@@ -727,6 +747,7 @@ const Payroll = () => {
           'Calculated Salary (₹)': Math.round(totalSalary * 100) / 100,
           'Bonus (₹)': bonus,
           'Deduction (₹)': deduction,
+          'Incentives (₹)': staff.total_incentives || 0,
           'Net Salary (₹)': Math.round(netSalary * 100) / 100
         };
       });
@@ -762,14 +783,14 @@ const Payroll = () => {
       // Currency formatting
       const currencyFormat = '₹#,##0.00';
 
-      // Apply header styles to first row
-      const headerRow = 1;
+      // Apply header styles to first row (index 0)
+      const headerRowIndex = 0;
       for (let col = wsRange.s.c; col <= wsRange.e.c; col++) {
-        const cellAddr = XLSX.utils.encode_cell({ r: headerRow, c: col });
+        const cellAddr = XLSX.utils.encode_cell({ r: headerRowIndex, c: col });
         if (ws[cellAddr]) {
           const colLetter = XLSX.utils.encode_col(col);
-          // Columns J, K, L, M, N are salary columns
-          if (['J', 'K', 'L', 'M', 'N'].includes(colLetter)) {
+          // Columns L, M, N, O, P are salary columns
+          if (['L', 'M', 'N', 'O', 'P'].includes(colLetter)) {
             ws[cellAddr].s = salaryHeaderStyle;
           } else {
             ws[cellAddr].s = headerStyle;
@@ -778,13 +799,13 @@ const Payroll = () => {
       }
 
       // Apply data styles to remaining rows
-      for (let row = headerRow + 1; row <= wsRange.e.r; row++) {
+      for (let row = headerRowIndex + 1; row <= wsRange.e.r; row++) {
         for (let col = wsRange.s.c; col <= wsRange.e.c; col++) {
           const cellAddr = XLSX.utils.encode_cell({ r: row, c: col });
           if (ws[cellAddr]) {
             const colLetter = XLSX.utils.encode_col(col);
-            // Columns J, K, L, M, N are salary columns
-            if (['J', 'K', 'L', 'M', 'N'].includes(colLetter)) {
+            // Columns L, M, N, O, P are salary columns
+            if (['L', 'M', 'N', 'O', 'P'].includes(colLetter)) {
               ws[cellAddr].s = { ...salaryCellStyle, numFmt: currencyFormat };
             } else {
               ws[cellAddr].s = cellStyle;
@@ -796,8 +817,9 @@ const Payroll = () => {
       // Set column widths
       ws['!cols'] = [
         { wch: 20 }, { wch: 15 }, { wch: 18 }, { wch: 13 }, { wch: 11 },
-        { wch: 11 }, { wch: 12 }, { wch: 15 }, { wch: 18 }, { wch: 20 },
-        { wch: 12 }, { wch: 12 }, { wch: 18 }
+        { wch: 11 }, { wch: 12 }, { wch: 15 }, { wch: 18 }, { wch: 15 },
+        { wch: 15 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 15 },
+        { wch: 18 }
       ];
 
       XLSX.utils.book_append_sheet(wb, ws, 'Payroll Report');
@@ -829,7 +851,8 @@ const Payroll = () => {
       const updatedPayrollData = payrollData.map(staff => {
         const currentBonus = bonus[staff.staff_id] !== undefined ? parseFloat(bonus[staff.staff_id]) || 0 : (staff.bonus || 0);
         const currentDeduction = deduction[staff.staff_id] !== undefined ? parseFloat(deduction[staff.staff_id]) || 0 : (staff.deduction || 0);
-        const calculatedFinalSalary = (staff.total_salary || 0) + currentBonus - currentDeduction;
+        const currentIncentives = staff.total_incentives || 0;
+        const calculatedFinalSalary = (staff.total_salary || 0) + currentBonus - currentDeduction + currentIncentives;
         return {
           ...staff,
           bonus: currentBonus,
@@ -837,7 +860,7 @@ const Payroll = () => {
           final_salary: calculatedFinalSalary
         };
       });
-      
+
       const response = await api.post('/payroll/save/', {
         month,
         year,
@@ -891,7 +914,7 @@ const Payroll = () => {
       const response = await api.get(`/payroll/by-staff/?staff_id=${staff.staff_id}&month=${month}&year=${year}`);
       if (response.data.success) {
         const data = response.data.data;
-        
+
         // Create a clean professional HTML payslip with white background and black borders
         const payslipHTML = `
 <!DOCTYPE html>
@@ -1112,7 +1135,7 @@ const Payroll = () => {
 <body>
   <div class="payslip-container">
     <div class="header">
-      <h1>RUBAN ELECTRICALS</h1>
+      <h1>ANBU ENTERPRISES</h1>
       <p>Service Management System</p>
       <div class="subtitle">Payslip - ${months.find(m => m.value === parseInt(month))?.label} ${year}</div>
     </div>
@@ -1141,7 +1164,8 @@ const Payroll = () => {
           <tr>
             <th>Present</th>
             <th>Half Day</th>
-            <th>Holiday (Paid)</th>
+            <th>Paid Holiday</th>
+            <th>Unpaid Holiday</th>
             <th>Leave</th>
             <th>Absent</th>
             <th>Total</th>
@@ -1151,10 +1175,11 @@ const Payroll = () => {
           <tr>
             <td><strong style="color:#16a34a">${data.present_days}</strong></td>
             <td><strong style="color:#f59e0b">${data.half_days}</strong></td>
-            <td><strong style="color:#6366f1">${data.holiday_days || 0}</strong></td>
+            <td><strong style="color:#6366f1">${data.paid_holiday_days || 0}</strong></td>
+            <td><strong style="color:#94a3b8">${data.unpaid_holiday_days || 0}</strong></td>
             <td><strong>${data.leave_days}</strong></td>
             <td><strong style="color:#dc2626">${data.absent_days}</strong></td>
-            <td><strong>${data.present_days + (data.half_days || 0) + (data.holiday_days || 0) + data.leave_days + data.absent_days}</strong></td>
+            <td><strong>${data.present_days + (data.half_days || 0) + (data.paid_holiday_days || 0) + (data.unpaid_holiday_days || 0) + data.leave_days + data.absent_days}</strong></td>
           </tr>
         </tbody>
       </table>
@@ -1183,6 +1208,10 @@ const Payroll = () => {
           <tr>
             <td class="deduction">- Deduction</td>
             <td class="amount deduction">₹${parseFloat(data.deduction || 0).toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td class="bonus">+ Incentives/Commission</td>
+            <td class="amount bonus">₹${parseFloat(data.total_incentives || 0).toFixed(2)}</td>
           </tr>
           <tr>
             <td>NET PAYABLE</td>
@@ -1217,14 +1246,14 @@ const Payroll = () => {
     ` : ''}
     
     <div class="footer">
-      <div class="company">RUBAN ELECTRICALS</div>
+      <div class="company">ANBU ENTERPRISES</div>
       Generated on ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
     </div>
   </div>
 </body>
 </html>
         `;
-        
+
         // Set payslip data and show modal
         setPayslipData(data);
         setPayslipHtml(payslipHTML);
@@ -1239,7 +1268,7 @@ const Payroll = () => {
   // Download payslip as PDF using jsPDF directly
   const handleDownloadPayslip = () => {
     if (!payslipData) return;
-    
+
     try {
       // Create new PDF document
       const doc = new jsPDF({
@@ -1247,56 +1276,56 @@ const Payroll = () => {
         unit: 'mm',
         format: 'a4'
       });
-      
+
       const pageWidth = 210; // A4 width in mm
       const margin = 15;
       const contentWidth = pageWidth - (margin * 2);
       let y = 15;
-      
+
       // Helper function for drawing borders
       const drawBorder = (x, y, w, h) => {
         doc.setDrawColor(0);
         doc.setLineWidth(0.5);
         doc.rect(x, y, w, h);
       };
-      
+
       // Helper function to format currency
       const formatCurrency = (amount) => {
         const num = parseFloat(amount || 0);
         return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       };
-      
+
       // Header Section
       doc.setFillColor(255, 255, 255);
       doc.rect(0, 0, pageWidth, 45, 'F');
       drawBorder(margin, y, contentWidth, 40);
-      
+
       // Add Logo
       try {
         doc.addImage(logoImage, 'JPEG', pageWidth / 2 - 10, y + 2, 20, 16);
       } catch (e) {
         console.log('Logo not loaded, using text only');
       }
-      
+
       // Company Name
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(18);
       doc.setTextColor(0, 0, 0);
-      doc.text('RUBAN ELECTRICALS', pageWidth / 2, y + 24, { align: 'center' });
-      
+      doc.text('ANBU ENTERPRISES', pageWidth / 2, y + 24, { align: 'center' });
+
       // Subtitle
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(60, 60, 60);
       doc.text('Service Management System', pageWidth / 2, y + 29, { align: 'center' });
-      
+
       // Month/Year
       const monthName = months.find(m => m.value === parseInt(month))?.label || month;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
       doc.text(`Payslip - ${monthName} ${year}`, pageWidth / 2, y + 36, { align: 'center' });
-      
+
       // PAY SLIP title
       y = 52;
       doc.setFillColor(255, 255, 255);
@@ -1305,19 +1334,19 @@ const Payroll = () => {
       doc.setLineWidth(0.5);
       doc.line(margin, y, margin + contentWidth, y);
       doc.line(margin, y + 8, margin + contentWidth, y + 8);
-      
+
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
       doc.text('PAY SLIP', pageWidth / 2, y + 5.5, { align: 'center' });
-      
+
       y += 12;
-      
+
       // Employee Info Section
       doc.setFillColor(255, 255, 255);
       doc.rect(margin, y, contentWidth, 26, 'F');
       drawBorder(margin, y, contentWidth, 26);
       doc.line(margin + (contentWidth / 2), y, margin + (contentWidth / 2), y + 26);
-      
+
       // Left column - Employee Name
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
@@ -1327,7 +1356,7 @@ const Payroll = () => {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
       doc.text(String(payslipData.staff_name || 'N/A'), margin + 5, y + 15);
-      
+
       // Right column - Phone
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
@@ -1337,83 +1366,87 @@ const Payroll = () => {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
       doc.text(String(payslipData.phone || 'N/A'), margin + (contentWidth / 2) + 5, y + 15);
-      
+
       y += 24;
-      
+
       // Attendance Section Title
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
       doc.text('ATTENDANCE', margin, y);
       doc.line(margin, y + 3, margin + 35, y + 3);
-      
+
       y += 10;
-      
+
       // Attendance Table
       const tableWidth = contentWidth;
       const colW = tableWidth / 6;
       doc.setFillColor(255, 255, 255);
       doc.rect(margin, y, tableWidth, 22, 'F');
       drawBorder(margin, y, tableWidth, 22);
-      
+
       // Table Header
       doc.setFillColor(240, 240, 240);
       doc.rect(margin, y, tableWidth, 8, 'F');
       doc.setDrawColor(0);
       doc.setLineWidth(0.3);
       doc.line(margin, y + 8, margin + tableWidth, y + 8);
-      
+
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(60, 60, 60);
       doc.text('PRESENT', margin + 3, y + 5.5);
-      doc.text('HALF DAY', margin + colW + 3, y + 5.5);
-      doc.text('HOLIDAY', margin + (colW * 2) + 3, y + 5.5);
-      doc.text('LEAVE', margin + (colW * 3) + 3, y + 5.5);
-      doc.text('ABSENT', margin + (colW * 4) + 3, y + 5.5);
-      doc.text('TOTAL', margin + (colW * 5) + 3, y + 5.5);
-      
+      doc.text('HALF DAY', margin + (contentWidth / 7) + 3, y + 5.5);
+      doc.text('P-HOLIDAY', margin + (contentWidth / 7 * 2) + 3, y + 5.5);
+      doc.text('U-HOLIDAY', margin + (contentWidth / 7 * 3) + 3, y + 5.5);
+      doc.text('LEAVE', margin + (contentWidth / 7 * 4) + 3, y + 5.5);
+      doc.text('ABSENT', margin + (contentWidth / 7 * 5) + 3, y + 5.5);
+      doc.text('TOTAL', margin + (contentWidth / 7 * 6) + 3, y + 5.5);
+
       // Vertical lines
-      for (let i = 1; i < 6; i++) {
-        doc.line(margin + (colW * i), y, margin + (colW * i), y + 22);
+      for (let i = 1; i < 7; i++) {
+        doc.line(margin + (contentWidth / 7 * i), y, margin + (contentWidth / 7 * i), y + 22);
       }
-      
+
       // Table Data
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
-      
+
       const present = payslipData.present_days || 0;
       const halfDay = payslipData.half_days || 0;
+      const paidHoliday = payslipData.paid_holiday_days || 0;
+      const unpaidHoliday = payslipData.unpaid_holiday_days || 0;
       const holiday = payslipData.holiday_days || 0;
       const leave = payslipData.leave_days || 0;
       const absent = payslipData.absent_days || 0;
-      const total = present + halfDay + holiday + leave + absent;
-      
+      const total = present + halfDay + paidHoliday + unpaidHoliday + leave + absent;
+
       doc.text(String(present), margin + 3, y + 15);
-      doc.text(String(halfDay), margin + colW + 3, y + 15);
-      doc.text(String(holiday), margin + (colW * 2) + 3, y + 15);
-      doc.text(String(leave), margin + (colW * 3) + 3, y + 15);
-      doc.text(String(absent), margin + (colW * 4) + 3, y + 15);
-      doc.text(String(total), margin + (colW * 5) + 3, y + 15);
-      
+      doc.text(String(halfDay), margin + (contentWidth / 7) + 3, y + 15);
+      doc.text(String(paidHoliday), margin + (contentWidth / 7 * 2) + 3, y + 15);
+      doc.text(String(unpaidHoliday), margin + (contentWidth / 7 * 3) + 3, y + 15);
+      doc.text(String(leave), margin + (contentWidth / 7 * 4) + 3, y + 15);
+      doc.text(String(absent), margin + (contentWidth / 7 * 5) + 3, y + 15);
+      doc.text(String(total), margin + (contentWidth / 7 * 6) + 3, y + 15);
+
       y += 26;
-      
+
       // Salary Details Section Title
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
       doc.text('SALARY DETAILS', margin, y);
       doc.line(margin, y + 3, margin + 40, y + 3);
-      
+
       y += 10;
-      
+
       // Salary Table with proper borders
       const salaryTableHeight = 50;
       doc.setFillColor(255, 255, 255);
       doc.rect(margin, y, tableWidth, salaryTableHeight, 'F');
       drawBorder(margin, y, tableWidth, salaryTableHeight);
-      
+
       // Table Header row
       const headerHeight = 8;
       doc.setFillColor(240, 240, 240);
@@ -1421,56 +1454,63 @@ const Payroll = () => {
       doc.setDrawColor(0);
       doc.setLineWidth(0.3);
       doc.line(margin, y + headerHeight, margin + tableWidth, y + headerHeight);
-      
+
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(60, 60, 60);
       doc.text('DESCRIPTION', margin + 3, y + 5.5);
       doc.text('AMOUNT', margin + contentWidth - 3, y + 5.5, { align: 'right' });
-      
+
       // Vertical line dividing columns
       doc.line(margin + contentWidth - 50, y, margin + contentWidth - 50, y + salaryTableHeight);
-      
+
       // Data rows
       let rowY = y + headerHeight;
       const dataRowHeight = 7;
-      
+
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
-      
+
       // Base Salary
       doc.text('Base Salary (Monthly)', margin + 3, rowY + 4);
       doc.text('Rs. ' + formatCurrency(payslipData.monthly_salary), margin + contentWidth - 3, rowY + 4, { align: 'right' });
       doc.line(margin, rowY + dataRowHeight, margin + tableWidth, rowY + dataRowHeight);
       rowY += dataRowHeight;
-      
+
       // Per Day Salary
       doc.text('Per Day Salary', margin + 3, rowY + 4);
       doc.text('Rs. ' + formatCurrency(payslipData.per_day_salary), margin + contentWidth - 3, rowY + 4, { align: 'right' });
       doc.line(margin, rowY + dataRowHeight, margin + tableWidth, rowY + dataRowHeight);
       rowY += dataRowHeight;
-      
+
       // Total Salary
       doc.text(`Total Salary (${present} Present + ${halfDay} Half + ${holiday} Holiday)`, margin + 3, rowY + 4);
       doc.text('Rs. ' + formatCurrency(payslipData.total_salary), margin + contentWidth - 3, rowY + 4, { align: 'right' });
       doc.line(margin, rowY + dataRowHeight, margin + tableWidth, rowY + dataRowHeight);
       rowY += dataRowHeight;
-      
+
       // Bonus
       doc.setTextColor(22, 163, 74);
       doc.text('Bonus', margin + 3, rowY + 4);
       doc.text('+ Rs. ' + formatCurrency(payslipData.bonus), margin + contentWidth - 3, rowY + 4, { align: 'right' });
       doc.line(margin, rowY + dataRowHeight, margin + tableWidth, rowY + dataRowHeight);
       rowY += dataRowHeight;
-      
+
       // Deduction
       doc.setTextColor(220, 38, 38);
       doc.text('Deduction', margin + 3, rowY + 4);
       doc.text('- Rs. ' + formatCurrency(payslipData.deduction), margin + contentWidth - 3, rowY + 4, { align: 'right' });
       doc.line(margin, rowY + dataRowHeight, margin + tableWidth, rowY + dataRowHeight);
       rowY += dataRowHeight;
-      
+
+      // Incentives
+      doc.setTextColor(22, 163, 74);
+      doc.text('Incentives/Commission', margin + 3, rowY + 4);
+      doc.text('+ Rs. ' + formatCurrency(payslipData.total_incentives), margin + contentWidth - 3, rowY + 4, { align: 'right' });
+      doc.line(margin, rowY + dataRowHeight, margin + tableWidth, rowY + dataRowHeight);
+      rowY += dataRowHeight;
+
       // NET PAYABLE row (wider row)
       const netPayableHeight = 12;
       doc.setFillColor(245, 245, 245);
@@ -1478,22 +1518,22 @@ const Payroll = () => {
       doc.setDrawColor(0);
       doc.setLineWidth(0.8);
       doc.rect(margin, rowY, tableWidth, netPayableHeight);
-      
+
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
       doc.text('NET PAYABLE', margin + 3, rowY + 8);
       doc.text('Rs. ' + formatCurrency(payslipData.final_salary), margin + contentWidth - 3, rowY + 8, { align: 'right' });
-      
+
       y = rowY + netPayableHeight + 15; // Set y to below the salary table to avoid overlap
-      
+
       // Special Days Section in PDF
       if (payslipData.special_days && payslipData.special_days.length > 0) {
         if (y > 250) { // Check for page break higher on the page to fit more on one page
           doc.addPage();
           y = 20;
         }
-        
+
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 0, 0);
@@ -1503,21 +1543,21 @@ const Payroll = () => {
 
         const specTableWidth = contentWidth;
         const specColW = [30, 30, specTableWidth - 60];
-        
+
         // Header
         doc.setFillColor(240, 240, 240);
         doc.rect(margin, y, specTableWidth, 8, 'F');
         doc.setDrawColor(0);
         doc.setLineWidth(0.3);
         doc.rect(margin, y, specTableWidth, 8);
-        
+
         doc.setFontSize(8);
         doc.text('DATE', margin + 3, y + 5.5);
         doc.text('MULTIPLIER', margin + specColW[0] + 3, y + 5.5);
         doc.text('REASON', margin + specColW[0] + specColW[1] + 3, y + 5.5);
-        
+
         y += 8;
-        
+
         // Rows
         doc.setFont('helvetica', 'normal');
         payslipData.special_days.forEach(day => {
@@ -1533,34 +1573,34 @@ const Payroll = () => {
           doc.text(day.reason, margin + specColW[0] + specColW[1] + 3, y + 4.5);
           y += rowH;
         });
-        
+
         y += 8;
       }
-      
+
       y = Math.min(y + 10, 265); // Dynamic footer position with safety margin for bottom of page
-      
+
       // Footer
       doc.setFillColor(255, 255, 255);
       doc.rect(margin, y, contentWidth, 16, 'F');
       doc.setDrawColor(0);
       doc.setLineWidth(1);
       doc.line(margin, y, margin + contentWidth, y);
-      
+
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
-      doc.text('RUBAN ELECTRICALS', pageWidth / 2, y + 6, { align: 'center' });
-      
+      doc.text('ANBU ENTERPRISES', pageWidth / 2, y + 6, { align: 'center' });
+
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(80, 80, 80);
       const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
       doc.text(`Generated on ${today}`, pageWidth / 2, y + 12, { align: 'center' });
-      
+
       // Save the PDF
       const filename = `Payslip_${String(payslipData.staff_name).replace(/\s+/g, '_')}_${month}_${year}.pdf`;
       doc.save(filename);
-      
+
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Error generating PDF: ' + error.message);
@@ -1570,7 +1610,7 @@ const Payroll = () => {
   // Send payslip via WhatsApp - generates PDF and opens WhatsApp
   const handleSendPayslipWhatsApp = async () => {
     if (!payslipData) return;
-    
+
     try {
       // First generate the PDF
       const doc = new jsPDF({
@@ -1578,44 +1618,44 @@ const Payroll = () => {
         unit: 'mm',
         format: 'a4'
       });
-      
+
       const pageWidth = 210;
       const margin = 15;
       const contentWidth = pageWidth - (margin * 2);
       let y = 15;
-      
+
       const formatCurrency = (amount) => {
         const num = parseFloat(amount || 0);
         return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       };
-      
+
       // Header
       doc.setFillColor(255, 255, 255);
       doc.rect(0, 0, pageWidth, 45, 'F');
       doc.setDrawColor(0);
       doc.setLineWidth(0.5);
       doc.rect(margin, y, contentWidth, 40);
-      
+
       try {
         doc.addImage(logoImage, 'JPEG', pageWidth / 2 - 10, y + 2, 20, 16);
-      } catch (e) {}
-      
+      } catch (e) { }
+
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(18);
       doc.setTextColor(0, 0, 0);
-      doc.text('RUBAN ELECTRICALS', pageWidth / 2, y + 24, { align: 'center' });
-      
+      doc.text('ANBU ENTERPRISES', pageWidth / 2, y + 24, { align: 'center' });
+
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(60, 60, 60);
       doc.text('Service Management System', pageWidth / 2, y + 29, { align: 'center' });
-      
+
       const monthName = months.find(m => m.value === parseInt(month))?.label || month;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
       doc.text(`Payslip - ${monthName} ${year}`, pageWidth / 2, y + 36, { align: 'center' });
-      
+
       y = 52;
       doc.setFillColor(255, 255, 255);
       doc.rect(margin, y, contentWidth, 8, 'F');
@@ -1624,14 +1664,14 @@ const Payroll = () => {
       doc.line(margin, y + 8, margin + contentWidth, y + 8);
       doc.setFontSize(11);
       doc.text('PAY SLIP', pageWidth / 2, y + 5.5, { align: 'center' });
-      
+
       y += 12;
       // Employee Info
       doc.setFillColor(255, 255, 255);
       doc.rect(margin, y, contentWidth, 26, 'F');
       doc.rect(margin, y, contentWidth, 26);
       doc.line(margin + (contentWidth / 2), y, margin + (contentWidth / 2), y + 26);
-      
+
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(80, 80, 80);
@@ -1640,7 +1680,7 @@ const Payroll = () => {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
       doc.text(String(payslipData.staff_name || 'N/A'), margin + 5, y + 15);
-      
+
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(80, 80, 80);
@@ -1649,7 +1689,7 @@ const Payroll = () => {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
       doc.text(String(payslipData.phone || 'N/A'), margin + (contentWidth / 2) + 5, y + 15);
-      
+
       y += 24;
       // Attendance
       doc.setFontSize(11);
@@ -1657,7 +1697,7 @@ const Payroll = () => {
       doc.text('ATTENDANCE', margin, y);
       doc.line(margin, y + 3, margin + 35, y + 3);
       y += 10;
-      
+
       const tableWidth = contentWidth;
       const colW = tableWidth / 6;
       doc.rect(margin, y, tableWidth, 22, 'F');
@@ -1665,38 +1705,44 @@ const Payroll = () => {
       doc.setFillColor(240, 240, 240);
       doc.rect(margin, y, tableWidth, 8, 'F');
       doc.line(margin, y + 8, margin + tableWidth, y + 8);
-      
+
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(60, 60, 60);
       doc.text('PRESENT', margin + 3, y + 5.5);
-      doc.text('HALF DAY', margin + colW + 3, y + 5.5);
-      doc.text('HOLIDAY', margin + (colW * 2) + 3, y + 5.5);
-      doc.text('LEAVE', margin + (colW * 3) + 3, y + 5.5);
-      doc.text('ABSENT', margin + (colW * 4) + 3, y + 5.5);
-      doc.text('TOTAL', margin + (colW * 5) + 3, y + 5.5);
-      
-      for (let i = 1; i < 6; i++) {
-        doc.line(margin + (colW * i), y, margin + (colW * i), y + 22);
+      doc.text('HALF DAY', margin + (contentWidth / 7) + 3, y + 5.5);
+      doc.text('P-HOLIDAY', margin + (contentWidth / 7 * 2) + 3, y + 5.5);
+      doc.text('U-HOLIDAY', margin + (contentWidth / 7 * 3) + 3, y + 5.5);
+      doc.text('LEAVE', margin + (contentWidth / 7 * 4) + 3, y + 5.5);
+      doc.text('ABSENT', margin + (contentWidth / 7 * 5) + 3, y + 5.5);
+      doc.text('TOTAL', margin + (contentWidth / 7 * 6) + 3, y + 5.5);
+
+      // Vertical lines
+      for (let i = 1; i < 7; i++) {
+        doc.line(margin + (contentWidth / 7 * i), y, margin + (contentWidth / 7 * i), y + 22);
       }
-      
+
+      // Table Data
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
       const present = payslipData.present_days || 0;
       const halfDay = payslipData.half_days || 0;
+      const paidHoliday = payslipData.paid_holiday_days || 0;
+      const unpaidHoliday = payslipData.unpaid_holiday_days || 0;
       const holiday = payslipData.holiday_days || 0;
       const leave = payslipData.leave_days || 0;
       const absent = payslipData.absent_days || 0;
-      const total = present + halfDay + holiday + leave + absent;
-      
+      const total = present + halfDay + paidHoliday + unpaidHoliday + leave + absent;
+
       doc.text(String(present), margin + 3, y + 15);
-      doc.text(String(halfDay), margin + colW + 3, y + 15);
-      doc.text(String(holiday), margin + (colW * 2) + 3, y + 15);
-      doc.text(String(leave), margin + (colW * 3) + 3, y + 15);
-      doc.text(String(absent), margin + (colW * 4) + 3, y + 15);
-      doc.text(String(total), margin + (colW * 5) + 3, y + 15);
-      
+      doc.text(String(halfDay), margin + (contentWidth / 7) + 3, y + 15);
+      doc.text(String(paidHoliday), margin + (contentWidth / 7 * 2) + 3, y + 15);
+      doc.text(String(unpaidHoliday), margin + (contentWidth / 7 * 3) + 3, y + 15);
+      doc.text(String(leave), margin + (contentWidth / 7 * 4) + 3, y + 15);
+      doc.text(String(absent), margin + (contentWidth / 7 * 5) + 3, y + 15);
+      doc.text(String(total), margin + (contentWidth / 7 * 6) + 3, y + 15);
+
       y += 26;
       // Salary Details
       doc.setFontSize(11);
@@ -1704,70 +1750,70 @@ const Payroll = () => {
       doc.text('SALARY DETAILS', margin, y);
       doc.line(margin, y + 3, margin + 40, y + 3);
       y += 10;
-      
+
       const salaryTableHeight = 50;
       doc.rect(margin, y, tableWidth, salaryTableHeight, 'F');
       doc.rect(margin, y, tableWidth, salaryTableHeight);
-      
+
       const headerHeight = 8;
       doc.setFillColor(240, 240, 240);
       doc.rect(margin, y, tableWidth, headerHeight, 'F');
       doc.line(margin, y + headerHeight, margin + tableWidth, y + headerHeight);
-      
+
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(60, 60, 60);
       doc.text('DESCRIPTION', margin + 3, y + 5.5);
       doc.text('AMOUNT', margin + contentWidth - 3, y + 5.5, { align: 'right' });
       doc.line(margin + contentWidth - 50, y, margin + contentWidth - 50, y + salaryTableHeight);
-      
+
       let rowY = y + headerHeight;
       const dataRowHeight = 7;
-      
+
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
-      
+
       doc.text('Base Salary (Monthly)', margin + 3, rowY + 4);
       doc.text('Rs. ' + formatCurrency(payslipData.monthly_salary), margin + contentWidth - 3, rowY + 4, { align: 'right' });
       doc.line(margin, rowY + dataRowHeight, margin + tableWidth, rowY + dataRowHeight);
       rowY += dataRowHeight;
-      
+
       doc.text('Per Day Salary', margin + 3, rowY + 4);
       doc.text('Rs. ' + formatCurrency(payslipData.per_day_salary), margin + contentWidth - 3, rowY + 4, { align: 'right' });
       doc.line(margin, rowY + dataRowHeight, margin + tableWidth, rowY + dataRowHeight);
       rowY += dataRowHeight;
-      
+
       doc.text(`Total Salary (${present} Present + ${halfDay} Half + ${holiday} Holiday)`, margin + 3, rowY + 4);
       doc.text('Rs. ' + formatCurrency(payslipData.total_salary), margin + contentWidth - 3, rowY + 4, { align: 'right' });
       doc.line(margin, rowY + dataRowHeight, margin + tableWidth, rowY + dataRowHeight);
       rowY += dataRowHeight;
-      
+
       doc.setTextColor(22, 163, 74);
       doc.text('Bonus', margin + 3, rowY + 4);
       doc.text('+ Rs. ' + formatCurrency(payslipData.bonus), margin + contentWidth - 3, rowY + 4, { align: 'right' });
       doc.line(margin, rowY + dataRowHeight, margin + tableWidth, rowY + dataRowHeight);
       rowY += dataRowHeight;
-      
+
       doc.setTextColor(220, 38, 38);
       doc.text('Deduction', margin + 3, rowY + 4);
       doc.text('- Rs. ' + formatCurrency(payslipData.deduction), margin + contentWidth - 3, rowY + 4, { align: 'right' });
       doc.line(margin, rowY + dataRowHeight, margin + tableWidth, rowY + dataRowHeight);
       rowY += dataRowHeight;
-      
+
       const netPayableHeight = 12;
       doc.setFillColor(245, 245, 245);
       doc.rect(margin, rowY, tableWidth, netPayableHeight, 'F');
       doc.setDrawColor(0);
       doc.setLineWidth(0.8);
       doc.rect(margin, rowY, tableWidth, netPayableHeight);
-      
+
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
       doc.text('NET PAYABLE', margin + 3, rowY + 8);
       doc.text('Rs. ' + formatCurrency(payslipData.final_salary), margin + contentWidth - 3, rowY + 8, { align: 'right' });
-      
+
       y = rowY + netPayableHeight + 15; // Set y to below the salary table to avoid overlap
 
       // Special Days Section in WhatsApp PDF
@@ -1776,7 +1822,7 @@ const Payroll = () => {
           doc.addPage();
           y = 20;
         }
-        
+
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 0, 0);
@@ -1786,21 +1832,21 @@ const Payroll = () => {
 
         const specTableWidth = contentWidth;
         const specColW = [30, 30, specTableWidth - 60];
-        
+
         // Header
         doc.setFillColor(240, 240, 240);
         doc.rect(margin, y, specTableWidth, 8, 'F');
         doc.setDrawColor(0);
         doc.setLineWidth(0.3);
         doc.rect(margin, y, specTableWidth, 8);
-        
+
         doc.setFontSize(8);
         doc.text('DATE', margin + 3, y + 5.5);
         doc.text('MULTIPLIER', margin + specColW[0] + 3, y + 5.5);
         doc.text('REASON', margin + specColW[0] + specColW[1] + 3, y + 5.5);
-        
+
         y += 8;
-        
+
         // Rows
         doc.setFont('helvetica', 'normal');
         payslipData.special_days.forEach(day => {
@@ -1816,7 +1862,7 @@ const Payroll = () => {
           doc.text(day.reason, margin + specColW[0] + specColW[1] + 3, y + 4.5);
           y += rowH;
         });
-        
+
         y += 8;
       }
 
@@ -1828,21 +1874,21 @@ const Payroll = () => {
       doc.setDrawColor(0);
       doc.setLineWidth(1);
       doc.line(margin, y, margin + contentWidth, y);
-      
+
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text('RUBAN ELECTRICALS', pageWidth / 2, y + 6, { align: 'center' });
-      
+      doc.text('ANBU ENTERPRISES', pageWidth / 2, y + 6, { align: 'center' });
+
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(80, 80, 80);
       const todayText = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
       doc.text(`Generated on ${todayText}`, pageWidth / 2, y + 12, { align: 'center' });
-      
+
       // Generate PDF blob
       const pdfBlob = doc.output('blob');
       const pdfUrl = URL.createObjectURL(pdfBlob);
-      
+
       // Create WhatsApp message with payslip details
       let specialDaysText = '';
       if (payslipData.special_days && payslipData.special_days.length > 0) {
@@ -1864,17 +1910,17 @@ const Payroll = () => {
         `*NET PAYABLE:* Rs.${formatCurrency(payslipData.final_salary)}%0A%0A` +
         `Please find the payslip PDF attached.%0A%0A` +
         `Thank you!`;
-      
+
       if (payslipData.phone) {
         // Open WhatsApp with message
         const phoneNumber = payslipData.phone.replace(/\D/g, '');
         const waUrl = `https://wa.me/${phoneNumber}?text=${message}`;
         window.open(waUrl, '_blank');
-        
+
         // Also download the PDF so user can attach it
         const filename = `Payslip_${payslipData.staff_name.replace(/\s+/g, '_')}_${month}_${year}.pdf`;
         doc.save(filename);
-        
+
         // Show instruction
         setTimeout(() => {
           alert('PDF downloaded! Please attach it to the WhatsApp message.');
@@ -1882,7 +1928,7 @@ const Payroll = () => {
       } else {
         alert('Staff phone number not available');
       }
-      
+
     } catch (error) {
       console.error('Error sending payslip via WhatsApp:', error);
       alert('Error generating payslip. Please try again.');
@@ -1893,7 +1939,7 @@ const Payroll = () => {
     return payrollData.reduce((sum, staff) => {
       const currentBonus = bonus[staff.staff_id] !== undefined ? parseFloat(bonus[staff.staff_id]) || 0 : (staff.bonus || 0);
       const currentDeduction = deduction[staff.staff_id] !== undefined ? parseFloat(deduction[staff.staff_id]) || 0 : (staff.deduction || 0);
-      return sum + ((staff.total_salary || 0) + currentBonus - currentDeduction);
+      return sum + ((staff.total_salary || 0) + currentBonus - currentDeduction + (staff.total_incentives || 0));
     }, 0);
   };
 
@@ -1935,7 +1981,7 @@ const Payroll = () => {
           padding: '20px'
         }}>
           <div style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'var(--color-primary)',
             borderRadius: '16px',
             maxWidth: '700px',
             width: '100%',
@@ -1943,7 +1989,7 @@ const Payroll = () => {
             overflow: 'auto',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
           }}
-          ref={payslipModalRef}
+            ref={payslipModalRef}
           >
             {/* Modal Header */}
             <div style={{
@@ -1977,9 +2023,9 @@ const Payroll = () => {
                 <FiX size={20} color="#fff" />
               </button>
             </div>
-            
+
             {/* Modal Content - Payslip Preview */}
-            <div 
+            <div
               className="payslip-modal-content"
               style={{
                 padding: '20px',
@@ -1990,7 +2036,7 @@ const Payroll = () => {
             >
               <div dangerouslySetInnerHTML={{ __html: payslipHtml }} />
             </div>
-            
+
             {/* Modal Footer - Action Buttons */}
             <div style={{
               display: 'flex',
@@ -2050,11 +2096,11 @@ const Payroll = () => {
       <div className="payroll-blob payroll-blob1"></div>
       <div className="payroll-blob payroll-blob2"></div>
       <style>{styles}</style>
-      
+
       <div className="payroll-content">
         <div className="payroll-header">
           <h1 className="payroll-title">Payroll <em>Management</em></h1>
-          
+
           <div className="payroll-controls">
             <select
               value={month}
@@ -2065,7 +2111,7 @@ const Payroll = () => {
                 <option key={m.value} value={m.value}>{m.label}</option>
               ))}
             </select>
-            
+
             <select
               value={year}
               onChange={(e) => setYear(parseInt(e.target.value))}
@@ -2103,316 +2149,336 @@ const Payroll = () => {
           </button>
         </div>
 
-      {/* Calculate Payroll Tab */}
-      {activeTab === 'calculate' && (
-        <>
-          <div className="payroll-actions">
-            <button
-              onClick={calculatePayroll}
-              disabled={loading}
-              className="payroll-btn payroll-btn-primary"
-            >
-              {loading ? 'Calculating...' : 'Calculate Payroll'}
-            </button>
+        {/* Calculate Payroll Tab */}
+        {activeTab === 'calculate' && (
+          <>
+            <div className="payroll-actions">
+              <button
+                onClick={calculatePayroll}
+                disabled={loading}
+                className="payroll-btn payroll-btn-primary"
+              >
+                {loading ? 'Calculating...' : 'Calculate Payroll'}
+              </button>
 
-            <button
-              onClick={savePayroll}
-              disabled={saving || payrollData.length === 0}
-              className="payroll-btn payroll-btn-primary"
-            >
-              {saving ? 'Saving...' : 'Generate & Save Payroll'}
-            </button>
+              <button
+                onClick={savePayroll}
+                disabled={saving || payrollData.length === 0}
+                className="payroll-btn payroll-btn-primary"
+              >
+                {saving ? 'Saving...' : 'Generate & Save Payroll'}
+              </button>
 
-            <button
-              onClick={exportToExcel}
-              disabled={payrollData.length === 0}
-              className="payroll-btn payroll-btn-success"
-            >
-              <FiFilePlus style={{ marginRight: '8px' }} />
-              Export to Excel
-            </button>
-          </div>
-
-          {/* Message Display */}
-          {message.text && (
-            <div className={`payroll-message ${message.type}`}>
-              {message.text}
+              <button
+                onClick={exportToExcel}
+                disabled={payrollData.length === 0}
+                className="payroll-btn payroll-btn-success"
+              >
+                <FiFilePlus style={{ marginRight: '8px' }} />
+                Export to Excel
+              </button>
             </div>
-          )}
 
-          {/* Summary Cards */}
-          {payrollData.length > 0 && (
-            <div className="payroll-summary">
-              <div className="payroll-summary-item staff">
-                <div className="payroll-summary-label">Total Staff</div>
-                <div className="payroll-summary-value">{payrollData.length}</div>
+            {/* Message Display */}
+            {message.text && (
+              <div className={`payroll-message ${message.type}`}>
+                {message.text}
               </div>
-              <div className="payroll-summary-item present">
-                <div className="payroll-summary-label">Total Present</div>
-                <div className="payroll-summary-value">{getTotalPresent()}</div>
-              </div>
-              <div className="payroll-summary-item halfday">
-                <div className="payroll-summary-label">Total Half Days</div>
-                <div className="payroll-summary-value">{getTotalHalfDays()}</div>
-              </div>
-              <div className="payroll-summary-item leave">
-                <div className="payroll-summary-label">Total Leave</div>
-                <div className="payroll-summary-value">{getTotalLeaveDays()}</div>
-              </div>
-              <div className="payroll-summary-item salary">
-                <div className="payroll-summary-label">Total Salary</div>
-                <div className="payroll-summary-value">₹{getTotalSalary().toLocaleString()}</div>
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Payroll Table */}
-          {payrollData.length > 0 ? (
-            <div className="payroll-table-container" style={{ overflowX: 'auto', maxHeight: '500px', overflowY: 'auto' }}>
-              <table className="payroll-table">
-                <thead>
-                  <tr>
-                    <th>Staff Name</th>
-                    <th>Per Day</th>
-                    <th>Present</th>
-                    <th>Half Day</th>
-                    <th>Holiday</th>
-                    <th>Multiplier ℹ️</th>
-                    <th>Leave</th>
-                    <th>Absent</th>
-                    <th>Bonus</th>
-                    <th>Deduction</th>
-                    <th>Total</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payrollData.map((staff, index) => (
-                    <tr key={index}>
-                      <td className="staff-name">{staff.staff_name}</td>
-                      <td>₹{staff.per_day_salary}</td>
-                      <td><span className="attendance-badge present-badge">{staff.present_days}</span></td>
-                      <td><span className="attendance-badge halfday-badge">{staff.half_days}</span></td>
-                      <td><span className="attendance-badge" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>{staff.holiday_days || 0}</span></td>
-                      <td>
-                        {staff.total_multiplier > 0 ? (
-                           <span title="Total multiplier includes Present days, Half days (0.5), and Paid Holidays/Weekly Offs" style={{ 
-                            background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-                            color: 'white',
-                            padding: '2px 8px',
-                            borderRadius: '12px',
-                            fontSize: '11px',
-                            fontWeight: 'bold',
-                            boxShadow: '0 2px 4px rgba(245, 158, 11, 0.3)',
-                            cursor: 'help'
-                          }}>
-                            {staff.total_multiplier}x
-                          </span>
-                        ) : '-'}
-                      </td>
-                      <td><span className="attendance-badge leave-badge">{staff.leave_days}</span></td>
-                      <td><span className="attendance-badge absent-badge">{staff.absent_days}</span></td>
-                      <td>
-                        <input
-                          type="number"
-                          value={bonus[staff.staff_id] !== undefined ? bonus[staff.staff_id] : staff.bonus}
-                          onChange={(e) => handleBonusChange(staff.staff_id, e.target.value)}
-                          className="payroll-input"
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          value={deduction[staff.staff_id] !== undefined ? deduction[staff.staff_id] : staff.deduction}
-                          onChange={(e) => handleDeductionChange(staff.staff_id, e.target.value)}
-                          className="payroll-input"
-                        />
-                      </td>
-                      <td className="amount">₹{((staff.total_salary || 0) + (bonus[staff.staff_id] !== undefined ? parseFloat(bonus[staff.staff_id]) || 0 : staff.bonus || 0) - (deduction[staff.staff_id] !== undefined ? parseFloat(deduction[staff.staff_id]) || 0 : staff.deduction || 0)).toLocaleString()}</td>
-                      <td>
-                        <button
-                          onClick={() => downloadPayslip(staff)}
-                          className="payroll-action-btn"
-                        >
-                          <FiDownload /> Payslip
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="payroll-empty">
-              <div className="payroll-empty-icon">📊</div>
-              <p>No payroll data. Select month and year, then click "Calculate Payroll"</p>
-            </div>
-          )}
-        </>
-      )}
+            {/* Summary Cards */}
+            {payrollData.length > 0 && (
+              <div className="payroll-summary">
+                <div className="payroll-summary-item staff">
+                  <div className="payroll-summary-label">Total Staff</div>
+                  <div className="payroll-summary-value">{payrollData.length}</div>
+                </div>
+                <div className="payroll-summary-item present">
+                  <div className="payroll-summary-label">Total Present</div>
+                  <div className="payroll-summary-value">{getTotalPresent()}</div>
+                </div>
+                <div className="payroll-summary-item halfday">
+                  <div className="payroll-summary-label">Total Half Days</div>
+                  <div className="payroll-summary-value">{getTotalHalfDays()}</div>
+                </div>
+                <div className="payroll-summary-item leave">
+                  <div className="payroll-summary-label">Total Leave</div>
+                  <div className="payroll-summary-value">{getTotalLeaveDays()}</div>
+                </div>
+                <div className="payroll-summary-item halfday" style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(129, 140, 248, 0.1) 100%)' }}>
+                  <div className="payroll-summary-label">Paid Holidays</div>
+                  <div className="payroll-summary-value">{payrollData.reduce((sum, s) => sum + (s.paid_holiday_days || 0), 0)}</div>
+                </div>
+                <div className="payroll-summary-item salary">
+                  <div className="payroll-summary-label">Total Salary</div>
+                  <div className="payroll-summary-value">₹{getTotalSalary().toLocaleString()}</div>
+                </div>
+              </div>
+            )}
 
-      {/* Payroll History Tab */}
-      {activeTab === 'history' && (
-        <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            <h2 className="payroll-section-title" style={{ margin: 0 }}>Payroll History</h2>
-            <select
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              className="payroll-select"
-              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd' }}
-            >
-              {months.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-            <select
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              className="payroll-select"
-              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd' }}
-            >
-              {years.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-            <button
-              onClick={() => fetchPayrollHistory()}
-              className="btn-primary"
-              style={{ padding: '8px 16px', borderRadius: '6px' }}
-            >
-              Search
-            </button>
-          </div>
-          <p style={{ marginTop: '-10px', marginBottom: '20px', color: '#666', fontSize: '14px' }}>
-            Showing payroll history for: <strong>{months.find(m => m.value === parseInt(month))?.label} {year}</strong>
-          </p>
-          {payrollHistory.length > 0 ? (
-            <div className="payroll-table-container" style={{ overflowX: 'auto', maxHeight: '500px', overflowY: 'auto' }}>
-              <table className="payroll-table">
-                <thead>
-                  <tr>
-                    <th>Staff Name</th>
-                    <th>Present</th>
-                    <th>Half Day</th>
-                    <th>Holiday</th>
-                    <th>Leave</th>
-                    <th>Absent</th>
-                    <th>Bonus</th>
-                    <th>Deduction</th>
-                    <th>Final Salary</th>
-                    <th>Generated</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payrollHistory.map((record, index) => (
-                    <tr key={index}>
-                      <td className="staff-name">{record.staff_name}</td>
-                      <td><span className="attendance-badge present-badge">{record.present_days}</span></td>
-                      <td><span className="attendance-badge halfday-badge">{record.half_days}</span></td>
-                      <td><span className="attendance-badge" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>{record.holiday_days || 0}</span></td>
-                      <td><span className="attendance-badge leave-badge">{record.leave_days}</span></td>
-                      <td><span className="attendance-badge absent-badge">{record.absent_days}</span></td>
-                      <td style={{ color: '#16a34a', fontWeight: '600' }}>₹{record.bonus || 0}</td>
-                      <td style={{ color: '#dc2626', fontWeight: '600' }}>₹{record.deduction || 0}</td>
-                      <td className="amount">₹{((record.total_salary || 0) + (record.bonus || 0) - (record.deduction || 0)).toLocaleString()}</td>
-                      <td style={{ fontSize: '12px' }}>{record.generated_at}</td>
-                      <td>
-                        <button
-                          onClick={() => downloadPayslip(record)}
-                          className="payroll-action-btn"
-                        >
-                          <FiDownload /> Download
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="payroll-empty">
-              <div className="payroll-empty-icon">📁</div>
-              <p>No payroll history found for this month.</p>
-              <p>Generate payroll from "Calculate Payroll" tab first.</p>
-            </div>
-          )}
-        </>
-      )}
+            {/* Payroll Table */}
+            {payrollData.length > 0 ? (
+              <div className="payroll-table-container">
+                <div className="payroll-table-scroll">
+                  <table className="payroll-table">
+                    <thead>
+                      <tr>
+                        <th>Staff Name</th>
+                        <th>Per Day</th>
+                        <th>Present</th>
+                        <th>Half Day</th>
+                        <th>Paid Hol.</th>
+                        <th>Unpaid Hol.</th>
+                        <th>Multiplier ℹ️</th>
+                        <th>Leave</th>
+                        <th>Absent</th>
+                        <th>Bonus</th>
+                        <th>Deduction</th>
+                        <th>Incentive</th>
+                        <th>Total</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payrollData.map((staff, index) => (
+                        <tr key={index}>
+                          <td className="staff-name">{staff.staff_name}</td>
+                          <td>₹{staff.per_day_salary}</td>
+                          <td><span className="attendance-badge present-badge">{staff.present_days}</span></td>
+                          <td><span className="attendance-badge halfday-badge">{staff.half_days}</span></td>
+                          <td><span className="attendance-badge" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>{staff.paid_holiday_days || 0}</span></td>
+                          <td><span className="attendance-badge" style={{ background: 'rgba(148, 163, 184, 0.1)', color: '#64748b' }}>{staff.unpaid_holiday_days || 0}</span></td>
+                          <td>
+                            {staff.total_multiplier > 0 ? (
+                              <span title="Total multiplier includes Present days, Half days (0.5), and Paid Holidays/Weekly Offs" style={{
+                                background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+                                color: 'white',
+                                padding: '2px 8px',
+                                borderRadius: '12px',
+                                fontSize: '11px',
+                                fontWeight: 'bold',
+                                boxShadow: '0 2px 4px rgba(245, 158, 11, 0.3)',
+                                cursor: 'help'
+                              }}>
+                                {staff.total_multiplier}x
+                              </span>
+                            ) : '-'}
+                          </td>
+                          <td><span className="attendance-badge leave-badge">{staff.leave_days}</span></td>
+                          <td><span className="attendance-badge absent-badge">{staff.absent_days}</span></td>
+                          <td>
+                            <input
+                              type="number"
+                              value={bonus[staff.staff_id] !== undefined ? bonus[staff.staff_id] : staff.bonus}
+                              onChange={(e) => handleBonusChange(staff.staff_id, e.target.value)}
+                              className="payroll-input"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              value={deduction[staff.staff_id] !== undefined ? deduction[staff.staff_id] : staff.deduction}
+                              onChange={(e) => handleDeductionChange(staff.staff_id, e.target.value)}
+                              className="payroll-input"
+                            />
+                          </td>
+                          <td style={{ color: '#16a34a', fontWeight: '600' }}>₹{staff.total_incentives || 0}</td>
+                          <td className="amount">₹{((staff.total_salary || 0) + (bonus[staff.staff_id] !== undefined ? parseFloat(bonus[staff.staff_id]) || 0 : staff.bonus || 0) - (deduction[staff.staff_id] !== undefined ? parseFloat(deduction[staff.staff_id]) || 0 : staff.deduction || 0) + (staff.total_incentives || 0)).toLocaleString()}</td>
+                          <td>
+                            <button
+                              onClick={() => downloadPayslip(staff)}
+                              className="payroll-action-btn"
+                            >
+                              <FiDownload /> Payslip
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="payroll-empty">
+                <div className="payroll-empty-icon">📊</div>
+                <p>No payroll data. Select month and year, then click "Calculate Payroll"</p>
+              </div>
+            )}
+          </>
+        )}
 
-      {/* Staff Ranking Tab */}
-      {activeTab === 'ranking' && (
-        <>
-          <h2 className="payroll-section-title">Staff Attendance Ranking - {months.find(m => m.value === parseInt(month))?.label} {year}</h2>
-          {rankingData.length > 0 ? (
-            <div className="payroll-table-container" style={{ overflowX: 'auto', maxHeight: '500px', overflowY: 'auto' }}>
-              <table className="payroll-table">
-                <thead>
-                  <tr>
-                    <th>Rank</th>
-                    <th>Staff Name</th>
-                    <th>Present</th>
-                    <th>Half Day</th>
-                    <th>Holiday</th>
-                    <th>Leave</th>
-                    <th>Absent</th>
-                    <th>Total Worked</th>
-                    <th>Attendance %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rankingData.map((staff, index) => (
-                    <tr className={staff.rank <= 3 ? `payroll-row-${staff.rank === 1 ? 'gold' : staff.rank === 2 ? 'silver' : 'bronze'}` : ''}>
-                      <td>
-                        <span className={`payroll-rank-badge ${staff.rank === 1 ? 'gold' : staff.rank === 2 ? 'silver' : staff.rank === 3 ? 'bronze' : 'default'}`}>
-                          {staff.rank}
-                        </span>
-                      </td>
-                      <td className="staff-name">{staff.staff_name}</td>
-                      <td><span className="attendance-badge present-badge">{staff.present_days}</span></td>
-                      <td><span className="attendance-badge halfday-badge">{staff.half_days}</span></td>
-                      <td><span className="attendance-badge" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>{staff.holiday_days || 0}</span></td>
-                      <td><span className="attendance-badge leave-badge">{staff.leave_days}</span></td>
-                      <td><span className="attendance-badge absent-badge">{staff.absent_days}</span></td>
-                      <td style={{ fontWeight: '600' }}>{staff.total_worked_days}</td>
-                      <td>
-                        <span className={`payroll-attendance-badge ${staff.attendance_percentage >= 80 ? 'excellent' : staff.attendance_percentage >= 60 ? 'good' : 'poor'}`}>
-                          {staff.attendance_percentage}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* Payroll History Tab */}
+        {activeTab === 'history' && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              <h2 className="payroll-section-title" style={{ margin: 0 }}>Payroll History</h2>
+              <select
+                value={month}
+                onChange={(e) => setMonth(e.target.value)}
+                className="payroll-select"
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd' }}
+              >
+                {months.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+              <select
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                className="payroll-select"
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd' }}
+              >
+                {years.map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => fetchPayrollHistory()}
+                className="btn-primary"
+                style={{ padding: '8px 16px', borderRadius: '6px' }}
+              >
+                Search
+              </button>
             </div>
-          ) : (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
-              <p>No attendance data found for this month.</p>
-            </div>
-          )}
-        </>
-      )}
+            <p style={{ marginTop: '-10px', marginBottom: '20px', color: '#666', fontSize: '14px' }}>
+              Showing payroll history for: <strong>{months.find(m => m.value === parseInt(month))?.label} {year}</strong>
+            </p>
+            {payrollHistory.length > 0 ? (
+              <div className="payroll-table-container">
+                <div className="payroll-table-scroll">
+                  <table className="payroll-table">
+                    <thead>
+                      <tr>
+                        <th>Staff Name</th>
+                        <th>Present</th>
+                        <th>Half Day</th>
+                        <th>Paid Hol.</th>
+                        <th>Unpaid Hol.</th>
+                        <th>Leave</th>
+                        <th>Absent</th>
+                        <th>Bonus</th>
+                        <th>Deduction</th>
+                        <th>Incentive</th>
+                        <th>Final Salary</th>
+                        <th>Generated</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payrollHistory.map((record, index) => (
+                        <tr key={index}>
+                          <td className="staff-name">{record.staff_name}</td>
+                          <td><span className="attendance-badge present-badge">{record.present_days}</span></td>
+                          <td><span className="attendance-badge halfday-badge">{record.half_days}</span></td>
+                          <td><span className="attendance-badge" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>{record.paid_holiday_days || 0}</span></td>
+                          <td><span className="attendance-badge" style={{ background: 'rgba(148, 163, 184, 0.1)', color: '#64748b' }}>{record.unpaid_holiday_days || 0}</span></td>
+                          <td><span className="attendance-badge leave-badge">{record.leave_days}</span></td>
+                          <td><span className="attendance-badge absent-badge">{record.absent_days}</span></td>
+                          <td style={{ color: '#16a34a', fontWeight: '600' }}>₹{record.bonus || 0}</td>
+                          <td style={{ color: '#dc2626', fontWeight: '600' }}>₹{record.deduction || 0}</td>
+                          <td style={{ color: '#16a34a', fontWeight: '600' }}>₹{record.total_incentives || 0}</td>
+                          <td className="amount">₹{((record.total_salary || 0) + (record.bonus || 0) - (record.deduction || 0) + (record.total_incentives || 0)).toLocaleString()}</td>
+                          <td style={{ fontSize: '12px' }}>{record.generated_at}</td>
+                          <td>
+                            <button
+                              onClick={() => downloadPayslip(record)}
+                              className="payroll-action-btn"
+                            >
+                              <FiDownload /> Download
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="payroll-empty">
+                <div className="payroll-empty-icon">📁</div>
+                <p>No payroll history found for this month.</p>
+                <p>Generate payroll from "Calculate Payroll" tab first.</p>
+              </div>
+            )}
+          </>
+        )}
 
-      {/* Instructions */}
-      <div style={{
-        marginTop: '30px',
-        padding: '20px',
-        backgroundColor: '#e3f2fd',
-        borderRadius: '8px',
-        borderLeft: '4px solid #1976d2'
-      }}>
-        <h3 style={{ margin: '0 0 10px 0', color: '#1976d2' }}>How Payroll Works:</h3>
-        <ul style={{ margin: 0, paddingLeft: '20px', color: '#333' }}>
-          <li><strong>Set Salary:</strong> Go to Staff page to set monthly/per-day salary for each staff</li>
-          <li><strong>Mark Attendance:</strong> Daily attendance with Leave, Half Day, and Special Day options</li>
-          <li><strong>Calculate:</strong> Click "Calculate Payroll" to compute salary based on attendance</li>
-          <li><strong>Generate:</strong> Click "Generate & Save Payroll" to store as history</li>
-          <li><strong>Export:</strong> Click "Export to Excel" to download payroll report</li>
-          <li><strong>Download:</strong> Click "Payslip" to download individual staff payslip</li>
-          <li><strong>Ranking:</strong> View staff attendance ranking to identify best performers</li>
-        </ul>
-      </div>
+        {/* Staff Ranking Tab */}
+        {activeTab === 'ranking' && (
+          <>
+            <h2 className="payroll-section-title">Staff Attendance Ranking - {months.find(m => m.value === parseInt(month))?.label} {year}</h2>
+            {rankingData.length > 0 ? (
+              <div className="payroll-table-container">
+                <div className="payroll-table-scroll">
+                  <table className="payroll-table">
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>Staff Name</th>
+                        <th>Present</th>
+                        <th>Half Day</th>
+                        <th>Paid Hol.</th>
+                        <th>Unpaid Hol.</th>
+                        <th>Leave</th>
+                        <th>Absent</th>
+                        <th>Total Worked</th>
+                        <th>Attendance %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rankingData.map((staff, index) => (
+                        <tr className={staff.rank <= 3 ? `payroll-row-${staff.rank === 1 ? 'gold' : staff.rank === 2 ? 'silver' : 'bronze'}` : ''}>
+                          <td>
+                            <span className={`payroll-rank-badge ${staff.rank === 1 ? 'gold' : staff.rank === 2 ? 'silver' : staff.rank === 3 ? 'bronze' : 'default'}`}>
+                              {staff.rank}
+                            </span>
+                          </td>
+                          <td className="staff-name">{staff.staff_name}</td>
+                          <td><span className="attendance-badge present-badge">{staff.present_days}</span></td>
+                          <td><span className="attendance-badge halfday-badge">{staff.half_days}</span></td>
+                          <td><span className="attendance-badge" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>{staff.paid_holiday_days || 0}</span></td>
+                          <td><span className="attendance-badge" style={{ background: 'rgba(148, 163, 184, 0.1)', color: '#64748b' }}>{staff.unpaid_holiday_days || 0}</span></td>
+                          <td><span className="attendance-badge leave-badge">{staff.leave_days}</span></td>
+                          <td><span className="attendance-badge absent-badge">{staff.absent_days}</span></td>
+                          <td style={{ fontWeight: '600' }}>{staff.total_worked_days}</td>
+                          <td>
+                            <span className={`payroll-attendance-badge ${staff.attendance_percentage >= 80 ? 'excellent' : staff.attendance_percentage >= 60 ? 'good' : 'poor'}`}>
+                              {staff.attendance_percentage}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
+                <p>No attendance data found for this month.</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Instructions */}
+        <div style={{
+          marginTop: '30px',
+          padding: '20px',
+          backgroundColor: '#e3f2fd',
+          borderRadius: '8px',
+          borderLeft: '4px solid #1976d2'
+        }}>
+          <h3 style={{ margin: '0 0 10px 0', color: '#1976d2' }}>How Payroll Works:</h3>
+          <ul style={{ margin: 0, paddingLeft: '20px', color: '#333' }}>
+            <li><strong>Set Salary:</strong> Go to Staff page to set monthly/per-day salary for each staff</li>
+            <li><strong>Mark Attendance:</strong> Daily attendance with Leave, Half Day, and Special Day options</li>
+            <li><strong>Calculate:</strong> Click "Calculate Payroll" to compute salary based on attendance</li>
+            <li><strong>Generate:</strong> Click "Generate & Save Payroll" to store as history</li>
+            <li><strong>Export:</strong> Click "Export to Excel" to download payroll report</li>
+            <li><strong>Download:</strong> Click "Payslip" to download individual staff payslip</li>
+            <li><strong>Ranking:</strong> View staff attendance ranking to identify best performers</li>
+          </ul>
+        </div>
       </div>
     </div>
   );

@@ -6,10 +6,17 @@ import {
 } from "react-icons/fi";
 
 const COLORS = {
-  primary: "#7c5cbf", secondary: "#6baee0", accent: "#9b6fe8",
-  success: "#2d9e6b", danger: "#eb5968", warning: "#c77b00",
-  text: "#1e1b2e", muted: "#8b85a1", white: "#ffffff",
-  glass: "rgba(255,255,255,0.72)", glassBorder: "rgba(255,255,255,0.8)",
+  primary: "var(--color-primary)",
+  secondary: "var(--color-primary-light)",
+  accent: "var(--color-gold)",
+  success: "var(--color-success)",
+  danger: "var(--color-danger)",
+  warning: "var(--color-warning)",
+  text: "var(--color-text)",
+  muted: "var(--color-text-secondary)",
+  white: "var(--color-white)",
+  glass: "rgba(255,255,255,0.72)",
+  glassBorder: "var(--glass-border)",
 };
 
 const glassCard = {
@@ -18,15 +25,15 @@ const glassCard = {
   WebkitBackdropFilter: "blur(20px)",
   border: `1px solid ${COLORS.glassBorder}`,
   borderRadius: "20px",
-  boxShadow: "0 4px 20px rgba(124,92,191,0.12)",
+  boxShadow: "var(--shadow-md, 0 4px 20px rgba(11, 102, 120, 0.08))",
   padding: "1.5rem",
   marginBottom: "1rem",
 };
 
 const inputStyle = {
-  width: "100%", background: "rgba(255,255,255,0.88)",
-  border: "1.5px solid rgba(124,92,191,0.15)", borderRadius: "14px",
-  padding: "0.7rem 1rem", fontFamily: "'Plus Jakarta Sans',sans-serif",
+  width: "100%", background: "var(--color-white)",
+  border: "1.5px solid var(--color-border)", borderRadius: "14px",
+  padding: "0.7rem 1rem", fontFamily: "var(--font-family-sans)",
   fontSize: "0.9rem", color: COLORS.text, outline: "none", boxSizing: "border-box",
 };
 
@@ -101,11 +108,11 @@ const DailyPerformance = () => {
       {/* FILTERS */}
       <section className="page-section">
         <div style={glassCard}>
-          <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontFamily: "'Fraunces',serif", color: COLORS.text, marginBottom: "1.25rem", fontSize: "1.1rem" }}>
+          <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontFamily: "var(--font-family-heading)", color: COLORS.text, marginBottom: "1.25rem", fontSize: "1.1rem" }}>
             <FiFilter color={COLORS.primary} />
             Filters
             {filtersApplied && (
-              <span style={{ background: "linear-gradient(135deg,#9b6fe8,#6baee0)", color: "white", padding: "2px 10px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 700, marginLeft: "4px" }}>Active</span>
+              <span style={{ background: "var(--gradient-primary)", color: "white", padding: "2px 10px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 700, marginLeft: "4px" }}>Active</span>
             )}
           </h3>
 
@@ -150,13 +157,13 @@ const DailyPerformance = () => {
             <section key={day.date} className="page-section">
               <div style={glassCard}>
                 {/* Day header */}
-                <div style={{ display: "flex", alignItems: "center", marginBottom: "1.25rem", paddingBottom: "1rem", borderBottom: "1px solid rgba(124,92,191,0.1)" }}>
-                  <div style={{ width: "72px", height: "72px", borderRadius: "50%", background: "linear-gradient(135deg,#9b6fe8,#6baee0)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "white", marginRight: "1.25rem", flexShrink: 0, boxShadow: "0 6px 20px rgba(124,92,191,0.3)" }}>
+                <div style={{ display: "flex", alignItems: "center", marginBottom: "1.25rem", paddingBottom: "1rem", borderBottom: "1px solid var(--color-border)" }}>
+                  <div style={{ width: "72px", height: "72px", borderRadius: "50%", background: "var(--gradient-primary)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "white", marginRight: "1.25rem", flexShrink: 0, boxShadow: "0 6px 20px rgba(11, 102, 120, 0.25)" }}>
                     <span style={{ fontSize: "1.3rem", fontWeight: 700, lineHeight: 1 }}>{dayOfMonth}</span>
                     <span style={{ fontSize: "0.75rem", opacity: 0.9 }}>{monthName}</span>
                   </div>
                   <div style={{ flex: 1 }}>
-                    <h3 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", color: COLORS.text, margin: "0 0 0.5rem" }}>{formatDate(day.date)}</h3>
+                    <h3 style={{ fontFamily: "var(--font-family-heading)", fontSize: "1.15rem", color: COLORS.text, margin: "0 0 0.5rem" }}>{formatDate(day.date)}</h3>
                     <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
                       {[
                         { icon: <FiCheckSquare size={13} />, label: "jobs", val: day.total_jobs, color: COLORS.success },
@@ -179,7 +186,7 @@ const DailyPerformance = () => {
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(185px,1fr))", gap: "0.75rem" }}>
                   {Object.entries(day.staff_breakdown).map(([staffName, staffData]) => (
-                    <div key={staffName} style={{ background: "rgba(255,255,255,0.62)", border: "1px solid rgba(124,92,191,0.12)", borderRadius: "16px", padding: "1rem" }}>
+                    <div key={staffName} style={{ background: "rgba(var(--color-primary-rgb), 0.04)", border: "1px solid var(--color-border)", borderRadius: "16px", padding: "1rem" }}>
                       <div style={{ fontSize: "0.9rem", fontWeight: 700, color: COLORS.text, marginBottom: "0.65rem" }}>{staffName}</div>
                       {[
                         { label: "Jobs", val: staffData.jobs },

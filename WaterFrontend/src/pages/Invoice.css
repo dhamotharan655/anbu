@@ -2,22 +2,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
 
 :root {
-  --primary: #7c5cbf;
-  --primary-dark: #6a4daa;
-  --primary-light: #9b6fe8;
-  --bg: #F0F2FF;
+  --primary: var(--color-primary);
+  --primary-dark: var(--color-primary-dark);
+  --primary-light: var(--color-primary-light);
+  --bg: var(--color-background);
   --sidebar-bg: #ffffff;
   --card-bg: #ffffff;
-  --text: #1E1B4B;
-  --text-muted: #6B7280;
-  --border: #E5E7EB;
-  --success: #6baee0;
-  --purple: #7c5cbf;
-  --purple-light: #9b6fe8;
-  --purple-dark: #6a4daa;
-  --gradient: linear-gradient(135deg, #9b6fe8 0%, #7c5cbf 50%, #6baee0 100%);
-  --glass-white: rgba(255,255,255,0.72);
-  --glass-border: rgba(255,255,255,0.8);
+  --text: var(--color-text);
+  --text-muted: var(--color-text-secondary);
+  --border: var(--color-border);
+  --success: var(--color-success);
+  --teal: var(--color-primary);
+  --gold: var(--color-gold);
+  --gradient: var(--gradient-primary);
+  --glass-white: rgba(255,255,255,0.82);
+  --glass-border: rgba(11, 102, 120, 0.15);
 }
 
 .invoice-container {
@@ -25,15 +24,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg);
+  background: var(--gradient-bg);
   padding: 20px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-family-sans);
 }
 
 .invoice-card {
-  background: transparent;
+  background: var(--card-bg);
   border-radius: 24px;
-  box-shadow: 0 16px 48px rgba(91, 79, 233, 0.15);
+  box-shadow: 0 16px 48px rgba(11, 102, 120, 0.1);
   padding: 44px;
   max-width: 480px;
   width: 100%;
@@ -58,23 +57,23 @@
 }
 
 .invoice-header h1 {
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-family-heading);
   font-size: 26px;
   font-weight: 800;
-  color: var(--text);
+  color: var(--color-primary);
   margin-bottom: 12px;
 }
 
 .invoice-number {
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-family-heading);
   font-size: 18px;
   font-weight: 700;
-  color: #5a4a8a;
+  color: var(--color-primary);
   background: transparent;
   padding: 10px 22px;
   border-radius: 12px;
   display: inline-block;
-  border: 1px dashed rgba(124, 92, 191, 0.3);
+  border: 1px dashed var(--glass-border);
 }
 
 /* Invoice Details */
@@ -120,8 +119,8 @@
 
 .btn-download {
   background: transparent;
-  border: 1px solid rgba(124, 92, 191, 0.2);
-  color: #5a4a8a;
+  border: 1px solid var(--glass-border);
+  color: var(--primary);
   border-radius: 14px;
   padding: 16px 32px;
   font-size: 15px;
@@ -132,17 +131,17 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-family-sans);
   box-shadow: none;
 }
 
 .btn-download:hover {
   transform: translateY(-2px);
-  background: rgba(124, 92, 191, 0.1);
+  background: rgba(11, 102, 120, 0.05);
 }
 
 .btn-whatsapp {
-  background: linear-gradient(135deg, #25D366, #20BD5A);
+  background: var(--gradient-primary);
   color: white;
   border: none;
   padding: 16px 32px;
@@ -155,13 +154,13 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  font-family: 'DM Sans', sans-serif;
-  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.35);
+  font-family: var(--font-family-sans);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-whatsapp:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(37, 211, 102, 0.45);
+  box-shadow: var(--shadow-lg);
 }
 
 .btn-back-secondary {
@@ -180,7 +179,7 @@
 .btn-back-secondary:hover {
   border-color: var(--primary-light);
   color: var(--primary);
-  background: rgba(91, 79, 233, 0.05);
+  background: rgba(11, 102, 120, 0.05);
 }
 
 /* Loading State */
@@ -190,7 +189,7 @@
 }
 
 .invoice-loading .spinner {
-  border: 4px solid rgba(91, 79, 233, 0.2);
+  border: 4px solid rgba(11, 102, 120, 0.1);
   border-top: 4px solid var(--primary);
   border-radius: 50%;
   width: 50px;
@@ -218,7 +217,7 @@
   padding: 44px;
   max-width: 420px;
   text-align: center;
-  box-shadow: 0 16px 48px rgba(91, 79, 233, 0.15);
+  box-shadow: 0 16px 48px rgba(11, 102, 120, 0.1);
   position: relative;
   overflow: hidden;
 }
@@ -263,7 +262,7 @@
   cursor: pointer;
   transition: all 0.3s ease;
   font-family: 'DM Sans', sans-serif;
-  box-shadow: 0 4px 16px rgba(91, 79, 233, 0.35);
+  box-shadow: 0 4px 16px rgba(11, 102, 120, 0.2);
 }
 
 .btn-back:hover {
@@ -278,7 +277,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(30, 27, 75, 0.6);
+  background: rgba(2, 44, 54, 0.7);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -348,8 +347,8 @@
 
 .btn-confirm {
   background: transparent;
-  border: 1px solid rgba(124, 92, 191, 0.2);
-  color: #5a4a8a;
+  border: 1px solid var(--glass-border);
+  color: var(--primary);
   border-radius: 12px;
   padding: 12px 24px;
   font-size: 14px;
@@ -362,5 +361,5 @@
 
 .btn-confirm:hover {
   transform: translateY(-2px);
-  background: rgba(124, 92, 191, 0.1);
+  background: rgba(11, 102, 120, 0.1);
 }

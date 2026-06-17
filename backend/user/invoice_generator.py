@@ -192,7 +192,7 @@ def generate_invoice_pdf(complaint, request=None):
     from reportlab.lib.units import inch
     
     # Import models
-    from user.models import StockItem, MotorDetails
+    from user.models import StockItem
 
     # Get amounts for calculation - with error handling
     try:
@@ -206,7 +206,6 @@ def generate_invoice_pdf(complaint, request=None):
         amount_field = 0
     
     # ⭐ NEW: Define labour_charges for the items table
-    # In this system, client_amount often represents the service/labour charge
     labour_charges = client_amount
     
     # Parse main products
@@ -238,67 +237,17 @@ def generate_invoice_pdf(complaint, request=None):
     # For motor service jobs, the motor string is the item being serviced, not a purchased product
     if job_type in ['motor_service', 'motor_rewinding']:
         all_products = [p for p in all_products if not p.get('name', '').lower().startswith('motor:')]
-    
-    # ==================== MOTOR SALES HANDLING ====================
-    # If job_type is motor_sale, add motor as a product row
-    if job_type == 'motor_sale':
-        # Fetch motor details for this complaint - try both with and without # prefix
-        motor = MotorDetails.objects(complaint_id=complaint.complaint_no).first()
-        if not motor and complaint.complaint_no:
-            # Try by adding/removing # prefix to be robust
-            if complaint.complaint_no.startswith('#'):
-                motor = MotorDetails.objects(complaint_id=complaint.complaint_no.lstrip('#')).first()
-            else:
-                motor = MotorDetails.objects(complaint_id=f'#{complaint.complaint_no}').first()
-        
-        if motor and motor.motor_amount:
-            # Create detailed motor product name
-            motor_make = motor.motor_make or ''
-            motor_hp = motor.hp or ''
-            motor_serial = motor.serial_no or ''
-            
-            # Build detailed product name
-            if motor_make and motor_hp:
-                motor_product_name = f"{motor_make} {motor_hp} Motor {motor_serial}"
-            elif motor_make:
-                motor_product_name = f"{motor_make} Motor {motor_serial}"
-            else:
-                motor_product_name = f"Motor {motor_serial}"
-            
-            motor_price = parse_numeric_value(motor.motor_amount)
-            motor_discount = parse_numeric_value(getattr(motor, 'discount_percent', 0))
-            
-            # Calculate final price with discount
-            if motor_discount > 0:
-                discount_amount = motor_price * (motor_discount / 100)
-                motor_final_price = motor_price - discount_amount
-            else:
-                motor_final_price = motor_price
-            
-            # Remove any existing motor products to avoid duplicates
-            all_products = [p for p in all_products if 'motor' not in p.get('name', '').lower()]
-            
-            # Add motor as product
-            all_products.append({
-                'name': motor_product_name,
-                'quantity': 1,
-                'selling_price': motor_price,
-                'buying_price': 0,
-                'discount_percent': motor_discount,
-                'final_price': motor_final_price
-            })
+
     # ==================== END MOTOR HANDLING ====================
     
-    # Calculate products total using final_price (with discount) for the items table subtotal
+    # Calculate products total (with discount) for the items table subtotal
     products_total = sum(parse_numeric_value(prod.get('final_price', prod.get('price', 0))) * prod.get('quantity', 1) for prod in all_products)
 
-    # ⭐ CRITICAL: Use the model's centralized calculation logic for the final Grand Total
-    # This ensures consistency across Dashboard, API, and PDF
+    # ⭐ CRITICAL: Use the model's centralized calculation logic
     try:
         grand_total = complaint.calculate_grand_total()
     except Exception as e:
         print(f"Error calling calculate_grand_total in invoice generator: {e}")
-        # Fallback to local calculation if needed
         grand_total = products_total + client_amount
     
     # Update the stored grand_total in the database if it's different
@@ -451,7 +400,7 @@ def generate_invoice_pdf(complaint, request=None):
 
     # ==================== ROW 1: HEADER - Two Equal Columns ====================
     # Left Column: Company Logo + Info
-    logo_path = os.path.join(settings.MEDIA_ROOT, 'company_logo.jpeg')
+    logo_path = os.path.join(settings.MEDIA_ROOT, 'anbu_logo.png')
     if os.path.exists(logo_path):
         try:
             logo_cell = Image(logo_path, width=1.2*inch, height=0.9*inch)
@@ -467,11 +416,11 @@ def generate_invoice_pdf(complaint, request=None):
     # Left column content
     left_col_content = [
         [logo_cell],
-        [Paragraph("<b>RUBAN ELECTRICALS</b>", bold_style)],
-        [Paragraph("Office-Phone: 9715481897", normal_style)],
-        [Paragraph("Land-Line: 04612312597", normal_style)],
-        [Paragraph("Address: NO 52 A/2, 3rd Mile, Palai Road, Tuticorin", normal_style)],
-        [Paragraph("Email: rubanelectricalstyuty@gmail.com", normal_style)],
+        [Paragraph("<b>ANBU ENTERPRISES</b>", bold_style)],
+        [Paragraph("Office-Phone: +91 9876543210", normal_style)],
+        [Paragraph("Land-Line: 044 2345 6789", normal_style)],
+        [Paragraph("Address: No 12, Main Road, Chennai", normal_style)],
+        [Paragraph("Email: contact@anbuenterprises.com", normal_style)],
     ]
     left_col_table = Table(left_col_content, colWidths=[half_width])
     left_col_table.setStyle(TableStyle([
@@ -485,7 +434,7 @@ def generate_invoice_pdf(complaint, request=None):
     right_col_content = [
         [Paragraph(f"<b>Estimate No.</b>  {invoice_number}", normal_style)],
         [Paragraph(f"<b>Date:</b>  {invoice_date}", normal_style)],
-        [Paragraph(f"<b>Ruban Employee:</b>  {staff_name}", normal_style)],
+        [Paragraph(f"<b>Anbu Employee:</b>  {staff_name}", normal_style)],
         [Paragraph("<b>Purpose:</b>  Service", normal_style)],
     ]
     right_col_table = Table(right_col_content, colWidths=[half_width])
@@ -535,11 +484,11 @@ def generate_invoice_pdf(complaint, request=None):
     # Right column - Bank Details
     bank_cell_content = [
         [Paragraph("<b>Company Bank Details</b>", bold_style)],
-        [Paragraph("Name: Ruban Electricals", normal_style)],
-        [Paragraph("Bank: Union Bank Of India", normal_style)],
-        [Paragraph("Branch: Ganesh Nagar Branch", normal_style)],
-        [Paragraph("Acc No: 643001010050436", normal_style)],
-        [Paragraph("IFSC Code: UBIN0564303", normal_style)],
+        [Paragraph("Name: Anbu Enterprises", normal_style)],
+        [Paragraph("Bank: HDFC Bank", normal_style)],
+        [Paragraph("Branch: Anna Nagar Branch", normal_style)],
+        [Paragraph("Acc No: 50100234567890", normal_style)],
+        [Paragraph("IFSC Code: HDFC0001234", normal_style)],
     ]
     bank_cell_table = Table(bank_cell_content, colWidths=[half_width])
     bank_cell_table.setStyle(TableStyle([
@@ -682,7 +631,7 @@ def generate_invoice_pdf(complaint, request=None):
         [Paragraph('<b>Terms & Conditions</b>', bold_style)],
         [Paragraph('1. Payment to be made within 15 days of invoice date.', small_style)],
         [Paragraph('2. Warranty does not cover physical damage or burnouts.', small_style)],
-        [Paragraph('3. All disputes subject to Tuticorin jurisdiction.', small_style)],
+        [Paragraph('3. All disputes subject to Chennai jurisdiction.', small_style)],
     ], colWidths=full_width)
     terms_table.setStyle(TableStyle([
         ('BOX', (0, 0), (-1, -1), THIN, BORDER_COLOR),

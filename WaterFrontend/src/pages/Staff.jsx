@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import axios from "axios";
 import api from "../api";
 import { useGlobalRefresh } from "../context/GlobalRefreshContext";
 import { useScrollToRef } from "../hooks/useScrollToRef";
 import { motion, AnimatePresence } from "framer-motion";
+import "./Staff.css";
 import {
   FiUsers,
   FiTrash2,
@@ -32,7 +34,14 @@ import {
   FiX,
   FiCheck,
   FiChevronLeft,
-  FiChevronRight
+  FiChevronRight,
+  FiFileText,
+  FiUserPlus,
+  FiShield,
+  FiCreditCard,
+  FiMap,
+  FiAward,
+  FiAlertCircle
 } from "react-icons/fi";
 
 // Filter options for staff
@@ -55,17 +64,19 @@ const InfoRow = ({ icon, label, value }) => (
 );
 
 const Staff = () => {
+  const navigate = useNavigate();
   const [staffs, setStaffs] = useState([]);
   const [deletedStaffs, setDeletedStaffs] = useState([]);
   const [filteredStaffs, setFilteredStaffs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("active");
   const [searchQuery, setSearchQuery] = useState("");
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(false); // kept for holiday/other modals compat
   const [attendanceFilter, setAttendanceFilter] = useState(null);
+  const [selectedBranch, setSelectedBranch] = useState(sessionStorage.getItem('role') !== 'admin' && sessionStorage.getItem('role') !== 'bigadmin' ? sessionStorage.getItem('branch_name') || '' : '');
 
   // Use global refresh context
-  const { refreshTriggers, triggerRefresh } = useGlobalRefresh();
+  const { refreshTriggers, triggerRefresh, branches } = useGlobalRefresh();
 
   // Attendance states
   const [attendanceData, setAttendanceData] = useState({});
@@ -106,7 +117,8 @@ const Staff = () => {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
   const [editingStaffId, setEditingStaffId] = useState(null);
-  
+  const [branchName, setBranchName] = useState("");
+
   // Salary states
   const [monthlySalary, setMonthlySalary] = useState("");
   const [perDaySalary, setPerDaySalary] = useState("");
@@ -125,8 +137,10 @@ const Staff = () => {
     name: "",
     type: "company_holiday",
     staff_id: "",
+    staff_ids: [],
     is_paid: true
   });
+  const [holidayStaffSearch, setHolidayStaffSearch] = useState("");
   // Manage body scroll when modal opens/closes
   useEffect(() => {
     if (showAttendanceHistory || showForm || showPresentDetails || showAbsentDetails || showHolidayModal) {
@@ -214,19 +228,45 @@ const Staff = () => {
     e.preventDefault();
     try {
       const data = { ...holidayFormData };
-      if (data.staff_id === "" || data.type === 'company_holiday') data.staff_id = null;
+
+      if (data.type === 'company_holiday') {
+        data.staff_id = null;
+        data.staff_ids = [];
+      } else {
+        // Validation for weekly off
+        if (data.staff_ids.length === 0 && !data.staff_id) {
+          alert("Please select at least one staff member.");
+          return;
+        }
+
+        // Ensure staff_ids is populated for backend
+        if (data.staff_ids.length === 0 && data.staff_id) {
+          data.staff_ids = [data.staff_id];
+        }
+      }
 
       if (editingHoliday) {
         await api.put(`holiday-calendar/${editingHoliday.id}/`, data);
       } else {
         await api.post("holiday-calendar/", data);
       }
+
       setShowHolidayModal(false);
       setEditingHoliday(null);
-      setHolidayFormData({ date: "", name: "", type: "company_holiday", staff_id: "", is_paid: true });
+      setHolidayFormData({
+        date: "",
+        name: "",
+        type: "company_holiday",
+        staff_id: "",
+        staff_ids: [],
+        is_paid: true
+      });
       fetchMonthHolidays();
+      fetchTodayHolidays(); // Also update today's holidays if relevant
     } catch (error) {
-      alert("Error saving holiday. Please check if date is already taken for this staff member.");
+      console.error("Holiday submit error:", error);
+      const errorDetail = error.response?.data?.error || "Error saving holiday. Please check if date is already taken for selected staff.";
+      alert(errorDetail);
     }
   };
 
@@ -246,47 +286,47 @@ const Staff = () => {
     const month = holidayCurrentDate.getMonth();
     const firstDayOfMonth = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
+
     // Adjust firstDayOfMonth for Monday start
     const adjustedStart = (firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1);
-    
+
     const days = [];
     // Padding for prev month
     for (let i = 0; i < adjustedStart; i++) {
-        days.push(<div key={`pad-${i}`} className="calendar-day padding"></div>);
+      days.push(<div key={`pad-${i}`} className="calendar-day padding"></div>);
     }
 
     for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const dayHolidays = holidays.filter(h => h.date.split('T')[0] === dateStr);
-        const isWeeklyOff = dayHolidays.some(h => h.type === 'weekly_off');
-        const isHoliday = dayHolidays.some(h => h.type !== 'weekly_off');
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dayHolidays = holidays.filter(h => h.date.split('T')[0] === dateStr);
+      const isWeeklyOff = dayHolidays.some(h => h.type === 'weekly_off');
+      const isHoliday = dayHolidays.some(h => h.type !== 'weekly_off');
 
-        days.push(
-            <motion.div 
-                key={d} 
-                className={`calendar-day ${isHoliday ? 'has-holiday' : ''} ${isWeeklyOff && !isHoliday ? 'has-weekly-off' : ''}`}
-                whileHover={{ scale: 1.05 }}
-                onClick={() => {
-                    setHolidayFormData({ ...holidayFormData, date: dateStr });
-                    setShowHolidayModal(true);
-                }}
-            >
-                <span className="day-number">{d}</span>
-                <div className="holiday-badges">
-                    {dayHolidays.map(h => (
-                        <div 
-                            key={h.id} 
-                            className={`holiday-badge ${h.type} ${!h.is_paid ? 'unpaid' : ''}`}
-                            title={`${h.name}${!h.is_paid ? ' (Unpaid)' : ''}`}
-                        >
-                            {h.type === 'company_holiday' ? <FiUsers size={10} /> : <FiUser size={10} />}
-                            <span className="h-name">{h.name === 'Sunday' && h.type === 'weekly_off' ? 'Week Off' : h.name}</span>
-                        </div>
-                    ))}
-                </div>
-            </motion.div>
-        );
+      days.push(
+        <motion.div
+          key={d}
+          className={`calendar-day ${isHoliday ? 'has-holiday' : ''} ${isWeeklyOff && !isHoliday ? 'has-weekly-off' : ''}`}
+          whileHover={{ scale: 1.05 }}
+          onClick={() => {
+            setHolidayFormData({ ...holidayFormData, date: dateStr });
+            setShowHolidayModal(true);
+          }}
+        >
+          <span className="day-number">{d}</span>
+          <div className="holiday-badges">
+            {dayHolidays.map(h => (
+              <div
+                key={h.id}
+                className={`holiday-badge ${h.type} ${!h.is_paid ? 'unpaid' : ''}`}
+                title={`${h.name}${!h.is_paid ? ' (Unpaid)' : ''}`}
+              >
+                {h.type === 'company_holiday' ? <FiUsers size={10} /> : <FiUser size={10} />}
+                <span className="h-name">{h.name === 'Sunday' && h.type === 'weekly_off' ? 'Week Off' : h.name}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      );
     }
 
     return days;
@@ -324,8 +364,10 @@ const Staff = () => {
           params.append('start_date', historyStartDate);
           params.append('end_date', historyEndDate);
         }
-      } else if (historyFilter === 'staff') {
-        params.append('staff_name', historyStaffName);
+      }
+
+      if (historyStaffName && historyStaffName.trim()) {
+        params.append('staff_name', historyStaffName.trim());
       }
 
       const res = await api.get(`staff-attendance/list/?${params.toString()}`);
@@ -340,12 +382,63 @@ const Staff = () => {
     }
   };
 
-  const handleAttendanceChange = (staffId, status) => {
+  const handleAttendanceChange = (staffId, status, type = 'present') => {
     setAttendanceData(prev => ({
       ...prev,
       [staffId]: status
     }));
+    setAttendanceType(prev => ({
+      ...prev,
+      [staffId]: type
+    }));
   };
+
+  // Helper to determine if today is a holiday for a staff member
+  const getTodayHolidayStatus = (staffId) => {
+    if (!todayHolidays || todayHolidays.length === 0) return null;
+
+    // Check global holidays (no staff_id)
+    const globalHoliday = todayHolidays.find(h => !h.staff_id && h.is_active !== false);
+    if (globalHoliday) return { type: 'global', name: globalHoliday.name, is_paid: globalHoliday.is_paid };
+
+    // Check staff specific holidays
+    const staffHoliday = todayHolidays.find(h => h.staff_id === staffId && h.is_active !== false);
+    if (staffHoliday) return { type: 'staff', name: staffHoliday.name, is_paid: staffHoliday.is_paid };
+
+    // Check weekly off from staff model
+    const staff = staffs.find(s => s.id === staffId);
+    if (staff && staff.weekly_off_days) {
+      const todayDayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+      if (staff.weekly_off_days.includes(todayDayName)) {
+        return { type: 'weekly_off', name: 'Weekly Off', is_paid: true };
+      }
+    }
+
+    return null;
+  };
+
+  // Effect to pre-populate attendance for holidays to avoid accidental 'Absent' marks
+  useEffect(() => {
+    if (staffs.length > 0 && todayHolidays.length > 0) {
+      const newAttendance = { ...attendanceData };
+      let changed = false;
+
+      staffs.forEach(staff => {
+        // Only pre-populate if not already manually interacted with
+        if (attendanceData[staff.id] === undefined) {
+          const holidayStatus = getTodayHolidayStatus(staff.id);
+          if (holidayStatus && holidayStatus.is_paid !== false) {
+            newAttendance[staff.id] = 'Present';
+            changed = true;
+          }
+        }
+      });
+
+      if (changed) {
+        setAttendanceData(newAttendance);
+      }
+    }
+  }, [staffs, todayHolidays]);
 
   const handleSubmitAttendance = async () => {
     // Check current attendance status before submission
@@ -361,16 +454,33 @@ const Staff = () => {
       console.error('Error checking attendance status:', error);
     }
 
-    const attendanceList = staffs.map(staff => ({
-      staff_id: staff.id,
-      staff_name: staff.name,
-      status: attendanceData[staff.id] || 'Absent',
-      attendance_type: attendanceType[staff.id] || 'present', // present/absent/leave
-      work_type: workType[staff.id] || 'full_day', // full_day/half_day
-      salary_multiplier: parseFloat(salaryMultiplier[staff.id]) || 1, // 1, 1.5, 2, etc.
-      salary_multiplier_reason: salaryMultiplierReason[staff.id] || '', // Legacy field
-      override_reason: salaryMultiplierReason[staff.id] || '' // New logic layer field
-    }));
+    const attendanceList = staffs.map(staff => {
+      const holidayStatus = getTodayHolidayStatus(staff.id);
+      const isActuallyHoliday = !!holidayStatus;
+
+      // If today is a holiday and user didn't mark anything, default to Present (for payroll)
+      const defaultStatus = isActuallyHoliday ? 'Present' : 'Absent';
+
+      // Determine the attendance type: if it's a holiday and we are marking as Present, use 'holiday' type
+      // unless the user specifically override it with something else (like Leave)
+      const currentStatus = attendanceData[staff.id] || defaultStatus;
+      let currentType = attendanceType[staff.id] || 'present';
+
+      if (isActuallyHoliday && currentStatus === 'Present' && currentType === 'present') {
+        currentType = 'holiday';
+      }
+
+      return {
+        staff_id: staff.id,
+        staff_name: staff.name,
+        status: currentStatus,
+        attendance_type: currentType,
+        work_type: workType[staff.id] || 'full_day', // full_day/half_day
+        salary_multiplier: parseFloat(salaryMultiplier[staff.id]) || 1, // 1, 1.5, 2, etc.
+        salary_multiplier_reason: salaryMultiplierReason[staff.id] || '', // Legacy field
+        override_reason: salaryMultiplierReason[staff.id] || (isActuallyHoliday ? `${holidayStatus.name} Attendance` : '')
+      };
+    });
 
     try {
       setAttendanceLoading(true);
@@ -409,7 +519,11 @@ const Staff = () => {
 
       // Handle success response
       if (res.data && res.data.success) {
-        alert(`✅ ${res.data.message}`);
+        let msg = `✅ ${res.data.message}`;
+        if (res.data.errors && res.data.errors.length > 0) {
+          msg += `\n\nNote: Some issues occurred:\n- ${res.data.errors.join('\n- ')}`;
+        }
+        alert(msg);
         setAttendanceSubmitted(true);
         setShowReminder(false);
         checkAttendanceStatus();
@@ -550,6 +664,11 @@ const Staff = () => {
   useEffect(() => {
     let filtered = filter === "active" ? staffs : deletedStaffs;
 
+    // Filter by branch
+    if (selectedBranch) {
+      filtered = filtered.filter(c => (c.branch_name || 'Main Hub') === selectedBranch);
+    }
+
     // Filter by search query
     if (searchQuery.trim()) {
       const lowerText = searchQuery.toLowerCase();
@@ -605,7 +724,8 @@ const Staff = () => {
     formData.append("email", email);
     formData.append("phone", phone);
     formData.append("location", location);
-    
+    if (branchName) formData.append("branch_name", branchName);
+
     // Add salary fields
     if (monthlySalary) {
       formData.append("monthly_salary", monthlySalary);
@@ -613,7 +733,7 @@ const Staff = () => {
     if (perDaySalary) {
       formData.append("per_day_salary", perDaySalary);
     }
-    
+
     // Add weekly off days as JSON string
     formData.append("weekly_off_days", JSON.stringify(weeklyOffDays));
 
@@ -645,18 +765,7 @@ const Staff = () => {
   };
 
   const handleEdit = (staff) => {
-    setEditingStaffId(staff.id);
-    setName(staff.name);
-    setEmail(staff.email || "");
-    setPhone(staff.phone);
-    setLocation(staff.location);
-    setPhotoPreviewUrl(staff.photo_url || "");
-    setPhotoFile(null);
-    // Populate salary fields
-    setMonthlySalary(staff.monthly_salary || staff.monthly_salary === 0 ? String(staff.monthly_salary) : "");
-    setPerDaySalary(staff.per_day_salary || staff.per_day_salary === 0 ? String(staff.per_day_salary) : "");
-    setWeeklyOffDays(staff.weekly_off_days || []);
-    setShowForm(true);
+    navigate(`/edit-staff/${staff.id}`);
   };
 
   const handleDelete = async (staffId) => {
@@ -682,6 +791,7 @@ const Staff = () => {
     setEmail("");
     setPhone("");
     setLocation("");
+    setBranchName("");
     setPhotoFile(null);
     setPhotoPreviewUrl("");
     // Clear salary fields
@@ -698,1271 +808,1023 @@ const Staff = () => {
     };
   };
 
+  const renderStaffCard = (staff) => (
+    <div key={staff.id} className="staff-card">
+      <div className="staff-card-header">
+        {staff.photo_url ? (
+          <img src={staff.photo_url} alt={staff.name} className="staff-card-avatar" />
+        ) : (
+          <div className="staff-card-avatar placeholder">
+            {staff.name.charAt(0)}
+          </div>
+        )}
+        <div className="staff-card-info">
+          <h3>{staff.name}</h3>
+          <div className="staff-branch-tag">
+            <FiMapPin size={10} /> {staff.branch_name || 'Main Hub'}
+          </div>
+        </div>
+      </div>
+
+      <div className="staff-card-body">
+        <div className="contact-item">
+          <FiPhone /> {staff.phone}
+        </div>
+        {staff.email && (
+          <div className="contact-item">
+            <FiMail /> {staff.email}
+          </div>
+        )}
+        <div className="contact-item">
+          <FiMapPin /> {staff.location}
+        </div>
+      </div>
+
+      <div className="staff-card-actions">
+        {filter === 'active' ? (
+          <>
+            <button className="staff-btn-secondary" style={{ flex: 1, padding: '0.6rem' }} onClick={() => handleEdit(staff)}>
+              <FiEdit /> Edit
+            </button>
+            <button className="action-btn-sm delete-btn" onClick={() => handleDelete(staff.id)}>
+              <FiTrash2 />
+            </button>
+          </>
+        ) : (
+          <p style={{ color: 'var(--staff-danger)', fontSize: '0.8rem', fontWeight: 700 }}>This profile is archived</p>
+        )}
+      </div>
+    </div>
+  );
+
   const filterCounts = getFilterCounts();
 
   if (loading) {
     return (
-      <div className="page-container">
+      <div className="staff-page-container">
         <div className="loading-state">
-          <FiUsers size={48} />
-          <p>Loading staff...</p>
+          <div className="bm-spinner-mini" style={{ width: '40px', height: '40px', borderTopColor: 'var(--staff-primary)' }}></div>
+          <p style={{ marginTop: '1rem', fontWeight: 600, color: 'var(--staff-primary)' }}>Loading staff resources...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="page-container staff-page">
-      {/* PAGE TABS */}
-      <div className="staff-tabs" style={{ 
-        display: 'flex', 
-        gap: '12px', 
-        marginBottom: '24px',
-        padding: '8px',
-        background: 'rgba(255, 255, 255, 0.4)',
-        borderRadius: '16px',
-        width: 'fit-content',
-        border: '1px solid rgba(255, 255, 255, 0.6)',
-        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.03)',
-        backdropFilter: 'blur(10px)'
-      }}>
-        <button 
-          className={`tab-button ${activeStaffTab === 'attendance' ? 'active' : ''}`}
+    <div className="staff-page-container">
+      {/* Premium Header */}
+      <header className="staff-page-header">
+        <div className="header-left">
+          <div className="header-icon-box">
+            <FiUsers />
+          </div>
+          <div className="header-title-info">
+            <h2>Workforce Hub</h2>
+            <p>Manage attendance, payroll, and staff records</p>
+          </div>
+        </div>
+
+        <button className="staff-btn-primary" onClick={() => navigate('/add-staff')}>
+          <FiUserPlus /> Add Team Member
+        </button>
+      </header>
+
+      {/* Modern Tab Navigation */}
+      <nav className="staff-tab-nav">
+        <button
+          className={`tab-btn ${activeStaffTab === 'attendance' ? 'active' : ''}`}
           onClick={() => setActiveStaffTab('attendance')}
-          style={{
-            padding: '10px 24px',
-            borderRadius: '10px',
-            border: '1px solid',
-            borderColor: activeStaffTab === 'attendance' ? 'transparent' : 'rgba(255, 255, 255, 0.8)',
-            background: activeStaffTab === 'attendance' ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : 'rgba(255, 255, 255, 0.7)',
-            color: activeStaffTab === 'attendance' ? 'white' : '#475569',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            boxShadow: activeStaffTab === 'attendance' ? '0 4px 12px rgba(59, 130, 246, 0.3)' : '0 2px 4px rgba(0, 0, 0, 0.02)',
-          }}
         >
-          <FiUserCheck />
-          Attendance
+          <FiUserCheck /> Attendance
         </button>
-        <button 
-          className={`tab-button ${activeStaffTab === 'holidays' ? 'active' : ''}`}
-          onClick={() => setActiveStaffTab('holidays')}
-          style={{
-            padding: '10px 24px',
-            borderRadius: '10px',
-            border: '1px solid',
-            borderColor: activeStaffTab === 'holidays' ? 'transparent' : 'rgba(255, 255, 255, 0.8)',
-            background: activeStaffTab === 'holidays' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'rgba(255, 255, 255, 0.7)',
-            color: activeStaffTab === 'holidays' ? 'white' : '#475569',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            boxShadow: activeStaffTab === 'holidays' ? '0 4px 12px rgba(16, 185, 129, 0.3)' : '0 2px 4px rgba(0, 0, 0, 0.02)',
-          }}
-        >
-          <FiCalendar />
-          Holiday Calendar
-        </button>
-        <button 
-          className={`tab-button ${activeStaffTab === 'management' ? 'active' : ''}`}
+        <button
+          className={`tab-btn ${activeStaffTab === 'management' ? 'active' : ''}`}
           onClick={() => setActiveStaffTab('management')}
-          style={{
-            padding: '10px 24px',
-            borderRadius: '10px',
-            border: '1px solid',
-            borderColor: activeStaffTab === 'management' ? 'transparent' : 'rgba(255, 255, 255, 0.8)',
-            background: activeStaffTab === 'management' ? 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)' : 'rgba(255, 255, 255, 0.7)',
-            color: activeStaffTab === 'management' ? 'white' : '#475569',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            boxShadow: activeStaffTab === 'management' ? '0 4px 12px rgba(99, 102, 241, 0.3)' : '0 2px 4px rgba(0, 0, 0, 0.02)',
+        >
+          <FiUsers /> Team Roster
+        </button>
+        <button
+          className={`tab-btn ${activeStaffTab === 'holidays' ? 'active' : ''}`}
+          onClick={() => setActiveStaffTab('holidays')}
+        >
+          <FiCalendar /> Holiday Calendar
+        </button>
+        <button
+          className={`tab-btn ${activeStaffTab === 'history' ? 'active' : ''}`}
+          onClick={() => {
+            setActiveStaffTab('history');
+            fetchAttendanceHistory();
           }}
         >
-          <FiUsers />
-          Staff Management
+          <FiClock /> Attendance Logs
         </button>
-      </div>
+      </nav>
 
+      {/* Attendance Tab Content */}
       {activeStaffTab === 'attendance' && (
-        <>
-          {/* ATTENDANCE REMINDER */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           {showReminder && (
-            <section className="page-section">
-              <div className="reminder-banner">
-                <div className="reminder-content">
-                  <FiBell className="reminder-icon" />
-                  <div className="reminder-text">
-                    <h3>Attendance Reminder</h3>
-                    <p>Today's staff attendance has not been marked yet. Please mark attendance for all staff members.</p>
-                  </div>
-                  <button
-                    className="reminder-close"
-                    onClick={() => setShowReminder(false)}
-                  >
-                    <FiXCircleIcon />
-                  </button>
+            <div className="reminder-banner">
+              <div className="reminder-content">
+                <FiBell className="reminder-icon" />
+                <div className="reminder-text">
+                  <h3>Daily Checklist</h3>
+                  <p>Attendance for today hasn't been marked yet. Please verify all active staff.</p>
                 </div>
+                <button className="reminder-close" onClick={() => setShowReminder(false)}><FiX /></button>
               </div>
-            </section>
+            </div>
           )}
-      {/* ATTENDANCE SUMMARY CARDS */}
-      <section className="page-section">
-        <h2 className="section-title">Daily Attendance</h2>
-        <p className="section-subtitle">Mark attendance for today's staff</p>
 
-        <div className="attendance-summary-cards">
-          <div className="summary-card">
-            <div className="card-icon">
-              <FiUsers />
+          <div className="attendance-container">
+            <div className="attendance-header">
+              <div className="attendance-date-badge">
+                <FiCalendar /> {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </div>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button className="staff-btn-secondary" onClick={() => {
+                  setShowAttendanceHistory(true);
+                  fetchAttendanceHistory();
+                }}>
+                  <FiClock /> History
+                </button>
+                <button className="staff-btn-secondary" onClick={handleRefreshAttendance} disabled={attendanceLoading}>
+                  <FiRefreshCcw /> Refresh
+                </button>
+                {!attendanceSubmitted && (
+                  <button className="staff-btn-primary" onClick={handleSubmitAttendance} disabled={attendanceLoading}>
+                    <FiSave /> {attendanceLoading ? 'Submitting...' : 'Mark Attendance'}
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="card-content">
-              <h3>Active Staff</h3>
-              <p className="card-value">{attendanceSummary?.total_staff || staffs.length}</p>
-            </div>
-          </div>
 
-          <div className={`summary-card ${attendanceFilter === 'present' ? 'active-filter' : ''}`}>
-            <div className="card-icon present">
-              <FiCheckCircle />
-            </div>
-            <div className="card-content">
-              <h3>Present Today</h3>
-              <p className="card-value present">{attendanceSummary?.present_count || 0}</p>
-            </div>
-          </div>
-
-          <div className={`summary-card ${attendanceFilter === 'absent' ? 'active-filter' : ''}`}>
-            <div className="card-icon absent">
-              <FiXCircleIcon />
-            </div>
-            <div className="card-content">
-              <h3>Absent Today</h3>
-              <p className="card-value absent">{attendanceSummary?.absent_count || 0}</p>
-            </div>
-          </div>
-
-          <div className="summary-card">
-            <div className="card-icon">
-              <FiCalendar />
-            </div>
-            <div className="card-content">
-              <h3>Status</h3>
-              <p className={`card-value ${attendanceSubmitted ? 'completed' : 'pending'}`}>
-                {attendanceSubmitted ? 'Marked' : 'Not Marked'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* ATTENDANCE ACTIONS */}
-        <div className="attendance-actions">
-          <button
-            className="button-secondary"
-            onClick={handleRefreshAttendance}
-            disabled={attendanceLoading}
-          >
-            <FiRefreshCcw />
-            <span>Refresh</span>
-          </button>
-
-          <button
-            className="button-secondary"
-            onClick={() => {
-              setShowAttendanceHistory(!showAttendanceHistory);
-              if (!showAttendanceHistory) {
-                fetchAttendanceHistory();
-              }
-            }}
-          >
-            <FiCalendar />
-            <span>Attendance History</span>
-          </button>
-
-          {!attendanceSubmitted && (
-            <button
-              className="button-primary"
-              onClick={handleSubmitAttendance}
-              disabled={attendanceLoading}
-            >
-              <FiSave />
-              <span>Submit Attendance</span>
-            </button>
-          )}
-        </div>
-
-        {/* DAILY ATTENDANCE LIST */}
-        {filter === "active" && (
-          <div className="attendance-list">
-            <h3>Staff Attendance for Today</h3>
             {attendanceSubmitted ? (
               <div className="attendance-locked-message">
-                <FiClock />
-                <p>Attendance already marked for today. You can view the history in the attendance section.</p>
+                <FiCheckCircle size={20} />
+                <p>Today's attendance has been locked. View records in History.</p>
               </div>
             ) : (
-              <div className="attendance-grid">
-                {staffs.map((staff) => (
-                  <div key={staff.id} className="attendance-row">
-                    <div className="staff-info">
-                      {staff.photo_url && (
-                        <img src={staff.photo_url} alt={staff.name} className="staff-avatar" />
-                      )}
-                      <div className="staff-details">
-                        <span className="staff-name">{staff.name}</span>
-                        <span className="staff-phone">{staff.phone}</span>
-                      </div>
-                    </div>
-                    {/* Resolution Indicators (Intelligent Layer) */}
-                    <div className="attendance-resolution-hints" style={{ display: 'flex', gap: '8px', marginBottom: '8px', paddingLeft: '56px' }}>
-                      {/* Check for Global Holiday */}
-                      {todayHolidays.some(h => !h.staff_id) && (
-                        <span style={{ fontSize: '11px', background: '#FEF3C7', color: '#92400E', padding: '4px 10px', borderRadius: '6px', fontWeight: '700', border: '1px solid #F59E0B', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <FiCalendar size={12} />
-                          Holiday: {todayHolidays.find(h => !h.staff_id).name}
-                        </span>
-                      )}
-                      
-                      {/* Check for Staff Specific Holiday */}
-                      {todayHolidays.some(h => h.staff_id === staff.id) && (
-                        <span style={{ fontSize: '11px', background: '#DBEAFE', color: '#1E40AF', padding: '4px 10px', borderRadius: '6px', fontWeight: '700', border: '1px solid #3B82F6', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <FiCalendar size={12} />
-                          Personal Holiday: {todayHolidays.find(h => h.staff_id === staff.id).name}
-                        </span>
-                      )}
-
-                      {/* Check for Weekly Off */}
-                      {staff.weekly_off_days && staff.weekly_off_days.includes(new Date().toLocaleDateString('en-US', { weekday: 'long' })) && (
-                        <span style={{ fontSize: '11px', background: '#F3E8FF', color: '#6B21A8', padding: '4px 10px', borderRadius: '6px', fontWeight: '700', border: '1px solid #8B5CF6', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <FiClock size={12} />
-                          Week Off ({new Date().toLocaleDateString('en-US', { weekday: 'long' })})
-                        </span>
-                      )}
-                    </div>
-                    <div className="attendance-controls">
-                      <label className="attendance-option">
-                        <input
-                          type="radio"
-                          name={`attendance-${staff.id}`}
-                          value="Present"
-                          checked={attendanceData[staff.id] === 'Present'}
-                          onChange={() => handleAttendanceChange(staff.id, 'Present')}
-                        />
-                        <span className="attendance-label present">Present</span>
-                      </label>
-                      <label className="attendance-option">
-                        <input
-                          type="radio"
-                          name={`attendance-${staff.id}`}
-                          value="Absent"
-                          checked={attendanceData[staff.id] === 'Absent' || !attendanceData[staff.id]}
-                          onChange={() => handleAttendanceChange(staff.id, 'Absent')}
-                        />
-                        <span className="attendance-label absent">Absent</span>
-                      </label>
-                      {/* Leave Option */}
-                      <label className="attendance-option">
-                        <input
-                          type="radio"
-                          name={`attendance-${staff.id}`}
-                          value="Leave"
-                          checked={attendanceType[staff.id] === 'leave'}
-                          onChange={() => {
-                            setAttendanceType(prev => ({ ...prev, [staff.id]: 'leave' }));
-                            setAttendanceData(prev => ({ ...prev, [staff.id]: 'Present' })); // Mark as present but leave type
-                          }}
-                        />
-                        <span className="attendance-label" style={{ backgroundColor: '#9c27b0', color: 'white' }}>Leave</span>
-                      </label>
-                    </div>
-                    {/* Work Type and Salary Multiplier */}
-                    {(attendanceData[staff.id] === 'Present' || attendanceType[staff.id] === 'leave') && (
-                      <div className="payroll-options" style={{ 
-                        marginTop: '12px', 
-                        display: 'flex', 
-                        gap: '16px', 
-                        flexWrap: 'wrap',
-                        padding: '14px 16px',
-                        background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)',
-                        borderRadius: '12px',
-                        border: '1px solid rgba(255,255,255,0.15)',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <label style={{ 
-                            fontSize: '13px', 
-                            color: '#fff',
-                            fontWeight: '600',
-                            background: 'linear-gradient(135deg, #5B4FE9 0%, #7C3AED 100%)',
-                            padding: '6px 14px',
-                            borderRadius: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            boxShadow: '0 2px 8px rgba(91, 79, 238, 0.4)'
-                          }}>
-                            <FiClock size={14} />
-                            Work
-                          </label>
-                          <select
-                            value={workType[staff.id] || 'full_day'}
-                            onChange={(e) => setWorkType(prev => ({ ...prev, [staff.id]: e.target.value }))}
-                            style={{ 
-                              padding: '8px 14px', 
-                              fontSize: '13px', 
-                              borderRadius: '8px', 
-                              border: '2px solid #5B4FE9',
-                              background: '#fff',
-                              color: '#1e1b4b',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              outline: 'none',
-                              minWidth: '120px',
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                            }}
-                          >
-                            <option value="full_day" style={{color: '#333'}}>Full Day</option>
-                            <option value="half_day" style={{color: '#333'}}>Half Day</option>
-                          </select>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <label style={{ 
-                            fontSize: '13px', 
-                            color: '#fff',
-                            fontWeight: '600',
-                            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                            padding: '6px 14px',
-                            borderRadius: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)'
-                          }}>
-                            <FiDollarSign size={14} />
-                            Multiplier
-                          </label>
-                          <select
-                            value={salaryMultiplier[staff.id] || '1'}
-                            onChange={(e) => setSalaryMultiplier(prev => ({ ...prev, [staff.id]: e.target.value }))}
-                            style={{ 
-                              padding: '8px 14px', 
-                              fontSize: '13px', 
-                              borderRadius: '8px', 
-                              border: '2px solid #10B981',
-                              background: '#fff',
-                              color: '#1e1b4b',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              outline: 'none',
-                              minWidth: '90px',
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                            }}
-                          >
-                            <option value="1" style={{color: '#333'}}>1x</option>
-                            <option value="1.5" style={{color: '#333'}}>1.5x</option>
-                            <option value="2" style={{color: '#333'}}>2x</option>
-                            <option value="2.5" style={{color: '#333'}}>2.5x</option>
-                            <option value="3" style={{color: '#333'}}>3x</option>
-                          </select>
-                        </div>
-
-                        {/* Multiplier Reason Input */}
-                        {(parseFloat(salaryMultiplier[staff.id]) > 1) && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1', minWidth: '200px' }}>
-                            <label style={{ 
-                              fontSize: '11px', 
-                              color: '#fff',
-                              fontWeight: '600',
-                              background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-                              padding: '4px 10px',
-                              borderRadius: '6px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.4)',
-                              whiteSpace: 'nowrap'
-                            }}>
-                              <FiEdit2 size={12} />
-                              Reason
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="Why multiplier?"
-                              value={salaryMultiplierReason[staff.id] || ''}
-                              onChange={(e) => setSalaryMultiplierReason(prev => ({ ...prev, [staff.id]: e.target.value }))}
-                              style={{ 
-                                padding: '8px 12px', 
-                                fontSize: '13px', 
-                                borderRadius: '8px', 
-                                border: '2px solid #F59E0B',
-                                background: '#fff',
-                                color: '#1e1b4b',
-                                fontWeight: '500',
-                                outline: 'none',
-                                flex: '1',
-                                minWidth: '150px',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                              }}
-                            />
+              <div className="attendance-grid-list">
+                <table className="attendance-list-table">
+                  <tbody>
+                    {staffs.map((staff) => (
+                      <tr key={staff.id}>
+                        <td>
+                          <div className="staff-info">
+                            {staff.photo_url ? (
+                              <img src={staff.photo_url} alt={staff.name} className="staff-avatar" style={{ width: '40px', height: '40px' }} />
+                            ) : (
+                              <div className="staff-avatar-placeholder" style={{ width: '40px', height: '40px', fontSize: '1rem' }}>
+                                {staff.name.charAt(0)}
+                              </div>
+                            )}
+                            <div className="staff-details">
+                              <span className="staff-name">{staff.name}</span>
+                              <span className="staff-phone">{staff.phone}</span>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-        </>
-      )}
-
-      {activeStaffTab === 'holidays' && (
-        <section className="page-section holiday-tab-content">
-            <div className="holiday-header" style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              marginBottom: '2rem',
-              background: 'rgba(255, 255, 255, 0.7)',
-              padding: '24px',
-              borderRadius: '20px',
-              border: '1px solid rgba(255, 255, 255, 0.5)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.05)',
-              backdropFilter: 'blur(10px)'
-            }}>
-              <div>
-                <h2 className="section-title" style={{ margin: 0, color: '#1e293b' }}>Holiday Calendar</h2>
-                <p className="section-subtitle" style={{ margin: '4px 0 0', color: '#64748b' }}>Manage company holidays and staff-specific offs</p>
-              </div>
-            <button 
-              className="button-primary"
-              onClick={() => {
-                setEditingHoliday(null);
-                setHolidayFormData({ date: new Date().toISOString().split('T')[0], name: "", type: "company_holiday", staff_id: "", is_paid: true });
-                setShowHolidayModal(true);
-              }}
-              style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
-            >
-              <FiPlus /> Add Holiday
-            </button>
-          </div>
-
-          <div className="calendar-container" style={{ 
-            background: 'rgba(255, 255, 255, 0.8)', 
-            borderRadius: '28px', 
-            padding: '2.5rem',
-            border: '1px solid rgba(255, 255, 255, 0.6)',
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.08)',
-            backdropFilter: 'blur(20px)',
-            marginBottom: '2.5rem'
-          }}>
-            <div className="calendar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
-              <div className="month-display" style={{ fontSize: '1.6rem', fontWeight: '800', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <FiCalendar style={{ color: '#10b981' }} />
-                <span>{holidayCurrentDate.toLocaleDateString('default', { month: 'long', year: 'numeric' })}</span>
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button className="button-secondary" style={{ padding: '8px' }} onClick={() => setHolidayCurrentDate(new Date(holidayCurrentDate.getFullYear(), holidayCurrentDate.getMonth() - 1, 1))}><FiChevronLeft /></button>
-                <button className="button-secondary" style={{ padding: '8px' }} onClick={() => setHolidayCurrentDate(new Date(holidayCurrentDate.getFullYear(), holidayCurrentDate.getMonth() + 1, 1))}><FiChevronRight /></button>
-              </div>
-            </div>
-
-            <div className="calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '16px' }}>
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => (
-                <div key={d} className="weekday" style={{ textAlign: 'center', fontWeight: '700', color: '#64748b', paddingBottom: '1.2rem', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{d}</div>
-              ))}
-              {renderHolidayCalendar()}
-            </div>
-          </div>
-
-          {/* Monthly List View */}
-          <div className="holiday-list-section">
-            <h3 className="section-title" style={{ fontSize: '1.4rem', color: '#1e293b', fontWeight: '800' }}>Holidays in {holidayCurrentDate.toLocaleDateString('default', { month: 'long' })}</h3>
-            <div className="holiday-items-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
-              {holidays.length > 0 ? holidays.map(h => (
-                <motion.div 
-                  key={h.id} 
-                  className="holiday-item-card"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  style={{ 
-                    background: 'rgba(255, 255, 255, 0.9)', 
-                    padding: '24px', 
-                    borderRadius: '20px', 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    border: '1px solid rgba(255, 255, 255, 0.6)',
-                    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.05)',
-                    backdropFilter: 'blur(10px)'
-                  }}
-                >
-                  <div className="h-info">
-                    <h4 style={{ margin: 0, fontSize: '1.2rem', color: '#1e293b', fontWeight: '700' }}>{new Date(h.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })} - {h.name}</h4>
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>
-                      <span className={`badge ${h.type}`} style={{ 
-                        fontSize: '11px', 
-                        padding: '2px 8px', 
-                        borderRadius: '4px',
-                        background: h.type === 'company_holiday' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(139, 92, 246, 0.1)',
-                        color: h.type === 'company_holiday' ? '#F59E0B' : '#8B5CF6'
-                      }}>
-                        {h.type === 'company_holiday' ? 'Global' : 'Staff'}
-                      </span>
-                      <span style={{ 
-                        fontSize: '11px', 
-                        padding: '2px 8px', 
-                        borderRadius: '4px',
-                        background: h.is_paid ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                        color: h.is_paid ? '#10B981' : '#EF4444'
-                      }}>
-                        {h.is_paid ? 'Paid' : 'Unpaid'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="h-actions" style={{ display: 'flex', gap: '10px' }}>
-                    <button 
-                      className="button-secondary"
-                      style={{ padding: '8px', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60a5fa' }}
-                      onClick={() => {
-                        setEditingHoliday(h);
-                        setHolidayFormData({
-                            date: h.date.split('T')[0],
-                            name: h.name,
-                            type: h.type,
-                            staff_id: h.staff_id || "",
-                            is_paid: h.is_paid !== false
-                        });
-                        setShowHolidayModal(true);
-                      }}
-                    >
-                      <FiEdit2 size={16} />
-                    </button>
-                    <button className="button-secondary" style={{ padding: '8px', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#f87171' }} onClick={() => handleHolidayDelete(h.id)}><FiTrash2 size={16} /></button>
-                  </div>
-                </motion.div>
-              )) : (
-                <div style={{ padding: '40px', textAlign: 'center', gridColumn: '1/-1', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', color: '#94a3b8' }}>No holidays scheduled for this month.</div>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-      {activeStaffTab === 'management' && (
-        <>
-
-      {/* HEADER */}
-      <section className="page-section">
-        <h1 className="section-title">Staff Management</h1>
-        <p className="section-subtitle">Manage your team members and their information</p>
-
-        {/* SUMMARY CARDS ROW - Beside search bar */}
-        <div className="summary-cards-row">
-          <div
-            className={`summary-card small ${filter === 'active' && !attendanceFilter ? 'active-filter' : ''}`}
-            onClick={() => {
-              setFilter('active');
-              setAttendanceFilter(null);
-              fetchStaffs(null);
-            }}
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="card-icon">
-              <FiUsers />
-            </div>
-            <div className="card-content">
-              <h3>Active Staff</h3>
-              <p className="card-value">{staffs.length}</p>
-            </div>
-          </div>
-
-          <div
-            className={`summary-card small clickable ${attendanceFilter === 'present' ? 'active-filter' : ''}`}
-            onClick={() => {
-              // First set the filter visual state
-              setAttendanceFilter('present');
-              // Then fetch present staff details to show in modal
-              fetchPresentStaffDetails();
-            }}
-          >
-            <div className="card-icon present">
-              <FiCheckCircle />
-            </div>
-            <div className="card-content">
-              <h3>Present</h3>
-              <p className="card-value present">{attendanceSummary?.present_count || 0}</p>
-            </div>
-          </div>
-
-          <div
-            className={`summary-card small clickable ${attendanceFilter === 'absent' ? 'active-filter' : ''}`}
-            onClick={() => {
-              // First set the filter visual state
-              setAttendanceFilter('absent');
-              // Then fetch absent staff details to show in modal
-              fetchAbsentStaffDetails();
-            }}
-          >
-            <div className="card-icon absent">
-              <FiXCircleIcon />
-            </div>
-            <div className="card-content">
-              <h3>Absent</h3>
-              <p className="card-value absent">{attendanceSummary?.absent_count || 0}</p>
-            </div>
-          </div>
-
-          <div
-            className={`summary-card small ${filter === 'deleted' ? 'active-filter' : ''}`}
-            onClick={() => { setFilter('deleted'); setAttendanceFilter(null); if (deletedStaffs.length === 0) fetchDeletedStaffs(); fetchStaffs(null); }}
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="card-icon">
-              <FiTrash2 />
-            </div>
-            <div className="card-content">
-              <h3>Deleted</h3>
-              <p className="card-value">{deletedStaffs.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="dashboard-controls">
-          <div className="search-bar">
-            <FiSearch />
-            <input
-              type="text"
-              placeholder="Search staff..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <button
-            className="button-primary add-job-button"
-            onClick={() => setShowForm(true)}
-          >
-            <FiPlusCircle />
-            <span>Add Staff</span>
-          </button>
-        </div>
-      </section>
-
-      {/* STAFF LIST */}
-      <section className="page-section">
-        <div className="complaint-list">
-          {filteredStaffs.length > 0 ? (
-            filteredStaffs.map((staff) => (
-              <div
-                key={staff.id}
-                className="complaint-card active"
-              >
-                <div className="card-header">
-                  <span className="card-title">{staff.name}</span>
-                  <div className={`status-badge ${filter === "active" ? "active" : "deleted"}`}>
-                    {filter === "active" ? <FiUserCheck /> : <FiTrash2 />}
-                    <span>{filter === "active" ? "Active" : "Deleted"}</span>
-                  </div>
-                </div>
-
-                <div className="card-content">
-                  <InfoRow icon={<FiPhone />} label="Phone" value={staff.phone} />
-                  {staff.email && <InfoRow icon={<FiMail />} label="Email" value={staff.email} />}
-                  <InfoRow icon={<FiMapPin />} label="Location" value={staff.location} />
-                </div>
-
-                <div className="card-actions">
-                  {filter === "active" && (
-                    <>
-                      <button className="action-button edit" onClick={() => handleEdit(staff)}>
-                        <span>Edit</span>
-                      </button>
-                      <button className="action-button delete" onClick={() => handleDelete(staff.id)}>
-                        <span>Delete</span>
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="empty-state">
-              <FiUsers size={48} />
-              <p>No staff found</p>
-              <p className="empty-subtitle">
-                {searchQuery ? "Try adjusting your search terms" : "Add your first team member"}
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
-        </>
-      )}
-
-      {/* GLOBAL MODALS */}
-
-      {/* ATTENDANCE HISTORY MODAL */}
-      {showAttendanceHistory && createPortal(
-        <div 
-          className="modal-overlay history-overlay attendance-history-overlay" 
-          onClick={() => setShowAttendanceHistory(false)}
-        >
-          <div 
-            className="modal-content history-modal attendance-history-modal" 
-            onClick={(e) => e.stopPropagation()}
-            ref={attendanceHistoryRef}
-            tabIndex={-1}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Attendance History"
-          >
-            <div className="modal-header">
-              <h2><FiCalendar style={{ marginRight: '0.5rem' }} />Attendance History</h2>
-              <button className="close-btn" onClick={() => setShowAttendanceHistory(false)}>×</button>
-            </div>
-
-            {/* Filter Controls */}
-            <div className="history-filters">
-              <div className="filter-tabs">
-                <button
-                  className={`filter-tab ${historyFilter === 'date' ? 'active' : ''}`}
-                  onClick={() => setHistoryFilter('date')}
-                >
-                  By Date
-                </button>
-                <button
-                  className={`filter-tab ${historyFilter === 'month' ? 'active' : ''}`}
-                  onClick={() => setHistoryFilter('month')}
-                >
-                  By Month
-                </button>
-                <button
-                  className={`filter-tab ${historyFilter === 'range' ? 'active' : ''}`}
-                  onClick={() => setHistoryFilter('range')}
-                >
-                  Date Range
-                </button>
-                <button
-                  className={`filter-tab ${historyFilter === 'staff' ? 'active' : ''}`}
-                  onClick={() => setHistoryFilter('staff')}
-                >
-                  By Staff
-                </button>
-              </div>
-
-              <div className="filter-inputs">
-                {historyFilter === 'date' && (
-                  <div className="filter-input-group">
-                    <label>Select Date:</label>
-                    <input
-                      type="date"
-                      value={historyDate}
-                      onChange={(e) => setHistoryDate(e.target.value)}
-                      className="form-input"
-                    />
-                  </div>
-                )}
-
-                {historyFilter === 'month' && (
-                  <div className="filter-input-group">
-                    <label>Select Month:</label>
-                    <input
-                      type="month"
-                      value={historyMonth}
-                      onChange={(e) => setHistoryMonth(e.target.value)}
-                      className="form-input"
-                    />
-                  </div>
-                )}
-
-                {historyFilter === 'range' && (
-                  <div className="filter-input-group range-inputs">
-                    <div>
-                      <label>Start Date:</label>
-                      <input
-                        type="date"
-                        value={historyStartDate}
-                        onChange={(e) => setHistoryStartDate(e.target.value)}
-                        className="form-input"
-                      />
-                    </div>
-                    <div>
-                      <label>End Date:</label>
-                      <input
-                        type="date"
-                        value={historyEndDate}
-                        onChange={(e) => setHistoryEndDate(e.target.value)}
-                        className="form-input"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {historyFilter === 'staff' && (
-                  <div className="filter-input-group">
-                    <label>Staff Name:</label>
-                    <input
-                      type="text"
-                      placeholder="Enter staff name..."
-                      value={historyStaffName}
-                      onChange={(e) => setHistoryStaffName(e.target.value)}
-                      className="form-input"
-                    />
-                  </div>
-                )}
-
-                <button
-                  className="button-primary"
-                  onClick={() => {
-                    if (historyFilter === 'range' && (!historyStartDate || !historyEndDate)) {
-                      alert('Please select both start and end dates');
-                      return;
-                    }
-                    if (historyFilter === 'staff' && !historyStaffName.trim()) {
-                      alert('Please enter a staff name');
-                      return;
-                    }
-                    fetchAttendanceHistory();
-                  }}
-                  disabled={historyLoading}
-                >
-                  {historyLoading ? 'Loading...' : 'Search'}
-                </button>
-              </div>
-            </div>
-
-            {/* Summary Cards */}
-            {historySummary && (
-              <div className="history-summary-cards">
-                <div className="summary-card">
-                  <h3>Total Records</h3>
-                  <p className="card-value">{historySummary.total || 0}</p>
-                </div>
-                <div className="summary-card present">
-                  <h3>Present</h3>
-                  <p className="card-value">{historySummary.present || 0}</p>
-                </div>
-                <div className="summary-card absent">
-                  <h3>Absent</h3>
-                  <p className="card-value">{historySummary.absent || 0}</p>
-                </div>
-                <div className="summary-card">
-                  <h3>Not Marked</h3>
-                  <p className="card-value">{historySummary.not_marked || 0}</p>
-                </div>
-              </div>
-            )}
-
-            {/* History Table */}
-            {historyLoading ? (
-              <div className="loading-state">
-                <p>Loading attendance history...</p>
-              </div>
-            ) : historyData.length > 0 ? (
-              <div className="history-table-container">
-                <table className="history-table">
-                  <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Staff Name</th>
-                        <th>Status</th>
-                        <th>Multiplier</th>
-                        <th>Reason</th>
-                        <th>Marked At</th>
+                        </td>
+                        <td>
+                          <div className="status-chips">
+                            <button
+                              className={`status-chip present ${attendanceData[staff.id] === 'Present' && attendanceType[staff.id] !== 'leave' ? 'active' : ''}`}
+                              onClick={() => handleAttendanceChange(staff.id, 'Present', 'present')}
+                            >
+                              <FiCheck /> Present
+                            </button>
+                            <button
+                              className={`status-chip absent ${attendanceData[staff.id] === 'Absent' ? 'active' : ''}`}
+                              onClick={() => handleAttendanceChange(staff.id, 'Absent', 'absent')}
+                            >
+                              <FiX /> Absent
+                            </button>
+                            <button
+                              className={`status-chip leave ${attendanceType[staff.id] === 'leave' ? 'active' : ''}`}
+                              onClick={() => handleAttendanceChange(staff.id, 'Present', 'leave')}
+                            >
+                              <FiMail /> Leave
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          {(attendanceData[staff.id] === 'Present' || attendanceType[staff.id] === 'leave') && (
+                            <div className="payroll-settings" style={{ margin: 0, padding: '0.5rem 1rem' }}>
+                              <div className="payroll-field">
+                                <select
+                                  className="payroll-input"
+                                  value={workType[staff.id] || 'full_day'}
+                                  onChange={(e) => setWorkType(prev => ({ ...prev, [staff.id]: e.target.value }))}
+                                >
+                                  <option value="full_day">Full Day</option>
+                                  <option value="half_day">Half Day</option>
+                                </select>
+                              </div>
+                              <div className="payroll-field">
+                                <select
+                                  className="payroll-input"
+                                  value={salaryMultiplier[staff.id] || '1'}
+                                  onChange={(e) => setSalaryMultiplier(prev => ({ ...prev, [staff.id]: e.target.value }))}
+                                >
+                                  <option value="1">1x Pay</option>
+                                  <option value="1.5">1.5x Pay</option>
+                                  <option value="2">2x Pay</option>
+                                </select>
+                              </div>
+                            </div>
+                          )}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {historyData.map((record, index) => (
-                        <tr key={index} className={record.status === 'Present' ? 'present-row' : record.status === 'Absent' ? 'absent-row' : ''}>
-                          <td>{record.date || '-'}</td>
-                          <td>{record.staff_name || '-'}</td>
-                          <td>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <span className={`status-badge ${record.status === 'Present' ? 'present' : record.status === 'Absent' ? 'absent' : 'not-marked'}`}>
-                                {record.status || 'Not Marked'}
-                                </span>
-                                {record.is_override && (
-                                    <span style={{ fontSize: '10px', background: '#FEE2E2', color: '#B91C1C', padding: '2px 6px', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #F87171' }}>
-                                        OVERRIDE
-                                    </span>
-                                )}
-                            </div>
-                          </td>
-                          <td>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                {record.salary_multiplier > 1 ? (
-                                <span style={{ 
-                                    background: '#10B981', 
-                                    color: 'white', 
-                                    padding: '2px 8px', 
-                                    borderRadius: '4px',
-                                    fontSize: '12px',
-                                    fontWeight: 'bold',
-                                    textAlign: 'center'
-                                }}>
-                                    {record.salary_multiplier}x
-                                </span>
-                                ) : (
-                                    <span style={{ color: '#64748b', fontSize: '12px' }}>Normal (1x)</span>
-                                )}
-                                {record.work_type === 'half_day' && (
-                                    <span style={{ fontSize: '10px', background: '#E0F2FE', color: '#0369A1', padding: '2px 6px', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #7DD3FC' }}>
-                                        HALF DAY
-                                    </span>
-                                )}
-                            </div>
-                          </td>
-                          <td>
-                            <div style={{ fontSize: '12px', maxWidth: '200px' }}>
-                                {record.override_reason ? (
-                                    <div style={{ fontStyle: 'italic', color: '#1e293b' }}>
-                                        <strong>Reason:</strong> {record.override_reason}
-                                    </div>
-                                ) : record.salary_multiplier_reason ? (
-                                    <div style={{ fontStyle: 'italic', color: '#64748b' }}>
-                                        {record.salary_multiplier_reason}
-                                    </div>
-                                ) : (
-                                    <span style={{ color: '#cbd5e1' }}>-</span>
-                                )}
-                            </div>
-                          </td>
-                          <td>{record.marked_at || '-'}</td>
-                        </tr>
-                      ))}
+                    ))}
                   </tbody>
                 </table>
               </div>
-            ) : (
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Staff Management Tab */}
+      {activeStaffTab === 'management' && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="staff-controls-row">
+            <div className="search-wrapper">
+              <FiSearch className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search by name, role or phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <div className="summary-badges">
+              <div
+                className={`count-badge ${filter === 'active' ? 'active' : ''}`}
+                onClick={() => setFilter('active')}
+              >
+                <FiUsers /> Active <span className="count">{staffs.length}</span>
+              </div>
+              <div className="count-badge" onClick={fetchPresentStaffDetails}>
+                <FiCheckCircle style={{ color: 'var(--staff-success)' }} /> Present <span className="count" style={{ color: 'var(--staff-success)' }}>{attendanceSummary?.present_count || 0}</span>
+              </div>
+              <div className="count-badge" onClick={fetchAbsentStaffDetails}>
+                <FiXCircle style={{ color: 'var(--staff-danger)' }} /> Absent <span className="count" style={{ color: 'var(--staff-danger)' }}>{attendanceSummary?.absent_count || 0}</span>
+              </div>
+              <div
+                className={`count-badge ${filter === 'deleted' ? 'active' : ''}`}
+                onClick={() => { setFilter('deleted'); if (deletedStaffs.length === 0) fetchDeletedStaffs(); }}
+              >
+                <FiTrash2 /> Archive <span className="count">{deletedStaffs.length}</span>
+              </div>
+            </div>
+          </div>
+          
+          {(sessionStorage.getItem('role') === 'admin' || sessionStorage.getItem('role') === 'bigadmin') && (
+            <div className="staff-branch-filter-container" style={{ marginBottom: '2rem' }}>
+              <div className="sm-branch-filter" style={{ width: 'fit-content', border: '1.5px solid var(--staff-border)', background: 'var(--staff-white)' }}>
+                <FiMapPin className="sm-filter-icon" style={{ color: 'var(--staff-primary)' }} />
+                <select 
+                    value={selectedBranch} 
+                    onChange={(e) => setSelectedBranch(e.target.value)}
+                    className="sm-branch-select"
+                    style={{ border: 'none', background: 'transparent', fontWeight: 700, color: 'var(--staff-text)' }}
+                >
+                    <option value="">All Branches</option>
+                    {branches && branches.map(b => (
+                        <option key={b.branch_id} value={b.name}>{b.name}</option>
+                    ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          <div className="staff-roster-content">
+            {filteredStaffs.length > 0 ? (() => {
+              // If a branch is selected, show flat grid
+              if (selectedBranch) {
+                return (
+                  <div className="staff-grid">
+                    {filteredStaffs.map((staff) => renderStaffCard(staff))}
+                  </div>
+                );
+              }
+
+              // Group by branch when viewing all
+              const branchGroups = {};
+              filteredStaffs.forEach(staff => {
+                const branch = staff.branch_name || 'Main Hub';
+                if (!branchGroups[branch]) branchGroups[branch] = [];
+                branchGroups[branch].push(staff);
+              });
+
+              return Object.entries(branchGroups).map(([branchName, staffs]) => (
+                <div key={branchName} className="branch-staff-group">
+                  <div className="branch-group-header">
+                    <span className="branch-group-icon">🏢</span>
+                    <h2 className="branch-group-title">{branchName}</h2>
+                    <span className="branch-group-count">{staffs.length} member{staffs.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="staff-grid">
+                    {staffs.map((staff) => renderStaffCard(staff))}
+                  </div>
+                </div>
+              ));
+            })() : (
               <div className="empty-state">
-                <FiCalendar size={48} />
-                <p>No attendance records found</p>
-                <p className="empty-subtitle">Try adjusting your filters</p>
+                <FiUsers size={48} />
+                <p>No team members found</p>
+                <span style={{ fontSize: '0.9rem', opacity: 0.7 }}>Try adjusting your search or filters</span>
               </div>
             )}
           </div>
-        </div>,
-        document.body
+        </motion.div>
+      )}
+
+      {/* Holiday Tab Content - Using existing logic but polished via Staff.css */}
+      {activeStaffTab === 'holidays' && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="holiday-container">
+          {/* Calendar implementation follows similar polished pattern */}
+          <div className="attendance-container">
+            <div className="attendance-header" style={{ display: 'flex', flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <button
+                  className="staff-btn-primary"
+                  onClick={() => {
+                    setEditingHoliday(null);
+                    setHolidayFormData({ date: new Date().toISOString().split('T')[0], name: "", type: "company_holiday", staff_id: "", is_paid: true });
+                    setShowHolidayModal(true);
+                  }}
+                >
+                  <FiPlus /> Add Holiday
+                </button>
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: 'var(--staff-primary)' }}>Holiday Calendar</h3>
+                <p style={{ margin: '4px 0 0', color: 'var(--staff-text-muted)', fontSize: '0.9rem' }}>Schedule company offs and weekly holidays</p>
+              </div>
+            </div>
+
+            <div className="calendar-wrapper" style={{ marginTop: '2rem' }}>
+              <div className="calendar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <FiCalendar size={24} color="var(--staff-primary)" />
+                  <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>{holidayCurrentDate.toLocaleDateString('default', { month: 'long', year: 'numeric' })}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button className="action-btn-sm edit-btn" onClick={() => setHolidayCurrentDate(new Date(holidayCurrentDate.getFullYear(), holidayCurrentDate.getMonth() - 1, 1))}><FiChevronLeft /></button>
+                  <button className="action-btn-sm edit-btn" onClick={() => setHolidayCurrentDate(new Date(holidayCurrentDate.getFullYear(), holidayCurrentDate.getMonth() + 1, 1))}><FiChevronRight /></button>
+                </div>
+              </div>
+
+              <div className="calendar-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '10px' }}>
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => (
+                  <div key={d} style={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 800, color: 'var(--staff-text-muted)', textTransform: 'uppercase', paddingBottom: '0.5rem' }}>{d}</div>
+                ))}
+                {renderHolidayCalendar()}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Attendance History Tab Content */}
+      {activeStaffTab === 'history' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="history-tab-content-full">
+          <div className="premium-history-full-view">
+            <header className="history-view-header">
+              <div className="header-left">
+                <div className="header-icon-box">
+                  <FiClock />
+                </div>
+                <div className="header-title-info">
+                  <h2>Attendance Logs</h2>
+                  <p>Detailed historical records of staff attendance and multipliers</p>
+                </div>
+              </div>
+
+              <div className="history-view-controls">
+                <div className="filter-tabs-modern">
+                  {['date', 'month', 'range'].map(f => (
+                    <button
+                      key={f}
+                      className={`modern-filter-btn ${historyFilter === f ? 'active' : ''}`}
+                      onClick={() => setHistoryFilter(f)}
+                    >
+                      {f.charAt(0).toUpperCase() + f.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </header>
+
+            <div className="history-filter-shelf">
+              <div className="shelf-inputs">
+                {historyFilter === 'date' && (
+                  <div className="shelf-group">
+                    <label>View Date</label>
+                    <input type="date" value={historyDate} onChange={(e) => setHistoryDate(e.target.value)} />
+                  </div>
+                )}
+                {historyFilter === 'month' && (
+                  <div className="shelf-group">
+                    <label>View Month</label>
+                    <input type="month" value={historyMonth} onChange={(e) => setHistoryMonth(e.target.value)} />
+                  </div>
+                )}
+                {historyFilter === 'range' && (
+                  <div className="shelf-group shelf-range">
+                    <div>
+                      <label>From</label>
+                      <input type="date" value={historyStartDate} onChange={(e) => setHistoryStartDate(e.target.value)} />
+                    </div>
+                    <div>
+                      <label>To</label>
+                      <input type="date" value={historyEndDate} onChange={(e) => setHistoryEndDate(e.target.value)} />
+                    </div>
+                  </div>
+                )}
+                <div className="shelf-group">
+                  <label>Filter By Staff</label>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <FiUser style={{ position: 'absolute', left: '12px', color: 'var(--staff-text-muted)' }} />
+                    <select 
+                      value={historyStaffName} 
+                      onChange={e => setHistoryStaffName(e.target.value)} 
+                      style={{ paddingLeft: '35px', minWidth: '220px', height: '45px', borderRadius: '10px', border: '1.5px solid var(--staff-border)', background: 'white', fontWeight: 700 }}
+                    >
+                      <option value="">All Staff Members</option>
+                      {staffs.map(s => (
+                        <option key={s.id} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <button 
+                  className="staff-btn-history search-btn" 
+                  onClick={fetchAttendanceHistory} 
+                  disabled={historyLoading}
+                  style={{ 
+                    padding: '0.875rem 2.5rem',
+                    fontSize: '1rem',
+                    background: 'var(--staff-grad-gold)',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                >
+                  {historyLoading ? (
+                    <div className="bm-spinner-mini" style={{ width: '18px', height: '18px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></div>
+                  ) : (
+                    <><FiSearch /> Filter Records</>
+                  )}
+                </button>
+              </div>
+
+              {historySummary && (
+                <div className="shelf-summary">
+                  <div className="mini-stat">
+                    <span className="stat-label">Total</span>
+                    <span className="stat-value">{historySummary.total || 0}</span>
+                  </div>
+                  <div className="mini-stat present">
+                    <span className="stat-label">Present</span>
+                    <span className="stat-value">{historySummary.present || 0}</span>
+                  </div>
+                  <div className="mini-stat absent">
+                    <span className="stat-label">Absent</span>
+                    <span className="stat-value">{historySummary.absent || 0}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="history-data-table-wrapper">
+              {historyLoading ? (
+                <div className="table-loader">
+                  <div className="bm-spinner-mini"></div>
+                  <p>Analyzing Attendance Database...</p>
+                </div>
+              ) : historyData.length > 0 ? (
+                <table className="modern-history-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '120px' }}>Date</th>
+                      <th style={{ width: '250px' }}>Staff Member</th>
+                      <th>Status</th>
+                      <th>Multiplier</th>
+                      <th>Shift Details</th>
+                      <th>Comments / Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historyData.map((record, index) => (
+                      <tr key={index} className="history-row-animate">
+                        <td className="date-cell">{record.date}</td>
+                        <td className="staff-cell">
+                          <div className="staff-ident">
+                            <span className="staff-initials">{record.staff_name?.charAt(0)}</span>
+                            <span className="staff-full-name">{record.staff_name}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`badge-status ${record.attendance_type === 'leave' ? 'leave' : record.attendance_type === 'holiday' ? 'holiday' : record.status?.toLowerCase()}`}>
+                            {record.attendance_type === 'leave' ? 'Leave' : record.attendance_type === 'holiday' ? 'Paid Holiday' : record.status}
+                          </span>
+                        </td>
+                        <td>
+                          {record.salary_multiplier > 1 ? (
+                            <span className="bonus-pill">
+                              {record.salary_multiplier}x Bonus
+                            </span>
+                          ) : (
+                            <span className="normal-pill">1.0x</span>
+                          )}
+                        </td>
+                        <td>
+                          <span className="shift-badge">
+                            {record.work_type === 'half_day' ? 'Half Day' : 'Full Day'}
+                          </span>
+                        </td>
+                        <td className="remark-cell">
+                          {record.override_reason || record.salary_multiplier_reason || <span className="no-remark">No remarks</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="table-empty-state">
+                  <FiClock size={40} />
+                  <h3>No Records Found</h3>
+                  <p>Try broadening your search or choosing a different date range.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
       )}
 
 
-      {/* HOLIDAY MODAL */}
+
+
+
+
+      {/* PREMIUM ADD/EDIT STAFF MODAL */}
       <AnimatePresence>
-        {showHolidayModal && (
-          <div className="modal-backdrop" style={{ zIndex: 1100 }}>
-            <motion.div 
-              className="modal-content" 
-              ref={holidayModalRef}
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              style={{ maxWidth: '500px' }}
+        {showForm && (
+          <div
+            style={{
+              position: 'fixed', inset: 0,
+              background: 'rgba(30, 27, 46, 0.7)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+              zIndex: 99999,
+              padding: '60px 1rem 1rem 260px',
+              boxSizing: 'border-box',
+              overflowY: 'auto'
+            }}
+          >
+            <motion.div
+              ref={addStaffRef}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 30 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              style={{
+                background: 'rgba(255,255,255,0.98)',
+                borderRadius: '24px',
+                border: '1px solid rgba(255,255,255,0.8)',
+                boxShadow: '0 32px 80px rgba(11,102,120,0.25)',
+                width: '100%',
+                maxWidth: '820px',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                padding: 0,
+                boxSizing: 'border-box'
+              }}
             >
-              <div className="modal-header">
-                <h2 className="modal-title">
-                  <FiCalendar className="modal-icon" style={{ color: '#10b981' }} />
-                  {editingHoliday ? 'Edit Holiday' : 'Add Holiday'}
+              {/* Modal Header */}
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '1.5rem 2rem',
+                background: 'linear-gradient(135deg, #0b6678 0%, #0e8fa8 100%)',
+                borderRadius: '24px 24px 0 0'
+              }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  {editingStaffId ? <FiEdit /> : <FiUserPlus />}
+                  {editingStaffId ? 'Update Team Profile' : 'Enlist New Member'}
                 </h2>
-                <button className="modal-close" onClick={() => setShowHolidayModal(false)}><FiX /></button>
+                <button
+                  onClick={resetForm}
+                  style={{
+                    background: 'rgba(255,255,255,0.2)', border: '1.5px solid rgba(255,255,255,0.3)',
+                    borderRadius: '50%', width: '38px', height: '38px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'white', fontSize: '1.1rem', cursor: 'pointer', transition: 'all 0.2s ease'
+                  }}
+                >
+                  <FiX />
+                </button>
               </div>
 
-              <div className="modal-body">
-                <form onSubmit={handleHolidaySubmit}>
-                  <div className="form-group" style={{ marginBottom: '20px' }}>
-                    <label className="form-label" style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '8px', display: 'block' }}>Date</label>
-                    <input 
-                      type="date" 
-                      className="form-input" 
-                      required
-                      value={holidayFormData.date}
-                      onChange={e => setHolidayFormData({ ...holidayFormData, date: e.target.value })}
-                    />
+              {/* Modal Body */}
+              <div style={{ padding: '2rem' }}>
+                <div className="form-section-card">
+                  <div className="form-section-title"><FiUser /> Identity &amp; Contact</div>
+                  <div className="staff-form-grid">
+                    <div className="form-group">
+                      <label className="form-label">Full Name</label>
+                      <input className="form-input" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. John Doe" />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Phone Number</label>
+                      <input className="form-input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="10-digit mobile" maxLength={10} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Email Address</label>
+                      <input className="form-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@example.com" />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Home Location</label>
+                      <input className="form-input" type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City, Area" />
+                    </div>
                   </div>
+                </div>
 
-                  <div className="form-group" style={{ marginBottom: '20px' }}>
-                    <label className="form-label" style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '8px', display: 'block' }}>Holiday Name / Reason</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      placeholder="e.g. Diwali, Staff Birthday" 
-                      required
-                      value={holidayFormData.name}
-                      onChange={e => setHolidayFormData({ ...holidayFormData, name: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: '20px' }}>
-                    <label className="form-label" style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '8px', display: 'block' }}>Holiday Type</label>
-                    <select 
-                      className="form-input"
-                      value={holidayFormData.type}
-                      onChange={e => setHolidayFormData({ ...holidayFormData, type: e.target.value, staff_id: e.target.value === 'company_holiday' ? "" : holidayFormData.staff_id })}
-                    >
-                      <option value="company_holiday" style={{color: '#333'}}>Company / Global Holiday</option>
-                      <option value="weekly_off" style={{color: '#333'}}>Staff Specific Off / Holiday</option>
-                    </select>
-                  </div>
-
-                  {holidayFormData.type === 'weekly_off' && (
-                    <div className="form-group" style={{ marginBottom: '20px' }}>
-                      <label className="form-label" style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '8px', display: 'block' }}>Select Staff</label>
-                      <select 
-                        className="form-input"
-                        required
-                        value={holidayFormData.staff_id}
-                        onChange={e => setHolidayFormData({ ...holidayFormData, staff_id: e.target.value })}
-                      >
-                        <option value="" style={{color: '#333'}}>— Choose Staff —</option>
-                        {staffs.map(s => (
-                          <option key={s.id} value={s.id} style={{color: '#333'}}>{s.name} ({s.phone})</option>
-                        ))}
+                <div className="form-section-card">
+                  <div className="form-section-title"><FiAward /> Assignment &amp; Remuneration</div>
+                  <div className="staff-form-grid">
+                    <div className="form-group">
+                      <label className="form-label">Assign Branch</label>
+                      <select className="form-input" value={branchName} onChange={(e) => setBranchName(e.target.value)}>
+                        <option value="">Main Hub (Default)</option>
+                        {branches?.map(b => <option key={b.branch_id} value={b.name}>{b.name}</option>)}
                       </select>
                     </div>
-                  )}
-
-                  {/* PAID / UNPAID TOGGLE */}
-                  <div className="form-group" style={{ marginBottom: '25px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div>
-                      <span style={{ color: '#fff', fontWeight: '600', display: 'block' }}>Paid Holiday</span>
-                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>Should this be counted as a paid day?</span>
+                    <div className="form-group">
+                      <label className="form-label">Monthly Salary (₹)</label>
+                      <div style={{ position: 'relative' }}>
+                        <input className="form-input" type="number" value={monthlySalary}
+                          onChange={(e) => {
+                            setMonthlySalary(e.target.value);
+                            if (e.target.value) setPerDaySalary(String(Math.round(e.target.value / 30)));
+                          }}
+                        />
+                        <FiCreditCard style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--staff-primary)', opacity: 0.5 }} />
+                      </div>
                     </div>
-                    <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '50px', height: '24px', cursor: 'pointer' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={holidayFormData.is_paid}
-                        onChange={e => setHolidayFormData({ ...holidayFormData, is_paid: e.target.checked })}
-                        style={{ opacity: 0, width: 0, height: 0 }}
-                      />
-                      <span style={{ 
-                        position: 'absolute', 
-                        cursor: 'pointer', 
-                        top: 0, left: 0, right: 0, bottom: 0, 
-                        backgroundColor: holidayFormData.is_paid ? '#10B981' : '#475569', 
-                        transition: '.4s', 
-                        borderRadius: '34px' 
-                      }}>
-                        <span style={{ 
-                          position: 'absolute', 
-                          height: '18px', width: '18px', 
-                          left: holidayFormData.is_paid ? '28px' : '4px', 
-                          bottom: '3px', 
-                          backgroundColor: 'white', 
-                          transition: '.4s', 
-                          borderRadius: '50%' 
-                        }}></span>
-                      </span>
-                    </label>
+                    <div className="form-group">
+                      <label className="form-label">Weekly Off</label>
+                      <div className="weekly-off-grid">
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                          <div
+                            key={day}
+                            className={`day-chip ${weeklyOffDays.includes(day) ? 'selected' : ''}`}
+                            onClick={() => setWeeklyOffDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day])}
+                          >
+                            {day}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', gridColumn: '1/-1' }}>
+                      <div className="avatar-upload-box" onClick={() => fileInputRef.current.click()}>
+                        {photoPreviewUrl ? (
+                          <img src={photoPreviewUrl} alt="Preview" className="avatar-preview" />
+                        ) : (
+                          <FiCamera size={24} color="var(--staff-primary)" />
+                        )}
+                        <div className="upload-overlay">Upload Photo</div>
+                        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ margin: 0, fontWeight: 800, color: 'var(--staff-primary)', fontSize: '0.95rem' }}>Team Portrait</p>
+                        <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--staff-text-muted)' }}>Used for ID cards and attendance verification</p>
+                      </div>
+                    </div>
                   </div>
+                </div>
+              </div>
 
-                  <button type="submit" className="button-primary" style={{ width: '100%', marginTop: '10px' }}>
-                    <FiCheck /> {editingHoliday ? 'Update' : 'Create'} Holiday
-                  </button>
-                </form>
+              {/* Modal Footer */}
+              <div style={{
+                display: 'flex', justifyContent: 'flex-end', gap: '0.75rem',
+                padding: '1.25rem 2rem',
+                borderTop: '1.5px solid var(--staff-border)',
+                background: 'var(--staff-bg)',
+                borderRadius: '0 0 24px 24px'
+              }}>
+                <button className="staff-btn-secondary" onClick={resetForm}><FiX /> Discard</button>
+                <button className="staff-btn-primary" onClick={handleSubmit}>
+                  <FiSave /> {editingStaffId ? 'Update Profile' : 'Create Profile'}
+                </button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* ADD/EDIT STAFF MODAL */}
-      {showForm && (
-        <div className="modal-backdrop">
-          <div className="modal-content" ref={addStaffRef}>
-            <h2 className="modal-title">{editingStaffId ? "Edit Staff" : "Add New Staff"}</h2>
-            <div className="form-grid">
-              <div className="form-group">
-                <label className="form-label">Full Name</label>
-                <input
-                  className="form-input"
-                  type="text"
-                  placeholder="Enter full name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
-                <input
-                  className="form-input"
-                  type="email"
-                  placeholder="Enter email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Phone Number</label>
-                <input
-                  className="form-input"
-                  type="tel"
-                  placeholder="Enter phone number"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  maxLength={10}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Location</label>
-                <input
-                  className="form-input"
-                  type="text"
-                  placeholder="Enter location"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                />
-              </div>
-
-              {/* Salary Fields */}
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: '1fr 1fr', 
-                gap: '15px',
-                padding: '15px',
-                backgroundColor: '#f8f9fa',
-                borderRadius: '8px',
-                marginTop: '10px'
-              }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontWeight: 'bold', color: '#28a745' }}>
-                    Monthly Salary (₹)
-                  </label>
-                  <input
-                    className="form-input"
-                    type="number"
-                    placeholder="e.g., 18000"
-                    value={monthlySalary}
-                    onChange={(e) => {
-                      setMonthlySalary(e.target.value);
-                      // Auto-calculate per day salary when monthly salary is entered
-                      if (e.target.value) {
-                        const calculated = Math.round(e.target.value / 30 * 100) / 100;
-                        setPerDaySalary(String(calculated));
-                      }
-                    }}
-                    min="0"
-                  />
-                  <small style={{ color: '#666', fontSize: '11px' }}>Auto-calculates per day salary</small>
+      {/* HOLIDAY MODAL */}
+      <AnimatePresence>
+        {showHolidayModal && (
+          <div className="modal-backdrop" onClick={() => setShowHolidayModal(false)}>
+            <motion.div
+              className="modal-content"
+              ref={holidayModalRef}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              style={{ maxWidth: '520px', width: '95%', padding: 0, overflow: 'hidden', position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+            >
+              <div className="modal-header">
+                <div className="modal-title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div className="modal-icon-badge" style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'linear-gradient(135deg, var(--staff-primary), var(--staff-gold))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.1rem', flexShrink: 0 }}>
+                    <FiCalendar />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1e1b2e' }}>
+                      {editingHoliday ? 'Update Holiday' : 'New Holiday Event'}
+                    </h2>
+                    <p className="modal-subtitle" style={{ margin: 0, fontSize: '0.8rem', color: '#8b85a1' }}>
+                      {editingHoliday ? 'Update the holiday details below' : 'Schedule a new holiday or staff off day'}
+                    </p>
+                  </div>
                 </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontWeight: 'bold', color: '#007bff' }}>
-                    Per Day Salary (₹)
-                  </label>
-                  <input
-                    className="form-input"
-                    type="number"
-                    placeholder="e.g., 600"
-                    value={perDaySalary}
-                    onChange={(e) => setPerDaySalary(e.target.value)}
-                    min="0"
-                    step="0.01"
-                  />
-                  <small style={{ color: '#666', fontSize: '11px' }}>Editable for custom rates</small>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Profile Photo</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  style={{ display: 'none' }}
-                />
-                <button type="button" onClick={pickImage} className="action-button">
-                  <FiCamera />
-                  <span>Pick Photo</span>
+                <button
+                  className="modal-close-btn"
+                  onClick={() => setShowHolidayModal(false)}
+                  title="Close"
+                  style={{ background: 'rgba(124,92,191,0.08)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#7c5cbf', fontSize: '1.1rem' }}
+                >
+                  <FiX />
                 </button>
-                {photoPreviewUrl && (
-                  <img src={photoPreviewUrl} alt="Preview" style={{ width: '80px', height: '80px', borderRadius: '50%', marginTop: '10px' }} />
-                )}
               </div>
 
-              {/* Weekly Off Days */}
-              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                <label className="form-label">Weekly Off Days</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
-                  {DAYS_OF_WEEK.map(day => (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => {
-                        setWeeklyOffDays(prev => 
-                          prev.includes(day) 
-                            ? prev.filter(d => d !== day) 
-                            : [...prev, day]
-                        );
-                      }}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: '20px',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        border: '2px solid',
-                        borderColor: weeklyOffDays.includes(day) ? '#5B4FE9' : '#e2e8f0',
-                        backgroundColor: weeklyOffDays.includes(day) ? '#5B4FE9' : 'transparent',
-                        color: weeklyOffDays.includes(day) ? '#fff' : '#64748b',
+              <form onSubmit={handleHolidaySubmit} className="modal-body">
+                <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  {/* Event Name - full width */}
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label>Event Name *</label>
+                    <input
+                      className="form-input"
+                      type="text"
+                      value={holidayFormData.name}
+                      onChange={e => setHolidayFormData({ ...holidayFormData, name: e.target.value })}
+                      placeholder="e.g. Diwali Celebration"
+                      required
+                    />
+                  </div>
+
+                  {/* Date */}
+                  <div className="form-group">
+                    <label>Date *</label>
+                    <input
+                      className="form-input"
+                      type="date"
+                      value={holidayFormData.date}
+                      onChange={e => setHolidayFormData({ ...holidayFormData, date: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  {/* Holiday Type */}
+                  <div className="form-group">
+                    <label>Holiday Type</label>
+                    <select
+                      className="form-input"
+                      value={holidayFormData.type}
+                      onChange={e => setHolidayFormData({ ...holidayFormData, type: e.target.value, staff_id: '' })}
+                    >
+                      <option value="company_holiday">Company-wide Holiday</option>
+                      <option value="weekly_off">Individual Staff Off</option>
+                    </select>
+                  </div>
+
+                  {/* Staff selector - full width, only if staff holiday */}
+                  {holidayFormData.type === 'weekly_off' && (
+                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                      <label>Select Staff Member</label>
+                      <select
+                        className="form-input"
+                        value={holidayFormData.staff_id}
+                        onChange={e => setHolidayFormData({ ...holidayFormData, staff_id: e.target.value })}
+                        required
+                      >
+                        <option value="">Choose staff member...</option>
+                        {staffs.map(s => <option key={s.id} value={s.id}>{s.name} ({s.phone})</option>)}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Paid Holiday toggle - full width */}
+                  <div className="form-group" style={{ gridColumn: '1 / -1', background: 'rgba(124,92,191,0.05)', padding: '0.9rem 1rem', borderRadius: '12px', border: '1px solid rgba(124,92,191,0.1)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: '#1e1b2e' }}>Paid Holiday</p>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#8b85a1' }}>Staff will receive full pay for this day</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        style={{ width: '20px', height: '20px', accentColor: 'var(--staff-primary)', cursor: 'pointer' }}
+                        checked={holidayFormData.is_paid}
+                        onChange={e => setHolidayFormData({ ...holidayFormData, is_paid: e.target.checked })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="staff-btn-secondary"
+                    onClick={() => setShowHolidayModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="staff-btn-primary">
+                    <FiCheck /> {editingHoliday ? 'Save Changes' : 'Create Holiday'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ATTENDANCE HISTORY MODAL */}
+      <AnimatePresence>
+        {showAttendanceHistory && (
+          <div className="attendance-history-overlay">
+            <motion.div
+              className="premium-history-modal"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+            >
+              <div className="modal-header">
+                <h2 className="modal-title"><FiCalendar /> Attendance Archive</h2>
+                <button className="modal-close" onClick={() => setShowAttendanceHistory(false)}><FiX /></button>
+              </div>
+
+              <div className="modal-body" style={{ padding: 0 }}>
+                <div className="history-filter-shelf">
+                  <div className="shelf-inputs">
+                    <div className="shelf-group">
+                      <label>Period Type</label>
+                      <div className="filter-tabs-modern" style={{ background: 'rgba(0,0,0,0.05)', padding: '4px' }}>
+                        {['date', 'month'].map(f => (
+                          <button 
+                            key={f}
+                            className={`modern-filter-btn ${historyFilter === f ? 'active' : ''}`} 
+                            style={historyFilter === f ? { background: 'white', color: 'var(--staff-primary)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' } : { color: 'var(--staff-text-muted)' }}
+                            onClick={() => setHistoryFilter(f)}
+                          >
+                            {f.charAt(0).toUpperCase() + f.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {historyFilter === 'date' && (
+                      <div className="shelf-group">
+                        <label>Select Date</label>
+                        <input type="date" value={historyDate} onChange={e => setHistoryDate(e.target.value)} />
+                      </div>
+                    )}
+                    {historyFilter === 'month' && (
+                      <div className="shelf-group">
+                        <label>Select Month</label>
+                        <input type="month" value={historyMonth} onChange={e => setHistoryMonth(e.target.value)} />
+                      </div>
+                    )}
+
+                    <div className="shelf-group">
+                      <label>Filter By Staff</label>
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <FiUser style={{ position: 'absolute', left: '12px', color: 'var(--staff-text-muted)' }} />
+                        <select 
+                          value={historyStaffName} 
+                          onChange={e => setHistoryStaffName(e.target.value)} 
+                          style={{ paddingLeft: '35px', minWidth: '220px', height: '45px', borderRadius: '10px', border: '1.5px solid var(--staff-border)', background: 'white', fontWeight: 700 }}
+                        >
+                          <option value="">All Staff Members</option>
+                          {staffs.map(s => (
+                            <option key={s.id} value={s.name}>{s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <button 
+                      className="staff-btn-history search-btn" 
+                      onClick={fetchAttendanceHistory} 
+                      disabled={historyLoading}
+                      style={{ 
+                        padding: '0.875rem 2.5rem',
+                        fontSize: '1rem',
+                        background: 'var(--staff-grad-primary)',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                       }}
                     >
-                      {day}
+                      {historyLoading ? (
+                        <div className="bm-spinner-mini" style={{ width: '18px', height: '18px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></div>
+                      ) : (
+                        <><FiRefreshCcw /> Fetch Records</>
+                      )}
                     </button>
-                  ))}
+                  </div>
                 </div>
-                <small style={{ color: '#666', fontSize: '11px', marginTop: '4px', display: 'block' }}>
-                  Select one or more days as recurring weekly offs
-                </small>
-              </div>
-            </div>
 
-            <div className="modal-actions">
-              <button className="button-secondary" onClick={resetForm}>
-                <FiXCircle />
-                <span>Cancel</span>
-              </button>
-              <button className="button-primary" onClick={handleSubmit}>
-                <FiSave />
-                <span>{editingStaffId ? "Update" : "Save"}</span>
-              </button>
-            </div>
+                <div className="history-data-table-wrapper" style={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto' }}>
+                  {historyData.length > 0 ? (
+                    <table className="modern-history-table">
+                      <thead>
+                        <tr>
+                          <th>Staff Member</th>
+                          <th>Status</th>
+                          <th>Work Detail</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {historyData.map((record, idx) => (
+                          <tr key={idx} className="history-row-animate">
+                            <td className="staff-cell">
+                              <div className="staff-ident">
+                                <span className="staff-initials">{record.staff_name?.charAt(0)}</span>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                  <span className="staff-full-name">{record.staff_name}</span>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--staff-text-muted)' }}>{new Date(record.date).toLocaleDateString()}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <span className={`badge-status ${record.status?.toLowerCase()}`}>
+                                {record.status}
+                              </span>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span className="shift-badge">
+                                  {record.work_type === 'full_day' ? 'Full Shift' : 'Half Shift'}
+                                </span>
+                                {record.salary_multiplier > 1 && (
+                                  <span className="bonus-pill">
+                                    {record.salary_multiplier}x Premium
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="table-empty-state">
+                      <FiFileText size={48} />
+                      <h3>No Records Found</h3>
+                      <p>Try choosing a different date or month to view logs.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* PRESENT STAFF DETAILS MODAL */}
       {showPresentDetails && (
-        <div className="modal-backdrop">
-          <div className="modal-content large-modal" ref={presentDetailsRef}>
-            <div className="modal-header">
-              <h2 className="modal-title">
-                <FiCheckCircle className="modal-icon present" />
-                Present Staff Details
+        <div
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(30, 27, 46, 0.7)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 99999, padding: '1rem 1rem 1rem 260px', boxSizing: 'border-box'
+          }}
+        >
+          <div
+            ref={presentDetailsRef}
+            style={{
+              background: 'rgba(255,255,255,0.98)',
+              borderRadius: '24px',
+              border: '1px solid rgba(255,255,255,0.8)',
+              boxShadow: '0 32px 80px rgba(11,102,120,0.25)',
+              width: '100%', maxWidth: '860px',
+              maxHeight: '90vh', overflowY: 'auto'
+            }}
+          >
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'1.5rem 2rem', background:'linear-gradient(135deg, #0b6678 0%, #0e8fa8 100%)', borderRadius:'24px 24px 0 0' }}>
+              <h2 style={{ margin:0, fontSize:'1.2rem', fontWeight:800, color:'white', display:'flex', alignItems:'center', gap:'0.6rem' }}>
+                <FiCheckCircle /> Present Staff Details
               </h2>
-              <button
-                className="modal-close"
-                onClick={() => setShowPresentDetails(false)}
-              >
-                <FiXCircle />
+              <button onClick={() => setShowPresentDetails(false)} style={{ background:'rgba(255,255,255,0.2)', border:'1.5px solid rgba(255,255,255,0.3)', borderRadius:'50%', width:'36px', height:'36px', display:'flex', alignItems:'center', justifyContent:'center', color:'white', cursor:'pointer' }}>
+                <FiX />
               </button>
             </div>
-
-            <div className="modal-body">
+            <div style={{ padding: '1.5rem' }}>
               {detailsLoading ? (
                 <div className="loading-state">
                   <FiClock size={32} />
@@ -2005,22 +1867,36 @@ const Staff = () => {
 
       {/* ABSENT STAFF DETAILS MODAL */}
       {showAbsentDetails && (
-        <div className="modal-backdrop">
-          <div className="modal-content large-modal" ref={absentDetailsRef}>
-            <div className="modal-header">
-              <h2 className="modal-title">
-                <FiXCircleIcon className="modal-icon absent" />
-                Absent Staff Details
+        <div
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(30, 27, 46, 0.7)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 99999, padding: '1rem 1rem 1rem 260px', boxSizing: 'border-box'
+          }}
+        >
+          <div
+            ref={absentDetailsRef}
+            style={{
+              background: 'rgba(255,255,255,0.98)',
+              borderRadius: '24px',
+              border: '1px solid rgba(255,255,255,0.8)',
+              boxShadow: '0 32px 80px rgba(239,68,68,0.2)',
+              width: '100%', maxWidth: '860px',
+              maxHeight: '90vh', overflowY: 'auto'
+            }}
+          >
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'1.5rem 2rem', background:'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)', borderRadius:'24px 24px 0 0' }}>
+              <h2 style={{ margin:0, fontSize:'1.2rem', fontWeight:800, color:'white', display:'flex', alignItems:'center', gap:'0.6rem' }}>
+                <FiXCircleIcon /> Absent Staff Details
               </h2>
-              <button
-                className="modal-close"
-                onClick={() => setShowAbsentDetails(false)}
-              >
-                <FiXCircle />
+              <button onClick={() => setShowAbsentDetails(false)} style={{ background:'rgba(255,255,255,0.2)', border:'1.5px solid rgba(255,255,255,0.3)', borderRadius:'50%', width:'36px', height:'36px', display:'flex', alignItems:'center', justifyContent:'center', color:'white', cursor:'pointer' }}>
+                <FiX />
               </button>
             </div>
-
-            <div className="modal-body">
+            <div style={{ padding: '1.5rem' }}>
               {detailsLoading ? (
                 <div className="loading-state">
                   <FiClock size={32} />
@@ -2086,7 +1962,7 @@ style.textContent = `
   }
   .calendar-day:hover {
     background: #ffffff;
-    border-color: #10b981;
+    border-color: var(--color-primary);
     transform: translateY(-4px);
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
     z-index: 10;
@@ -2104,15 +1980,15 @@ style.textContent = `
   .day-number {
     font-weight: 800;
     font-size: 1.2rem;
-    color: #1e293b;
+    color: var(--color-text);
   }
   .has-holiday {
-    background: rgba(16, 185, 129, 0.08);
-    border-color: rgba(16, 185, 129, 0.2);
+    background: rgba(11, 102, 120, 0.08);
+    border-color: rgba(11, 102, 120, 0.2);
   }
   .has-weekly-off {
-    background: rgba(59, 130, 246, 0.08);
-    border-color: rgba(59, 130, 246, 0.2);
+    background: rgba(241, 179, 42, 0.08);
+    border-color: rgba(241, 179, 42, 0.2);
   }
   .holiday-badges {
     display: flex;
@@ -2134,20 +2010,95 @@ style.textContent = `
     gap: 4px;
   }
   .holiday-badge.company_holiday {
-    background: rgba(245, 158, 11, 0.15);
-    color: #fbbf24;
+    background: rgba(241, 179, 42, 0.15);
+    color: var(--color-secondary);
   }
   .holiday-badge.weekly_off {
-    background: rgba(244, 63, 94, 0.15); /* Rose background */
-    color: #fb7185; /* Rose text */
+    background: rgba(11, 102, 120, 0.15);
+    color: var(--color-primary);
   }
   .holiday-badge.unpaid {
-    border-left: 2px solid #ef4444;
+    border-left: 2px solid var(--color-danger);
   }
   .h-name {
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .status-badge.holiday {
+    background: rgba(241, 179, 42, 0.15);
+    color: var(--color-gold-dark);
+    border: 1px solid var(--color-gold);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    text-align: center;
+    display: inline-block;
+  }
+  .status-badge.leave {
+    background: rgba(11, 102, 120, 0.1);
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary-light);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    text-align: center;
+    display: inline-block;
+  }
+  .attendance-option.disabled {
+    cursor: not-allowed;
+  }
+  .attendance-option.disabled .attendance-label {
+    background-color: #f1f5f9 !important;
+    color: #94a3b8 !important;
+  }
+  .attendance-label.leave-mark {
+    border-color: rgba(11, 102, 120, 0.3);
+    color: var(--color-primary);
+    background: rgba(11, 102, 120, 0.08);
+  }
+  .attendance-option input[type="radio"]:checked + .attendance-label.leave-mark,
+  .attendance-label.leave-mark.checked {
+    background: linear-gradient(135deg, rgba(11, 102, 120, 0.1), rgba(11, 102, 120, 0.2)) !important;
+    border-color: var(--color-primary) !important;
+    color: var(--color-primary) !important;
+  }
+
+  /* Staff Form Modal Specific Layout Fixes */
+  .modal-content.staff-form-modal {
+    max-width: 750px !important;
+    width: 95% !important;
+  }
+
+  .modal-content.staff-form-modal .form-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1.25rem !important;
+  }
+
+  /* Responsive adjustment for small screens */
+  @media (max-width: 768px) {
+    .modal-content.staff-form-modal .form-grid {
+      grid-template-columns: 1fr !important;
+    }
+    .modal-content.staff-form-modal {
+      max-width: 95% !important;
+      padding: 1.5rem !important;
+    }
+  }
+
+  /* Specific grouping for salary fields inside the grid */
+  .salary-fields-container {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    padding: 15px;
+    background-color: var(--color-bg-light);
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
   }
 `;
 document.head.appendChild(style);

@@ -25,10 +25,10 @@ const styles = `
   /* Payment Due UI Styles - Soft Pastel Background */
   .paymentdue-page {
     min-height: 100vh;
-    background: linear-gradient(135deg, #f5e6ff 0%, #e6f0ff 50%, #ffe6f5 100%);
+    background: var(--color-background);
     position: relative;
     overflow-x: hidden;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-family-sans);
   }
 
   .paymentdue-blob {
@@ -43,14 +43,16 @@ const styles = `
 
   .paymentdue-blob1 { 
     width: 600px; height: 600px; 
-    background: radial-gradient(circle, #e0d4ff, #d4e4ff); 
+    background: radial-gradient(circle, var(--color-primary-light), transparent); 
     top: -200px; left: -150px; 
+    opacity: 0.15;
   }
   .paymentdue-blob2 { 
     width: 500px; height: 500px; 
-    background: radial-gradient(circle, #ffe4ec, #fff4d4); 
+    background: radial-gradient(circle, var(--color-gold-light), transparent); 
     bottom: -150px; right: -100px; 
     animation-delay: -4s; 
+    opacity: 0.15;
   }
 
   @keyframes blobFloat {
@@ -85,7 +87,7 @@ const styles = `
     border-radius: 28px;
     padding: 28px 32px;
     margin-bottom: 28px;
-    box-shadow: 0 8px 32px rgba(124,92,191,0.1), 0 2px 8px rgba(0,0,0,0.04);
+    box-shadow: 0 8px 32px rgba(11, 102, 120, 0.1), 0 2px 8px rgba(0,0,0,0.04);
     border: 1px solid rgba(255,255,255,0.95);
     position: relative;
     overflow: hidden;
@@ -99,7 +101,7 @@ const styles = `
     left: 0;
     right: 0;
     height: 5px;
-    background: linear-gradient(90deg, #9b6fe8, #6baee0, #f472b6);
+    background: var(--gradient-primary);
     background-size: 200% 100%;
     animation: cardShimmer 3s infinite linear;
   }
@@ -113,10 +115,10 @@ const styles = `
   }
 
   .paymentdue-title {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-family-heading);
     font-size: 28px;
     font-weight: 600;
-    color: #2d2440;
+    color: var(--color-text);
     display: flex;
     align-items: center;
     gap: 14px;
@@ -129,15 +131,15 @@ const styles = `
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #9b6fe8 0%, #7c5cbf 100%);
+    background: var(--gradient-primary);
     color: white;
     font-size: 24px;
-    box-shadow: 0 6px 20px rgba(124,92,191,0.3);
+    box-shadow: var(--shadow-md);
   }
 
   .paymentdue-subtitle {
     margin: 8px 0 0 0;
-    color: #6b7280;
+    color: var(--color-text-secondary);
     font-size: 14px;
   }
 
@@ -146,7 +148,7 @@ const styles = `
     align-items: center;
     gap: 10px;
     padding: 14px 24px;
-    background: linear-gradient(135deg, #9b6fe8 0%, #7c5cbf 100%);
+    background: var(--gradient-primary);
     color: white;
     border: none;
     border-radius: 14px;
@@ -154,12 +156,12 @@ const styles = `
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s;
-    box-shadow: 0 6px 20px rgba(124,92,191,0.3);
+    box-shadow: 0 6px 20px rgba(11, 102, 120, 0.3);
   }
 
   .paymentdue-refresh-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(124,92,191,0.4);
+    box-shadow: 0 10px 30px rgba(11, 102, 120, 0.4);
   }
 
   .paymentdue-export-btn {
@@ -167,7 +169,7 @@ const styles = `
     align-items: center;
     gap: 10px;
     padding: 14px 24px;
-    background: linear-gradient(135deg, #48c78e 0%, #3ab07a 100%);
+    background: var(--gradient-secondary);
     color: white;
     border: none;
     border-radius: 14px;
@@ -175,12 +177,12 @@ const styles = `
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s;
-    box-shadow: 0 6px 20px rgba(72,199,142,0.3);
+    box-shadow: var(--shadow-sm);
   }
 
   .paymentdue-export-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(72,199,142,0.4);
+    box-shadow: var(--shadow-md);
   }
 
   .paymentdue-header-actions {
@@ -195,7 +197,7 @@ const styles = `
     border-radius: 20px;
     padding: 20px 24px;
     margin-bottom: 24px;
-    box-shadow: 0 8px 32px rgba(124,92,191,0.1);
+    box-shadow: 0 8px 32px rgba(11, 102, 120, 0.1);
     border: 1px solid rgba(255,255,255,0.95);
     animation: rise 0.5s cubic-bezier(0.16,1,0.3,1);
   }
@@ -217,17 +219,17 @@ const styles = `
     width: 100%;
     padding: 14px 16px 14px 48px;
     border-radius: 14px;
-    border: 2px solid rgba(124,92,191,0.15);
+    border: 2px solid rgba(11, 102, 120, 0.15);
     font-size: 15px;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-family-sans);
     transition: all 0.3s;
     background: rgba(255,255,255,0.9);
   }
 
   .paymentdue-search-input:focus {
     outline: none;
-    border-color: #9b6fe8;
-    box-shadow: 0 0 0 4px rgba(124,92,191,0.1);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px rgba(11, 102, 120, 0.1);
   }
 
   .paymentdue-search-icon {
@@ -235,7 +237,7 @@ const styles = `
     left: 16px;
     top: 50%;
     transform: translateY(-50%);
-    color: #6b7280;
+    color: var(--color-text-secondary);
     font-size: 18px;
   }
 
@@ -244,10 +246,10 @@ const styles = `
     align-items: center;
     gap: 8px;
     padding: 14px 20px;
-    background: linear-gradient(135deg, rgba(124,92,191,0.1) 0%, rgba(107,174,224,0.1) 100%);
-    border: 2px solid rgba(124,92,191,0.15);
+    background: linear-gradient(135deg, rgba(11, 102, 120, 0.1) 0%, rgba(241, 179, 42, 0.1) 100%);
+    border: 2px solid rgba(11, 102, 120, 0.15);
     border-radius: 14px;
-    color: #7c5cbf;
+    color: var(--color-primary);
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s;
@@ -255,12 +257,12 @@ const styles = `
   }
 
   .paymentdue-filter-toggle:hover {
-    background: linear-gradient(135deg, rgba(124,92,191,0.2) 0%, rgba(107,174,224,0.2) 100%);
-    border-color: #9b6fe8;
+    background: linear-gradient(135deg, rgba(11, 102, 120, 0.2) 0%, rgba(241, 179, 42, 0.2) 100%);
+    border-color: var(--color-primary);
   }
 
   .paymentdue-filter-toggle.active {
-    background: linear-gradient(135deg, #9b6fe8 0%, #7c5cbf 100%);
+    background: var(--gradient-primary);
     color: white;
     border-color: transparent;
   }
@@ -271,7 +273,7 @@ const styles = `
     gap: 16px;
     margin-top: 20px;
     padding-top: 20px;
-    border-top: 1px solid rgba(124,92,191,0.1);
+    border-top: 1px solid rgba(11, 102, 120, 0.1);
   }
 
   .paymentdue-filter-group {
@@ -291,17 +293,17 @@ const styles = `
   .paymentdue-filter-input {
     padding: 12px 14px;
     border-radius: 10px;
-    border: 2px solid rgba(124,92,191,0.15);
+    border: 2px solid rgba(11, 102, 120, 0.15);
     font-size: 14px;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-family-sans);
     transition: all 0.3s;
     background: rgba(255,255,255,0.9);
   }
 
   .paymentdue-filter-input:focus {
     outline: none;
-    border-color: #9b6fe8;
-    box-shadow: 0 0 0 4px rgba(124,92,191,0.1);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px rgba(11, 102, 120, 0.1);
   }
 
   .paymentdue-filter-row {
@@ -347,7 +349,7 @@ const styles = `
   }
 
   .paymentdue-results-info strong {
-    color: #2d2440;
+    color: var(--color-text);
   }
 
   /* Error Message */
@@ -372,7 +374,7 @@ const styles = `
     border-radius: 28px;
     padding: 80px;
     text-align: center;
-    box-shadow: 0 8px 32px rgba(124,92,191,0.1);
+    box-shadow: 0 8px 32px rgba(11, 102, 120, 0.1);
     border: 1px solid rgba(255,255,255,0.95);
     animation: rise 0.5s cubic-bezier(0.16,1,0.3,1);
   }
@@ -380,8 +382,8 @@ const styles = `
   .paymentdue-spinner {
     width: 48px;
     height: 48px;
-    border: 4px solid rgba(155,111,232,0.2);
-    border-top: 4px solid #9b6fe8;
+    border: 4px solid rgba(11, 102, 120, 0.2);
+    border-top: 4px solid var(--color-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: 0 auto 20px;
@@ -399,7 +401,7 @@ const styles = `
     border-radius: 28px;
     padding: 80px;
     text-align: center;
-    box-shadow: 0 8px 32px rgba(124,92,191,0.1);
+    box-shadow: 0 8px 32px rgba(11, 102, 120, 0.1);
     border: 1px solid rgba(255,255,255,0.95);
     animation: rise 0.5s cubic-bezier(0.16,1,0.3,1);
   }
@@ -411,10 +413,10 @@ const styles = `
   }
 
   .paymentdue-empty-title {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-family-heading);
     font-size: 24px;
     font-weight: 600;
-    color: #2d2440;
+    color: var(--color-text);
     margin: 0 0 12px 0;
   }
 
@@ -428,7 +430,7 @@ const styles = `
     align-items: center;
     gap: 10px;
     padding: 14px 28px;
-    background: linear-gradient(135deg, #9b6fe8 0%, #7c5cbf 100%);
+    background: var(--gradient-primary);
     color: white;
     border: none;
     border-radius: 14px;
@@ -436,12 +438,12 @@ const styles = `
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s;
-    box-shadow: 0 6px 20px rgba(124,92,191,0.3);
+    box-shadow: 0 6px 20px rgba(11, 102, 120, 0.3);
   }
 
   .paymentdue-dashboard-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(124,92,191,0.4);
+    box-shadow: 0 10px 30px rgba(11, 102, 120, 0.4);
   }
 
   /* Jobs Grid */
@@ -459,7 +461,7 @@ const styles = `
     -webkit-backdrop-filter: blur(24px);
     border-radius: 28px;
     padding: 24px;
-    box-shadow: 0 8px 32px rgba(124,92,191,0.1), 0 2px 8px rgba(0,0,0,0.04);
+    box-shadow: 0 8px 32px rgba(11, 102, 120, 0.1), 0 2px 8px rgba(0,0,0,0.04);
     border: 1px solid rgba(255,255,255,0.95);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
@@ -475,7 +477,7 @@ const styles = `
     bottom: 0;
     border-radius: 28px;
     padding: 2px;
-    background: linear-gradient(135deg, rgba(155,111,232,0.3), rgba(107,174,224,0.3));
+    background: linear-gradient(135deg, rgba(11, 102, 120, 0.3), rgba(241, 179, 42, 0.3));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
@@ -487,7 +489,7 @@ const styles = `
 
   .paymentdue-card:hover {
     transform: translateY(-8px) scale(1.01);
-    box-shadow: 0 20px 60px rgba(124,92,191,0.2), 0 8px 20px rgba(0,0,0,0.08);
+    box-shadow: 0 20px 60px rgba(11, 102, 120, 0.2), 0 8px 20px rgba(0,0,0,0.08);
   }
 
   .paymentdue-card:hover::before {
@@ -534,8 +536,8 @@ const styles = `
     border-radius: 12px;
     font-size: 13px;
     font-weight: 700;
-    background: linear-gradient(135deg, rgba(25,118,210,0.1) 0%, rgba(66,165,245,0.1) 100%);
-    color: #1976d2;
+    background: rgba(11, 102, 120, 0.1);
+    color: var(--color-primary);
   }
 
   .paymentdue-status-badge {
@@ -577,13 +579,13 @@ const styles = `
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, rgba(155,111,232,0.1) 0%, rgba(107,174,224,0.1) 100%);
-    color: #7c5cbf;
+    background: linear-gradient(135deg, rgba(11, 102, 120, 0.1) 0%, rgba(241, 179, 42, 0.1) 100%);
+    color: var(--color-primary);
   }
 
   .paymentdue-customer-name {
     font-weight: 700;
-    color: #2d2440;
+    color: var(--color-text);
     font-size: 15px;
   }
 
@@ -594,11 +596,11 @@ const styles = `
 
   /* Payment Details Card */
   .paymentdue-details {
-    background: linear-gradient(135deg, rgba(124,92,191,0.04) 0%, rgba(107,174,224,0.04) 100%);
+    background: linear-gradient(135deg, rgba(11, 102, 120, 0.04) 0%, rgba(241, 179, 42, 0.04) 100%);
     border-radius: 20px;
     padding: 20px;
     margin-bottom: 20px;
-    border: 1px solid rgba(124,92,191,0.08);
+    border: 1px solid rgba(11, 102, 120, 0.08);
   }
 
   .paymentdue-detail-row {
@@ -609,7 +611,7 @@ const styles = `
   }
 
   .paymentdue-detail-row:not(:last-child) {
-    border-bottom: 1px solid rgba(124,92,191,0.08);
+    border-bottom: 1px solid rgba(11, 102, 120, 0.08);
   }
 
   .paymentdue-detail-label {
@@ -624,9 +626,9 @@ const styles = `
   }
 
   .paymentdue-detail-value.total {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-family-heading);
     font-size: 22px;
-    color: #2d2440;
+    color: var(--color-text);
   }
 
   .paymentdue-detail-value.received {
@@ -634,7 +636,7 @@ const styles = `
   }
 
   .paymentdue-detail-value.due {
-    color: #dc2626;
+    color: var(--color-danger);
   }
 
   .paymentdue-due-date {
@@ -661,7 +663,7 @@ const styles = `
   .paymentdue-update-btn {
     width: 100%;
     padding: 16px;
-    background: linear-gradient(135deg, #9b6fe8 0%, #7c5cbf 100%);
+    background: var(--gradient-primary);
     color: white;
     border: none;
     border-radius: 14px;
@@ -673,12 +675,12 @@ const styles = `
     justify-content: center;
     gap: 10px;
     transition: all 0.3s;
-    box-shadow: 0 6px 20px rgba(124,92,191,0.3);
+    box-shadow: 0 6px 20px rgba(11, 102, 120, 0.3);
   }
 
   .paymentdue-update-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(124,92,191,0.4);
+    box-shadow: 0 10px 30px rgba(11, 102, 120, 0.4);
   }
 
   /* Modal Styles */
@@ -688,7 +690,7 @@ const styles = `
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(45,36,64,0.6);
+    background: rgba(11, 102, 120, 0.6);
     backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
@@ -710,7 +712,7 @@ const styles = `
     max-width: 95%;
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: 0 24px 80px rgba(124,92,191,0.3);
+    box-shadow: 0 24px 80px rgba(11, 102, 120, 0.3);
     animation: slideUp 0.4s cubic-bezier(0.16,1,0.3,1);
   }
 
@@ -725,17 +727,18 @@ const styles = `
   }
 
   .paymentdue-modal::-webkit-scrollbar-track {
-    background: rgba(124,92,191,0.1);
+    background: rgba(11, 102, 120, 0.1);
     border-radius: 4px;
   }
 
   .paymentdue-modal::-webkit-scrollbar-thumb {
-    background: rgba(124,92,191,0.3);
+    background: rgba(11, 102, 120, 0.3);
     border-radius: 4px;
   }
 
   .paymentdue-modal::-webkit-scrollbar-thumb:hover {
-    background: rgba(124,92,191,0.5);
+    background: rgba(11, 102, 120, 0.5);
+    border-radius: 4px;
   }
 
   .paymentdue-modal-header {
@@ -746,15 +749,15 @@ const styles = `
   }
 
   .paymentdue-modal-title {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-family-heading);
     font-size: 22px;
     font-weight: 600;
-    color: #2d2440;
+    color: var(--color-text);
     margin: 0;
   }
 
   .paymentdue-modal-close {
-    background: rgba(124,92,191,0.1);
+    background: rgba(11, 102, 120, 0.1);
     border: none;
     font-size: 28px;
     cursor: pointer;
@@ -774,7 +777,7 @@ const styles = `
   }
 
   .paymentdue-modal-info {
-    background: linear-gradient(135deg, rgba(124,92,191,0.06) 0%, rgba(107,174,224,0.06) 100%);
+    background: linear-gradient(135deg, rgba(11, 102, 120, 0.06) 0%, rgba(241, 179, 42, 0.06) 100%);
     border-radius: 16px;
     padding: 20px;
     margin-bottom: 24px;
@@ -787,7 +790,7 @@ const styles = `
   }
 
   .paymentdue-modal-info strong {
-    color: #2d2440;
+    color: var(--color-text);
   }
 
   .paymentdue-form-group {
@@ -1026,13 +1029,19 @@ const PaymentDue = () => {
 
     useEffect(() => {
         fetchPaymentDueJobs();
+    }, []);
+
+    useEffect(() => {
+        if (refreshTriggers.dashboard > 0 || refreshTriggers.booking > 0) {
+            fetchPaymentDueJobs();
+        }
     }, [refreshTriggers.dashboard, refreshTriggers.booking]);
 
     // Helper function to calculate grand_total the same way as Dashboard
     // Now uses the API's grand_total directly (which is recalculated from product data)
     const calculateGrandTotal = (job) => {
         // Use grand_total from API directly - it's now calculated consistently
-        // Formula: booking_total + additional_total + client_amount + motor_total
+        // Formula: booking_total + additional_total + client_amount
         if (job.grand_total && job.grand_total > 0) {
             return job.grand_total;
         }
@@ -1040,8 +1049,7 @@ const PaymentDue = () => {
         const clientAmount = job.client_amount ? parseFloat(job.client_amount) : 0;
         const bookingTotal = job.booking_total || 0;
         const additionalTotal = job.additional_total || 0;
-        const motorTotal = job.motor_total || 0;
-        return bookingTotal + additionalTotal + clientAmount + motorTotal;
+        return bookingTotal + additionalTotal + clientAmount;
     };
 
     // Open payment modal for updating payment

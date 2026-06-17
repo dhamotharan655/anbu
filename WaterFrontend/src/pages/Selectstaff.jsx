@@ -18,30 +18,30 @@ import {
 import { openWhatsApp } from "../utils/whatsappUtils";
 
 const COLORS = {
-  background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%)',
-  header: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-  headerGradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  background: 'linear-gradient(135deg, #f0f7f8 0%, #eef5f6 100%)',
+  header: 'var(--gradient-primary)',
+  headerGradient: 'var(--gradient-primary)',
   panel: 'rgba(255,255,255,0.85)',
-  surface: 'rgba(255,255,255,0.72)',
-  glassWhite: 'rgba(255,255,255,0.95)',
-  primary: '#7c5cbf',
-  secondary: '#6baee0',
-  accent: '#9b6fe8',
-  accentLight: '#b8a4f0',
-  success: '#6baee0',
-  successLight: 'rgba(107,174,224,0.1)',
-  danger: '#ef4444',
-  dangerLight: 'rgba(239,68,68,0.1)',
-  textPrimary: '#1f2937',
-  textSecondary: '#6b7280',
-  textMuted: '#9ca3af',
-  muted: '#e5e7eb',
-  border: 'rgba(124,92,191,0.15)',
-  borderLight: 'rgba(124,92,191,0.08)',
-  white: '#ffffff',
-  shadowColor: 'rgba(124,92,191,0.25)',
-  cardShadow: '0 4px 20px rgba(124,92,191,0.12)',
-  cardHoverShadow: '0 8px 30px rgba(124,92,191,0.18)',
+  surface: 'rgba(var(--color-primary-rgb), 0.04)',
+  glassWhite: 'var(--color-white)',
+  primary: 'var(--color-primary)',
+  secondary: 'var(--color-gold)',
+  accent: 'var(--color-primary-light)',
+  accentLight: 'var(--color-primary-light)',
+  success: 'var(--color-success)',
+  successLight: 'rgba(var(--color-success-rgb), 0.1)',
+  danger: 'var(--color-danger)',
+  dangerLight: 'rgba(var(--color-danger-rgb), 0.1)',
+  textPrimary: 'var(--color-text)',
+  textSecondary: 'var(--color-text-secondary)',
+  textMuted: 'var(--color-text-secondary)',
+  muted: 'var(--color-border)',
+  border: 'var(--color-border)',
+  borderLight: 'rgba(var(--color-primary-rgb), 0.08)',
+  white: 'var(--color-white)',
+  shadowColor: 'rgba(var(--color-primary-rgb), 0.25)',
+  cardShadow: 'var(--shadow-md)',
+  cardHoverShadow: 'var(--shadow-lg)',
 };
 
 const SIZES = {
@@ -108,9 +108,26 @@ const SelectStaff = () => {
   const notificationModalRef = useScrollToRef(showNotificationModal);
   const [availableCount, setAvailableCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
+  const [bookingBranch, setBookingBranch] = useState("");
 
   const fetchData = useCallback(async () => {
     try {
+
+      // Fetch booking branch if complaintNo exists
+      let bBranch = "";
+      if (complaintNo) {
+        try {
+          const complaintsRes = await api.get('complaints/');
+          const complaint = complaintsRes.data.find(c => c.complaint_no === complaintNo);
+          if (complaint && complaint.branch_name) {
+            bBranch = complaint.branch_name;
+            setBookingBranch(complaint.branch_name);
+          }
+        } catch (err) {
+          console.error("Error fetching booking branch:", err);
+        }
+      }
+
       const [availableRes, pendingRes] = await Promise.all([
         api.get(`selectstaff/`, {
           params: { mode: "available" },
@@ -123,11 +140,34 @@ const SelectStaff = () => {
       const pendingStaffNames = new Set(
         pendingRes.data.map((s) => s.name)
       );
+
+      // Sort helper for branch matching
+      const sortByBranch = (list) => {
+        if (!bBranch) return list;
+        return [...list].sort((a, b) => {
+          const aMatch = (a.branch_name || 'Main Hub') === bBranch;
+          const bMatch = (b.branch_name || 'Main Hub') === bBranch;
+          if (aMatch && !bMatch) return -1;
+          if (!aMatch && bMatch) return 1;
+          return 0;
+        });
+      };
+
       const trulyAvailableStaff = availableRes.data.filter(
         (staff) => !pendingStaffNames.has(staff.name)
       );
 
+      const sortedAvailableStaff = sortByBranch(trulyAvailableStaff);
+
       const sortedPendingStaff = pendingRes.data.sort((a, b) => {
+        // Priority to branch match first
+        if (bBranch) {
+          const aMatch = (a.branch_name || 'Main Hub') === bBranch;
+          const bMatch = (b.branch_name || 'Main Hub') === bBranch;
+          if (aMatch && !bMatch) return -1;
+          if (!aMatch && bMatch) return 1;
+        }
+
         const getMostRecentComplaintTime = (staff) => {
           if (!staff.complaints || staff.complaints.length === 0) {
             return 0;
@@ -146,14 +186,14 @@ const SelectStaff = () => {
         return timeB - timeA;
       });
 
-      setAvailableStaff(trulyAvailableStaff);
+      setAvailableStaff(sortedAvailableStaff);
       setPendingStaff(sortedPendingStaff);
       setAvailableCount(trulyAvailableStaff.length);
       setPendingCount(pendingRes.data.length);
     } catch (error) {
       console.error("Failed to fetch staff list:", error);
     }
-  }, []);
+  }, [complaintNo]);
 
   // Fetch pending WhatsApp messages
   const fetchPendingMessages = useCallback(async () => {
@@ -227,15 +267,15 @@ const SelectStaff = () => {
         // GPS coordinates available - use Google Maps search API for exact pinpoint with label
         const label = encodeURIComponent(`${customerName} @ `);
         googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${label}${latitude},${longitude}`;
-        message = `Hello ${staffName},\n\nA new service complaint has been assigned to you.\n\nComplaint ID: ${complaintNo}\nCustomer Name: ${customerName}\nComplaint Details: ${complaintDetails}\nContact Number: ${customerPhone}\nCustomer Location:\n${googleMapsLink}\n\nPlease attend at the earliest.\n\nRuban Electricals - Your Trusted Partner`;
+        message = `Hello ${staffName},\n\nA new service complaint has been assigned to you.\n\nComplaint ID: ${complaintNo}\nCustomer Name: ${customerName}\nComplaint Details: ${complaintDetails}\nContact Number: ${customerPhone}\nCustomer Location:\n${googleMapsLink}\n\nPlease attend at the earliest.\n\nAnbu Enterprises - Your Trusted Partner`;
       } else if (address && address.trim()) {
         // No GPS coordinates but address available - use address-based Google Maps search API for pinning
         const encodedAddress = encodeURIComponent(address);
         googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
-        message = `Hello ${staffName},\n\nA new service complaint has been assigned to you.\n\nComplaint ID: ${complaintNo}\nCustomer Name: ${customerName}\nComplaint Details: ${complaintDetails}\nContact Number: ${customerPhone}\nCustomer Location:\n${googleMapsLink}\n\nAddress: ${address}\n\nPlease attend at the earliest.\n\nRuban Electricals - Your Trusted Partner`;
+        message = `Hello ${staffName},\n\nA new service complaint has been assigned to you.\n\nComplaint ID: ${complaintNo}\nCustomer Name: ${customerName}\nComplaint Details: ${complaintDetails}\nContact Number: ${customerPhone}\nCustomer Location:\n${googleMapsLink}\n\nAddress: ${address}\n\nPlease attend at the earliest.\n\nAnbu Enterprises - Your Trusted Partner`;
       } else {
         // No location data available - inform staff
-        message = `Hello ${staffName},\n\nA new service complaint has been assigned to you.\n\nComplaint ID: ${complaintNo}\nCustomer Name: ${customerName}\nComplaint Details: ${complaintDetails}\nContact Number: ${customerPhone}\n\n⚠️ Location details not available. Please contact the customer for location details.\n\nCustomer will be contacted separately with service information.\n\nRuban Electricals - Your Trusted Partner`;
+        message = `Hello ${staffName},\n\nA new service complaint has been assigned to you.\n\nComplaint ID: ${complaintNo}\nCustomer Name: ${customerName}\nComplaint Details: ${complaintDetails}\nContact Number: ${customerPhone}\n\n⚠️ Location details not available. Please contact the customer for location details.\n\nCustomer will be contacted separately with service information.\n\nAnbu Enterprises - Your Trusted Partner`;
       }
 
       // Use wa.me format with country code and encoded message
@@ -530,6 +570,32 @@ const SelectStaff = () => {
           </div>
           {renderInfoRow(FiPhone, "Phone", item.phone)}
           {renderInfoRow(FiMapPin, "Location", item.location)}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            marginTop: '8px',
+            padding: '4px 10px',
+            borderRadius: '8px',
+            fontSize: '11px',
+            fontWeight: 700,
+            width: 'fit-content',
+            background: (item.branch_name || 'Main Hub') === bookingBranch ? 'rgba(11, 102, 120, 0.1)' : 'rgba(0,0,0,0.04)',
+            color: (item.branch_name || 'Main Hub') === bookingBranch ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+            border: (item.branch_name || 'Main Hub') === bookingBranch ? '1px solid rgba(11, 102, 120, 0.2)' : '1px solid transparent'
+          }}>
+            🏢 Branch: {item.branch_name || 'Main Hub'}
+            {bookingBranch && (item.branch_name || 'Main Hub') === bookingBranch && (
+              <span style={{
+                marginLeft: '4px',
+                padding: '2px 6px',
+                background: 'var(--color-primary)',
+                color: 'white',
+                borderRadius: '4px',
+                fontSize: '9px'
+              }}>MATCHING</span>
+            )}
+          </div>
         </div>
       </button>
     );
@@ -578,6 +644,32 @@ const SelectStaff = () => {
           </div>
           {renderInfoRow(FiPhone, "Phone", item.phone)}
           {renderInfoRow(FiMapPin, "Location", item.location)}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            marginTop: '8px',
+            padding: '4px 10px',
+            borderRadius: '8px',
+            fontSize: '11px',
+            fontWeight: 700,
+            width: 'fit-content',
+            background: (item.branch_name || 'Main Hub') === bookingBranch ? 'rgba(11, 102, 120, 0.1)' : 'rgba(0,0,0,0.04)',
+            color: (item.branch_name || 'Main Hub') === bookingBranch ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+            border: (item.branch_name || 'Main Hub') === bookingBranch ? '1px solid rgba(11, 102, 120, 0.2)' : '1px solid transparent'
+          }}>
+            🏢 Branch: {item.branch_name || 'Main Hub'}
+            {bookingBranch && (item.branch_name || 'Main Hub') === bookingBranch && (
+              <span style={{
+                marginLeft: '4px',
+                padding: '2px 6px',
+                background: 'var(--color-primary)',
+                color: 'white',
+                borderRadius: '4px',
+                fontSize: '9px'
+              }}>MATCHING</span>
+            )}
+          </div>
           <p style={{ ...styles.subTitle, ...(isSelected && styles.selectedText) }}>
             Complaints:
           </p>
@@ -699,8 +791,8 @@ const SelectStaff = () => {
     container: {
       flex: 1,
       minHeight: '100vh',
-      backgroundColor: '#f3f4f6',
-      background: 'linear-gradient(180deg, #f3f4f6 0%, #e5e7eb 100%)',
+      backgroundColor: '#f8fcfd',
+      background: 'linear-gradient(180deg, #f8fcfd 0%, #f0f7f8 100%)',
       overflow: 'auto',
       padding: SIZES.padding,
     },
@@ -712,12 +804,12 @@ const SelectStaff = () => {
       paddingBottom: '40px',
     },
     headerSection: {
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: 'var(--gradient-primary)',
       margin: '0 16px',
       marginTop: '16px',
       padding: SIZES.padding,
       borderRadius: SIZES.radiusLarge,
-      boxShadow: '0px 8px 25px rgba(102,126,234,0.35)',
+      boxShadow: '0px 8px 25px rgba(11,102,120,0.35)',
       textAlign: 'center',
       position: 'relative',
       overflow: 'hidden',
@@ -778,7 +870,7 @@ const SelectStaff = () => {
       transition: 'all 0.3s ease',
     },
     filterIconActive: {
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: 'var(--gradient-primary)',
     },
     filterLabel: {
       color: COLORS.white,
@@ -1084,6 +1176,122 @@ const SelectStaff = () => {
     // },
   };
 
+  const renderStaffSections = () => {
+    const data = getFilteredData();
+    if (!data || data.length === 0) {
+      return (
+        <div style={styles.emptyContainer}>
+          <IoPeopleOutline size={64} color={COLORS.textMuted} />
+          <p style={styles.emptyText}>No staff found</p>
+          <p style={styles.emptySubtext}>
+            {viewMode === "available"
+              ? "No available staff members"
+              : "No staff with pending tasks"}
+          </p>
+        </div>
+      );
+    }
+
+    if (!bookingBranch) {
+      return data.map((item) =>
+        viewMode === "available" ? renderAvailableItem(item) : renderPendingItem(item)
+      );
+    }
+
+    const matchingStaff = data.filter(s => (s.branch_name || 'Main Hub') === bookingBranch);
+    const otherStaff = data.filter(s => (s.branch_name || 'Main Hub') !== bookingBranch);
+
+    return (
+      <div style={{ gridColumn: '1 / -1', width: '100%' }}>
+        {matchingStaff.length > 0 && (
+          <div style={{ marginBottom: '32px' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              margin: '0 16px 20px',
+              padding: '12px 20px',
+              background: 'rgba(11, 102, 120, 0.08)',
+              borderRadius: '16px',
+              borderLeft: '5px solid var(--color-primary)',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                background: 'var(--color-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontSize: '20px'
+              }}>
+                🎯
+              </div>
+              <div>
+                <h2 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--color-primary)', margin: 0 }}>
+                  MATCHING BRANCH STAFF
+                </h2>
+                <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0', opacity: 0.8 }}>
+                  Team members from {bookingBranch}
+                </p>
+              </div>
+            </div>
+            <div className="grid-desktop" style={{ ...styles.listContent, marginTop: 0 }}>
+              {matchingStaff.map(item =>
+                viewMode === "available" ? renderAvailableItem(item) : renderPendingItem(item)
+              )}
+            </div>
+          </div>
+        )}
+
+        {otherStaff.length > 0 && (
+          <div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              margin: '24px 16px 20px',
+              padding: '12px 20px',
+              background: 'rgba(0,0,0,0.04)',
+              borderRadius: '16px',
+              borderLeft: '5px solid #6b7280',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.03)'
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                background: '#6b7280',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontSize: '20px'
+              }}>
+                🏢
+              </div>
+              <div>
+                <h2 style={{ fontSize: '16px', fontWeight: '800', color: '#374151', margin: 0 }}>
+                  OTHER BRANCH STAFF
+                </h2>
+                <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0', opacity: 0.8 }}>
+                  Members from other locations
+                </p>
+              </div>
+            </div>
+            <div className="grid-desktop" style={{ ...styles.listContent, marginTop: 0 }}>
+              {otherStaff.map(item =>
+                viewMode === "available" ? renderAvailableItem(item) : renderPendingItem(item)
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="container-desktop" style={styles.container}>
       {/* AnimatedOrbs (should be in Layout or root) */}
@@ -1136,22 +1344,8 @@ const SelectStaff = () => {
                 </p>
               </div>
             )
-          ) : getFilteredData().length > 0 ? (
-            getFilteredData().map((item, index) =>
-              viewMode === "available"
-                ? renderAvailableItem(item)
-                : renderPendingItem(item)
-            )
           ) : (
-            <div style={styles.emptyContainer}>
-              <IoPeopleOutline size={64} color={COLORS.textMuted} />
-              <p style={styles.emptyText}>No staff found</p>
-              <p style={styles.emptySubtext}>
-                {viewMode === "available"
-                  ? "No available staff members"
-                  : "No staff with pending tasks"}
-              </p>
-            </div>
+            renderStaffSections()
           )}
         </div>
       </div>
@@ -1384,7 +1578,7 @@ const NotificationModal = forwardRef(({
       justifyContent: 'center',
       zIndex: 1000,
     }}>
-      <div 
+      <div
         ref={ref}
         style={{
           backgroundColor: COLORS.white,

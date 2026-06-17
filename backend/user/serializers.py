@@ -3,7 +3,11 @@ from rest_framework import serializers
 from datetime import datetime
 import json
 from django.contrib.auth.hashers import make_password
-from .models import User, Staff, BookServiceComplaint, ClientDetails, Products, StockItem, MotorDetails, MotorVariant, HolidayCalendar
+from .models import (
+    User, Staff, BookServiceComplaint, ClientDetails, Products, 
+    StockItem, MotorDetails, MotorVariant, HolidayCalendar,
+    Branch, JobType, ExpiredItem
+)
 
 
 
@@ -150,6 +154,7 @@ class BookServiceComplaintSerializer(serializers.Serializer):
     # NEW: Additional product fields for completion flow
     additional_product = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     additional_product_quantity = serializers.IntegerField(default=0)
+    staff_incentive = serializers.FloatField(required=False, default=0.0)
     
     # Computed fields for totals (calculated in to_representation)
     booking_total = serializers.SerializerMethodField()
@@ -171,11 +176,31 @@ class BookServiceComplaintSerializer(serializers.Serializer):
     whatsapp_sent_to_customer = serializers.BooleanField(required=False, default=False)
     whatsapp_sent_to_staff = serializers.BooleanField(required=False, default=False)
     booking_whatsapp_sent = serializers.BooleanField(required=False, default=False)
+    
+    # Branch assignment
+    branch_name = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
 
     # ⭐ NEW: Computed fields for dashboard
     payment_history = serializers.SerializerMethodField()
     payment_details = serializers.SerializerMethodField() # Alias for frontend compatibility
     payment_indicator = serializers.SerializerMethodField()
+    expired_items = serializers.SerializerMethodField()
+
+    def get_expired_items(self, obj):
+        items_list = []
+        try:
+            from .models import ExpiredItem
+            if hasattr(obj, 'complaint_no') and obj.complaint_no:
+                items = ExpiredItem.objects(complaint_no=obj.complaint_no)
+                for ei in items:
+                    items_list.append({
+                        "name": getattr(ei, 'name', ''),
+                        "buying_price": getattr(ei, 'buying_price', 0),
+                        "buy_date": ei.buy_date.isoformat() if getattr(ei, 'buy_date', None) else None
+                    })
+        except Exception:
+            pass
+        return items_list
 
     def get_payment_history(self, obj):
         """Return full payment history for this complaint from PaymentDetails"""
@@ -361,6 +386,10 @@ class BookServiceComplaintSerializer(serializers.Serializer):
         # Ensure due_amount is consistent with grand_total
         calculated_due = round(max(0, grand_total_value - amount_received), 2)
         data['due_amount'] = calculated_due
+        
+        # Add expired_items to the representation if not handled by SerializerMethodField magically 
+        # (Though SerializerMethodField usually adds it automatically, this ensures it's always present)
+        data['expired_items'] = self.get_expired_items(instance)
         
         return data
 
@@ -1053,6 +1082,8 @@ class StockAddSerializer(serializers.Serializer):
     purchase_price_per_unit = serializers.FloatField(required=True)
     total_purchase_amount = serializers.FloatField(required=True)
     date_of_purchase = serializers.CharField(required=True)
+    minimum_price = serializers.FloatField(required=False, allow_null=True)
+    minimum_threshold = serializers.IntegerField(required=False, allow_null=True)
     message = serializers.CharField(read_only=True)
 
     def validate_purchase_price_per_unit(self, value):
@@ -1311,6 +1342,68 @@ class HolidayCalendarSerializer(serializers.Serializer):
         holiday = HolidayCalendar(**validated_data)
         holiday.save()
         return holiday
+
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+
+# -------------------------------
+# Branch Serializer
+# -------------------------------
+class BranchSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    branch_id = serializers.CharField(required=True)
+    name = serializers.CharField(required=True)
+    location = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    is_active = serializers.BooleanField(default=True)
+    created_at = serializers.DateTimeField(read_only=True)
+
+    def create(self, validated_data):
+        branch = Branch(**validated_data)
+        branch.save()
+        return branch
+
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+
+# -------------------------------
+# Job Type Serializer
+# -------------------------------
+class JobTypeSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    name = serializers.CharField(required=True)
+    is_active = serializers.BooleanField(default=True)
+    created_at = serializers.DateTimeField(read_only=True)
+
+    def create(self, validated_data):
+        job_type = JobType(**validated_data)
+        job_type.save()
+        return job_type
+
+
+# -------------------------------
+# Expired / Scrap Item Serializer
+# -------------------------------
+class ExpiredItemSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    name = serializers.CharField(required=True)
+    complaint_no = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    customer_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    
+    buying_price = serializers.FloatField(required=False, default=0.0)
+    sold_price = serializers.FloatField(required=False, allow_null=True)
+    
+    buy_date = serializers.DateTimeField(required=False)
+    sold_date = serializers.DateTimeField(required=False, allow_null=True)
+    
+    created_at = serializers.DateTimeField(read_only=True)
 
     def update(self, instance, validated_data):
         for attr, value in validated_data.items():

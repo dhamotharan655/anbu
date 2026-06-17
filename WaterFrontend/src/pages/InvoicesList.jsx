@@ -88,14 +88,14 @@ const InvoicesList = () => {
       // Create WhatsApp message with customer name, complaint number, and clickable download link
       const message = `Hello ${invoice.customer_name || 'Customer'},
 
-Your service request #${invoice.complaint_no || 'N/A'} has been completed by Ruban Electricals.
+Your service request #${invoice.complaint_no || 'N/A'} has been completed by Anbu Enterprises.
 
 Please find the invoice attached.
 
-Thank you for choosing Ruban Electricals!
+Thank you for choosing Anbu Enterprises!
 
 Best regards,
-Ruban Electricals Team.
+Anbu Enterprises Team.
 
 ---
 Your service has been completed.

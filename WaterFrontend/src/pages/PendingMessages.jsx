@@ -67,11 +67,10 @@ const PendingMessages = () => {
     let message;
 
     if (address && address.trim()) {
-      const encodedAddress = encodeURIComponent(address);
       googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
-      message = `Hello ${staffName},\n\nA new service complaint has been assigned to you.\n\nComplaint ID: ${complaintNo}\nCustomer Name: ${customerName}\nComplaint Details: ${details}\nContact Number: ${customerPhone}\nCustomer Location:\n${googleMapsLink}\n\nAddress: ${address}\n\nPlease attend at the earliest.\n\nRuban Electricals - Your Trusted Partner`;
+      message = `Hello ${staffName},\n\nA new service complaint has been assigned to you.\n\nComplaint ID: ${complaintNo}\nCustomer Name: ${customerName}\nComplaint Details: ${details}\nContact Number: ${customerPhone}\nCustomer Location:\n${googleMapsLink}\n\nAddress: ${address}\n\nPlease attend at the earliest.\n\nAnbu Enterprises - Your Trusted Partner`;
     } else {
-      message = `Hello ${staffName},\n\nA new service complaint has been assigned to you.\n\nComplaint ID: ${complaintNo}\nCustomer Name: ${customerName}\nComplaint Details: ${details}\nContact Number: ${customerPhone}\n\nPlease attend at the earliest.\n\nRuban Electricals - Your Trusted Partner`;
+      message = `Hello ${staffName},\n\nA new service complaint has been assigned to you.\n\nComplaint ID: ${complaintNo}\nCustomer Name: ${customerName}\nComplaint Details: ${details}\nContact Number: ${customerPhone}\n\nPlease attend at the earliest.\n\nAnbu Enterprises - Your Trusted Partner`;
     }
 
     const whatsappURL = `https://wa.me/${phoneWithCountryCode}?text=${encodeURIComponent(message)}`;
@@ -108,17 +107,17 @@ const PendingMessages = () => {
       return;
     }
     const normalizedPhone = normalizePhoneNumber(item.customer_phone);
-    
+
     let productName = item.product_name || item.productName || "Service";
-    
+
     try {
       if (typeof productName === 'string' && productName.trim().startsWith('[')) {
         const parsed = JSON.parse(productName);
         if (Array.isArray(parsed) && parsed.length > 0) {
           productName = parsed.map(p => {
-             const name = p.productName || p.name || p.product_name || 'Product';
-             const qty = p.quantity ? ` (Qty: ${p.quantity})` : '';
-             return `${name}${qty}`;
+            const name = p.productName || p.name || p.product_name || 'Product';
+            const qty = p.quantity ? ` (Qty: ${p.quantity})` : '';
+            return `${name}${qty}`;
           }).join(', ');
         }
       }
@@ -126,10 +125,10 @@ const PendingMessages = () => {
       // Ignored: fallback to whatever string it originally was
     }
     const serviceType = item.service_type || "Service";
-    const date = item.created_at 
+    const date = item.created_at
       ? new Date(item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
       : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-    
+
     const message = generateBookingMessage(
       item.customer_name || "Customer",
       item.complaint_no,
@@ -137,7 +136,7 @@ const PendingMessages = () => {
       serviceType,
       date
     );
-    
+
     const whatsappURL = `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`;
     window.open(whatsappURL, "_blank");
   };
@@ -207,7 +206,7 @@ const PendingMessages = () => {
           const bookingSent = item.booking_whatsapp_sent === true;
           const customerSent = item.whatsapp_sent_to_customer === true;
           const staffSent = item.whatsapp_sent_to_staff === true;
-          
+
           if (messageTypeFilter === 'booking') {
             // Show complaints where booking WhatsApp not sent, regardless of assignment status
             return !bookingSent;
@@ -217,161 +216,161 @@ const PendingMessages = () => {
           }
           return false;
         });
-        
-        return filteredMessages.length === 0 ? (
-        <div style={styles.emptyContainer}>
-          <IoCheckmarkCircle size={72} color="#25D366" />
-          <p style={styles.emptyTitle}>All messages sent!</p>
-          <p style={styles.emptySubtext}>
-            No pending WhatsApp notifications found
-          </p>
-        </div>
-      ) : (
-        <div style={styles.cardGrid}>
-          {filteredMessages.map((item, index) => {
-            const customerSent = item.whatsapp_sent_to_customer === true;
-            const staffSent = item.whatsapp_sent_to_staff === true;
-            const bookingSent = item.booking_whatsapp_sent === true;
-            const isAssigned = item.assigned === true;
-            const staffName = item.assigned_staff || item.staff_name || "-";
 
-            return (
-              <div key={item.id || item.complaint_no || index} style={styles.card}>
-                <div style={styles.cardHeader}>
-                  <span style={styles.complaintNo}>
-                    {item.complaint_no}
-                  </span>
-                  <div style={styles.badgeRow}>
-                    {messageTypeFilter === 'booking' && (
-                      <span
-                        style={{
-                          ...styles.badge,
-                          backgroundColor: bookingSent ? "#d1fae5" : "#fef3c7",
-                          color: bookingSent ? "#059669" : "#d97706",
-                        }}
-                      >
-                        Booking: {bookingSent ? "Sent" : "Not Sent"}
+        return filteredMessages.length === 0 ? (
+          <div style={styles.emptyContainer}>
+            <IoCheckmarkCircle size={72} color="#25D366" />
+            <p style={styles.emptyTitle}>All messages sent!</p>
+            <p style={styles.emptySubtext}>
+              No pending WhatsApp notifications found
+            </p>
+          </div>
+        ) : (
+          <div style={styles.cardGrid}>
+            {filteredMessages.map((item, index) => {
+              const customerSent = item.whatsapp_sent_to_customer === true;
+              const staffSent = item.whatsapp_sent_to_staff === true;
+              const bookingSent = item.booking_whatsapp_sent === true;
+              const isAssigned = item.assigned === true;
+              const staffName = item.assigned_staff || item.staff_name || "-";
+
+              return (
+                <div key={item.id || item.complaint_no || index} style={styles.card}>
+                  <div style={styles.cardHeader}>
+                    <span style={styles.complaintNo}>
+                      {item.complaint_no}
+                    </span>
+                    <div style={styles.badgeRow}>
+                      {messageTypeFilter === 'booking' && (
+                        <span
+                          style={{
+                            ...styles.badge,
+                            backgroundColor: bookingSent ? "#d1fae5" : "#fef3c7",
+                            color: bookingSent ? "#059669" : "#d97706",
+                          }}
+                        >
+                          Booking: {bookingSent ? "Sent" : "Not Sent"}
+                        </span>
+                      )}
+                      {messageTypeFilter === 'assignment' && isAssigned && (
+                        <>
+                          <span
+                            style={{
+                              ...styles.badge,
+                              backgroundColor: customerSent ? "#d1fae5" : "#fee2e2",
+                              color: customerSent ? "#059669" : "#dc2626",
+                            }}
+                          >
+                            Customer: {customerSent ? "Sent" : "Not Sent"}
+                          </span>
+                          <span
+                            style={{
+                              ...styles.badge,
+                              backgroundColor: staffSent ? "#d1fae5" : "#fee2e2",
+                              color: staffSent ? "#059669" : "#dc2626",
+                            }}
+                          >
+                            Staff: {staffSent ? "Sent" : "Not Sent"}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={styles.cardBody}>
+                    <div style={styles.infoRow}>
+                      <span style={styles.infoLabel}>Customer</span>
+                      <span style={styles.infoValue}>
+                        {item.customer_name || "-"}
                       </span>
+                    </div>
+                    {messageTypeFilter === 'assignment' && isAssigned && (
+                      <div style={styles.infoRow}>
+                        <span style={styles.infoLabel}>Assigned Staff</span>
+                        <span style={styles.infoValue}>{staffName}</span>
+                      </div>
                     )}
+                  </div>
+
+                  <div style={styles.cardActions}>
+                    {messageTypeFilter === 'booking' && (
+                      <>
+                        {!bookingSent && (
+                          <button
+                            style={{ ...styles.btnCustomer, background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)' }}
+                            onClick={() => {
+                              sendBookingWhatsApp(item);
+                              handleUpdateWhatsappStatus(
+                                item.complaint_no,
+                                "booking_whatsapp_sent"
+                              );
+                            }}
+                          >
+                            <IoSend size={15} />
+                            Send Booking WhatsApp
+                          </button>
+                        )}
+                        {bookingSent && (
+                          <span style={styles.sentLabel}>
+                            <IoCheckmarkCircle size={15} />
+                            Booking Sent
+                          </span>
+                        )}
+                      </>
+                    )}
+
                     {messageTypeFilter === 'assignment' && isAssigned && (
                       <>
-                        <span
-                          style={{
-                            ...styles.badge,
-                            backgroundColor: customerSent ? "#d1fae5" : "#fee2e2",
-                            color: customerSent ? "#059669" : "#dc2626",
-                          }}
-                        >
-                          Customer: {customerSent ? "Sent" : "Not Sent"}
-                        </span>
-                        <span
-                          style={{
-                            ...styles.badge,
-                            backgroundColor: staffSent ? "#d1fae5" : "#fee2e2",
-                            color: staffSent ? "#059669" : "#dc2626",
-                          }}
-                        >
-                          Staff: {staffSent ? "Sent" : "Not Sent"}
-                        </span>
+                        {!customerSent && (
+                          <button
+                            style={styles.btnCustomer}
+                            onClick={() => {
+                              sendToCustomer(item);
+                              handleUpdateWhatsappStatus(
+                                item.complaint_no,
+                                "whatsapp_sent_to_customer"
+                              );
+                            }}
+                          >
+                            <IoSend size={15} />
+                            Send to Customer
+                          </button>
+                        )}
+                        {customerSent && (
+                          <span style={styles.sentLabel}>
+                            <IoCheckmarkCircle size={15} />
+                            Customer Sent
+                          </span>
+                        )}
+
+                        {!staffSent && (
+                          <button
+                            style={styles.btnStaff}
+                            onClick={() => {
+                              sendToStaff(item);
+                              handleUpdateWhatsappStatus(
+                                item.complaint_no,
+                                "whatsapp_sent_to_staff"
+                              );
+                            }}
+                          >
+                            <IoSend size={15} />
+                            Send to Staff
+                          </button>
+                        )}
+                        {staffSent && (
+                          <span style={styles.sentLabel}>
+                            <IoCheckmarkCircle size={15} />
+                            Staff Sent
+                          </span>
+                        )}
                       </>
                     )}
                   </div>
                 </div>
-
-                <div style={styles.cardBody}>
-                  <div style={styles.infoRow}>
-                    <span style={styles.infoLabel}>Customer</span>
-                    <span style={styles.infoValue}>
-                      {item.customer_name || "-"}
-                    </span>
-                  </div>
-                  {messageTypeFilter === 'assignment' && isAssigned && (
-                    <div style={styles.infoRow}>
-                      <span style={styles.infoLabel}>Assigned Staff</span>
-                      <span style={styles.infoValue}>{staffName}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div style={styles.cardActions}>
-                  {messageTypeFilter === 'booking' && (
-                    <>
-                      {!bookingSent && (
-                    <button
-                      style={{...styles.btnCustomer, background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)'}}
-                      onClick={() => {
-                        sendBookingWhatsApp(item);
-                        handleUpdateWhatsappStatus(
-                          item.complaint_no,
-                          "booking_whatsapp_sent"
-                        );
-                      }}
-                    >
-                      <IoSend size={15} />
-                      Send Booking WhatsApp
-                    </button>
-                  )}
-                  {bookingSent && (
-                    <span style={styles.sentLabel}>
-                      <IoCheckmarkCircle size={15} />
-                      Booking Sent
-                    </span>
-                  )}
-                    </>
-                  )}
-
-                  {messageTypeFilter === 'assignment' && isAssigned && (
-                    <>
-                      {!customerSent && (
-                        <button
-                          style={styles.btnCustomer}
-                          onClick={() => {
-                            sendToCustomer(item);
-                            handleUpdateWhatsappStatus(
-                              item.complaint_no,
-                              "whatsapp_sent_to_customer"
-                            );
-                          }}
-                        >
-                          <IoSend size={15} />
-                          Send to Customer
-                        </button>
-                      )}
-                      {customerSent && (
-                        <span style={styles.sentLabel}>
-                          <IoCheckmarkCircle size={15} />
-                          Customer Sent
-                        </span>
-                      )}
-
-                      {!staffSent && (
-                        <button
-                          style={styles.btnStaff}
-                          onClick={() => {
-                            sendToStaff(item);
-                            handleUpdateWhatsappStatus(
-                              item.complaint_no,
-                              "whatsapp_sent_to_staff"
-                            );
-                          }}
-                        >
-                          <IoSend size={15} />
-                          Send to Staff
-                        </button>
-                      )}
-                      {staffSent && (
-                        <span style={styles.sentLabel}>
-                          <IoCheckmarkCircle size={15} />
-                          Staff Sent
-                        </span>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
         );
       })()}
     </div>
@@ -382,18 +381,18 @@ const styles = {
   container: {
     flex: 1,
     minHeight: "100vh",
-    backgroundColor: "#f3f4f6",
+    backgroundColor: "var(--color-bg-light)",
     padding: "24px",
   },
   header: {
     display: "flex",
     alignItems: "center",
     gap: "16px",
-    background: "linear-gradient(135deg, #25D366 0%, #128C7E 100%)",
+    background: "var(--gradient-primary)",
     padding: "24px 28px",
     borderRadius: "20px",
     marginBottom: "20px",
-    boxShadow: "0 8px 25px rgba(37,211,102,0.35)",
+    boxShadow: "0 8px 25px rgba(11, 102, 120, 0.35)",
   },
   headerIcon: {
     width: "52px",
@@ -436,11 +435,11 @@ const styles = {
   statNumber: {
     fontSize: "28px",
     fontWeight: "800",
-    color: "#dc2626",
+    color: "var(--color-danger)",
   },
   statLabel: {
     fontSize: "13px",
-    color: "#6b7280",
+    color: "var(--color-text-secondary)",
     fontWeight: "600",
     marginTop: "2px",
   },
@@ -506,7 +505,7 @@ const styles = {
   complaintNo: {
     fontSize: "17px",
     fontWeight: "700",
-    color: "#1f2937",
+    color: "var(--color-text)",
   },
   badgeRow: {
     display: "flex",
@@ -531,11 +530,11 @@ const styles = {
   },
   infoLabel: {
     fontWeight: "600",
-    color: "#6b7280",
+    color: "var(--color-text-secondary)",
     minWidth: "100px",
   },
   infoValue: {
-    color: "#1f2937",
+    color: "var(--color-text)",
     fontWeight: "500",
   },
   cardActions: {
@@ -549,14 +548,14 @@ const styles = {
     alignItems: "center",
     gap: "6px",
     padding: "10px 16px",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    background: "var(--gradient-primary)",
     color: "#fff",
     border: "none",
     borderRadius: "10px",
     fontSize: "13px",
     fontWeight: "600",
     cursor: "pointer",
-    boxShadow: "0 2px 8px rgba(102,126,234,0.3)",
+    boxShadow: "0 2px 8px rgba(11, 102, 120, 0.3)",
   },
   btnStaff: {
     display: "flex",

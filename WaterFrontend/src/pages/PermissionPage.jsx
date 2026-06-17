@@ -1,13 +1,19 @@
 import React, { useEffect, useState } from "react";
 import api from "../api";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiUser, FiSettings, FiUserPlus, FiTrash2, FiShield, FiCheck } from "react-icons/fi";
+import { FiUser, FiSettings, FiUserPlus, FiTrash2, FiShield, FiCheck, FiTag, FiPlusCircle } from "react-icons/fi";
 
 const COLORS = {
-  primary: "#7c5cbf", secondary: "#6baee0", accent: "#9b6fe8",
-  success: "#2d9e6b", danger: "#eb5968",
-  text: "#1e1b2e", muted: "#8b85a1", white: "#ffffff",
-  glass: "rgba(255,255,255,0.72)", glassBorder: "rgba(255,255,255,0.8)",
+  primary: "var(--color-primary, #0b6678)",
+  secondary: "var(--color-primary-light, #128299)",
+  accent: "var(--color-gold, #f1b32a)",
+  success: "#2d9e6b",
+  danger: "#eb5968",
+  text: "var(--color-text, #1a1a1a)",
+  muted: "var(--color-text-secondary, #5a5a5a)",
+  white: "#ffffff",
+  glass: "rgba(255,255,255,0.72)",
+  glassBorder: "var(--color-border, rgba(255,255,255,0.8))",
 };
 
 const glassCard = {
@@ -16,7 +22,7 @@ const glassCard = {
   WebkitBackdropFilter: "blur(20px)",
   border: `1px solid ${COLORS.glassBorder}`,
   borderRadius: "20px",
-  boxShadow: "0 4px 20px rgba(124,92,191,0.12)",
+  boxShadow: "var(--shadow-md, 0 4px 20px rgba(11, 102, 120, 0.12))",
   padding: "1.75rem",
   marginBottom: "1.25rem",
 };
@@ -32,7 +38,7 @@ const PAGE_ICONS = {
   dashboard: "📊", booking: "📋", staff: "👥", "add-staff": "➕",
   "staff-performance": "📈", history: "📂", customers: "🧑‍🤝‍🧑",
   "add-customer": "👤", "stock-management": "📦",
-  invoices: "🧾", "motor-details": "🔧", "motor-history": "⚡", payroll: "💵", "holiday-management": "📅",
+  invoices: "🧾", payroll: "💵", "holiday-management": "📅",
 };
 
 const PermissionPage = () => {
@@ -42,16 +48,26 @@ const PermissionPage = () => {
   const [permissions, setPermissions] = useState([]);
   const [newUser, setNewUser] = useState({ full_name: "", password: "" });
 
+  // Job Types state
+  const [jobTypes, setJobTypes] = useState([]);
+  const [newJobTypeName, setNewJobTypeName] = useState("");
+  const [jobTypeLoading, setJobTypeLoading] = useState(false);
+
   const availablePages = [
     "dashboard", "booking", "staff", "add-staff", "staff-performance",
     "history", "customers", "add-customer", "stock-management",
-    "invoices", "motor-details", "motor-history", "payroll", "holiday-management",
+    "invoices", "payroll", "holiday-management",
   ];
 
   useEffect(() => {
     api.get("/users/")
       .then((res) => setAdmins(res.data))
       .catch((err) => console.error("Error loading admins:", err));
+
+    // Fetch job types
+    api.get("/job-types/")
+      .then((res) => setJobTypes(Array.isArray(res.data) ? res.data : []))
+      .catch((err) => console.error("Error loading job types:", err));
   }, []);
 
   const togglePermission = (page) => {
@@ -109,9 +125,34 @@ const PermissionPage = () => {
     }
   };
 
+  const addJobType = async () => {
+    if (!newJobTypeName.trim()) return alert("Enter a job type name");
+    setJobTypeLoading(true);
+    try {
+      const res = await api.post("/job-types/", { name: newJobTypeName.trim() });
+      setJobTypes([...jobTypes, res.data.data]);
+      setNewJobTypeName("");
+    } catch (err) {
+      alert(err.response?.data?.error || "Failed to add job type");
+    } finally {
+      setJobTypeLoading(false);
+    }
+  };
+
+  const deleteJobType = async (id) => {
+    if (!window.confirm("Delete this job type?")) return;
+    try {
+      await api.delete(`/job-types/${id}/delete/`);
+      setJobTypes(jobTypes.filter(jt => jt.id !== id));
+    } catch (err) {
+      alert("Failed to delete job type");
+    }
+  };
+
   const tabs = [
     { id: "permissions", label: "Permissions", icon: <FiSettings /> },
     { id: "users", label: "Users", icon: <FiUserPlus /> },
+    { id: "job-types", label: "Job Types", icon: <FiTag /> },
   ];
 
   return (
@@ -128,7 +169,7 @@ const PermissionPage = () => {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ display: "flex", margin: "0 auto", background: "rgba(255,255,255,0.72)", backdropFilter: "blur(20px)", borderRadius: "100px", padding: "5px", border: "1px solid rgba(255,255,255,0.8)", boxShadow: "0 4px 20px rgba(124,92,191,0.1)", maxWidth: "360px" }}
+        style={{ display: "flex", margin: "0 auto", background: "rgba(255,255,255,0.72)", backdropFilter: "blur(20px)", borderRadius: "100px", padding: "5px", border: "1px solid var(--color-border)", boxShadow: "0 4px 20px rgba(11, 102, 120, 0.1)", maxWidth: "360px" }}
       >
         {tabs.map((tab) => (
           <button
@@ -137,11 +178,11 @@ const PermissionPage = () => {
             style={{
               flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
               gap: "0.5rem", padding: "0.55rem 1.25rem", border: "none",
-              borderRadius: "100px", fontFamily: "'Plus Jakarta Sans',sans-serif",
+              borderRadius: "100px", fontFamily: "var(--font-family-sans)",
               fontSize: "0.88rem", fontWeight: 600, cursor: "pointer", transition: "all 0.25s ease",
-              background: activeTab === tab.id ? "linear-gradient(135deg,#9b6fe8,#6baee0)" : "transparent",
+              background: activeTab === tab.id ? "var(--gradient-primary)" : "transparent",
               color: activeTab === tab.id ? "white" : COLORS.muted,
-              boxShadow: activeTab === tab.id ? "0 3px 12px rgba(124,92,191,0.32)" : "none",
+              boxShadow: activeTab === tab.id ? "var(--shadow-primary)" : "none",
             }}
           >
             {tab.icon} {tab.label}
@@ -196,16 +237,16 @@ const PermissionPage = () => {
                         style={{
                           display: "flex", alignItems: "center", gap: "0.75rem",
                           padding: "0.85rem 1rem", cursor: "pointer", borderRadius: "14px",
-                          border: `1.5px solid ${isOn ? "rgba(124,92,191,0.3)" : "rgba(124,92,191,0.1)"}`,
-                          background: isOn ? "linear-gradient(135deg,rgba(155,111,232,0.1),rgba(107,174,224,0.1))" : "rgba(255,255,255,0.5)",
+                          border: `1.5px solid ${isOn ? "rgba(11, 102, 120, 0.3)" : "rgba(11, 102, 120, 0.1)"}`,
+                          background: isOn ? "linear-gradient(135deg,rgba(11, 102, 120,0.1),rgba(241,179,42,0.1))" : "rgba(255,255,255,0.5)",
                           transition: "all 0.2s ease",
                         }}
                       >
                         <span style={{ fontSize: "1.2rem" }}>{PAGE_ICONS[page] || "📄"}</span>
                         <span style={{ flex: 1, fontWeight: 600, color: COLORS.text, fontSize: "0.9rem", textTransform: "capitalize" }}>{page.replace(/-/g, " ")}</span>
                         <div style={{
-                          width: "22px", height: "22px", borderRadius: "6px", border: `1.5px solid ${isOn ? "transparent" : "rgba(124,92,191,0.25)"}`,
-                          background: isOn ? "linear-gradient(135deg,#9b6fe8,#6baee0)" : "white",
+                          width: "22px", height: "22px", borderRadius: "6px", border: `1.5px solid ${isOn ? "transparent" : "rgba(11, 102, 120, 0.25)"}`,
+                          background: isOn ? "var(--gradient-primary)" : "white",
                           display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                         }}>
                           {isOn && <FiCheck size={13} color="white" strokeWidth={3} />}
@@ -262,10 +303,10 @@ const PermissionPage = () => {
                   <motion.div
                     key={admin.id}
                     whileHover={{ scale: 1.012 }}
-                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.9rem 1rem", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: "14px" }}
+                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.9rem 1rem", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(11, 102, 120, 0.12)", borderRadius: "14px" }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                      <div style={{ width: "38px", height: "38px", borderRadius: "50%", background: "linear-gradient(135deg,#9b6fe8,#6baee0)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: "1rem", flexShrink: 0 }}>
+                      <div style={{ width: "38px", height: "38px", borderRadius: "50%", background: "var(--gradient-primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: "1rem", flexShrink: 0 }}>
                         {admin.full_name?.charAt(0)?.toUpperCase()}
                       </div>
                       <div>
@@ -296,6 +337,71 @@ const PermissionPage = () => {
               <div className="empty-state" style={{ padding: "2rem" }}>
                 <FiUser size={36} />
                 <p>No users found</p>
+              </div>
+            )}
+          </motion.div>
+        </div>
+      )}
+
+      {/* JOB TYPES TAB */}
+      {activeTab === "job-types" && (
+        <div style={{ maxWidth: "680px", margin: "0 auto", width: "100%" }}>
+          <motion.div style={glassCard} initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
+            <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", fontWeight: 600, color: COLORS.text, marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <FiTag color={COLORS.primary} /> Add Job Type
+            </h2>
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <input
+                className="form-input"
+                style={{ flex: 1 }}
+                type="text"
+                value={newJobTypeName}
+                onChange={(e) => setNewJobTypeName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addJobType()}
+                placeholder="e.g. AC Service, Pump Repair..."
+              />
+              <button
+                className="button-primary"
+                onClick={addJobType}
+                disabled={jobTypeLoading}
+                style={{ display: "flex", alignItems: "center", gap: "0.4rem", whiteSpace: "nowrap" }}
+              >
+                <FiPlusCircle /> Add
+              </button>
+            </div>
+          </motion.div>
+
+          <motion.div style={glassCard} initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
+            <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", fontWeight: 600, color: COLORS.text, marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <FiTag color={COLORS.primary} /> Existing Job Types
+            </h2>
+            {jobTypes.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                {jobTypes.map((jt) => (
+                  <motion.div
+                    key={jt.id}
+                    whileHover={{ scale: 1.012 }}
+                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.9rem 1rem", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(11,102,120,0.12)", borderRadius: "14px" }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                      <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: "var(--gradient-primary)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <FiTag size={15} color="white" />
+                      </div>
+                      <span style={{ fontWeight: 600, color: COLORS.text, fontSize: "0.9rem" }}>{jt.name}</span>
+                    </div>
+                    <button
+                      onClick={() => deleteJobType(jt.id)}
+                      style={{ width: "34px", height: "34px", borderRadius: "50%", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "rgba(235,89,104,0.1)", color: COLORS.danger }}
+                    >
+                      <FiTrash2 size={15} />
+                    </button>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state" style={{ padding: "2rem" }}>
+                <FiTag size={36} />
+                <p>No job types yet. Add your first one above.</p>
               </div>
             )}
           </motion.div>

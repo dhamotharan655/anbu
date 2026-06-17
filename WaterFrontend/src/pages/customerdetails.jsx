@@ -19,7 +19,7 @@ const CustomerDetails = () => {
   }, []);
 
   return (
-    <div style={{ padding: 20, maxWidth: 600, margin: "0 auto", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div style={{ padding: 20, maxWidth: 600, margin: "0 auto", fontFamily: "var(--font-family-sans)" }}>
 
       {/* TABS */}
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
@@ -33,11 +33,11 @@ const CustomerDetails = () => {
             cursor: "pointer",
             fontWeight: "600",
             fontSize: "0.88rem",
-            background: active === "our_customer" ? "linear-gradient(135deg, #9b6fe8, #6baee0)" : "rgba(255,255,255,0.72)",
-            color: active === "our_customer" ? "#fff" : "#8b85a1",
-            boxShadow: active === "our_customer" ? "0 4px 14px rgba(124,92,191,0.3)" : "0 2px 8px rgba(124,92,191,0.08)",
+            background: active === "our_customer" ? "var(--gradient-primary)" : "rgba(255,255,255,0.72)",
+            color: active === "our_customer" ? "#fff" : "var(--color-text-secondary)",
+            boxShadow: active === "our_customer" ? "var(--shadow-primary)" : "var(--shadow-sm)",
             transition: "all 0.25s ease",
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontFamily: "var(--font-family-sans)",
           }}
           onClick={() => {
             setActive("our_customer");
@@ -56,11 +56,11 @@ const CustomerDetails = () => {
             cursor: "pointer",
             fontWeight: "600",
             fontSize: "0.88rem",
-            background: active === "external_customer" ? "linear-gradient(135deg, #9b6fe8, #6baee0)" : "rgba(255,255,255,0.72)",
-            color: active === "external_customer" ? "#fff" : "#8b85a1",
-            boxShadow: active === "external_customer" ? "0 4px 14px rgba(124,92,191,0.3)" : "0 2px 8px rgba(124,92,191,0.08)",
+            background: active === "external_customer" ? "var(--gradient-primary)" : "rgba(255,255,255,0.72)",
+            color: active === "external_customer" ? "#fff" : "var(--color-text-secondary)",
+            boxShadow: active === "external_customer" ? "var(--shadow-primary)" : "var(--shadow-sm)",
             transition: "all 0.25s ease",
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            fontFamily: "var(--font-family-sans)",
           }}
           onClick={() => {
             setActive("external_customer");
@@ -82,8 +82,8 @@ const CustomerDetails = () => {
             WebkitBackdropFilter: "blur(20px)",
             padding: 20,
             borderRadius: 20,
-            border: "1px solid rgba(255,255,255,0.8)",
-            boxShadow: "0 4px 20px rgba(124,92,191,0.12)",
+            border: "1px solid var(--color-border)",
+            boxShadow: "var(--shadow-md)",
             marginBottom: 12,
             transition: "all 0.25s ease",
           }}

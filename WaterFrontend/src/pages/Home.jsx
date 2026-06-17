@@ -27,7 +27,7 @@ const menuItems = [
     icon: <FiUserCheck />,
     destination: "/customers",
     permission: "customers",
-    color: "purple",
+    color: "teal",
   },
   {
     key: "Booking",
@@ -36,7 +36,7 @@ const menuItems = [
     icon: <FiPackage />,
     destination: "/booking",
     permission: "booking",
-    color: "blue",
+    color: "gold",
   },
   {
     key: "Staff",
@@ -45,7 +45,7 @@ const menuItems = [
     icon: <FiUsers />,
     destination: "/staff",
     permission: "staff",
-    color: "mint",
+    color: "teal-light",
   },
   {
     key: "History",
@@ -54,7 +54,7 @@ const menuItems = [
     icon: <FiArchive />,
     destination: "/history",
     permission: "history",
-    color: "pink",
+    color: "gold-light",
   },
   {
     key: "Dashboard",
@@ -63,7 +63,7 @@ const menuItems = [
     icon: <FiTrendingUp />,
     destination: "/dashboard",
     permission: "dashboard",
-    color: "peach",
+    color: "teal-dark",
   },
 ];
 
@@ -169,17 +169,17 @@ const Home = () => {
   const styles = {
     container: {
       minHeight: "100vh",
-      background: "linear-gradient(135deg, #f0e6ff 0%, #dceeff 40%, #ffe6f0 100%)",
+      background: "var(--gradient-bg)",
       position: "relative",
       overflowX: "hidden",
-      fontFamily: "'Plus Jakarta Sans', sans-serif",
+      fontFamily: "var(--font-family-sans)",
     },
     blob1: {
       position: "fixed",
       width: "500px",
       height: "500px",
       borderRadius: "50%",
-      background: "radial-gradient(circle, #c9a8ff, #a8d4ff)",
+      background: "radial-gradient(circle, #b3dee6, #e6f7f9)",
       filter: "blur(70px)",
       pointerEvents: "none",
       opacity: 0.45,
@@ -192,7 +192,7 @@ const Home = () => {
       width: "400px",
       height: "400px",
       borderRadius: "50%",
-      background: "radial-gradient(circle, #ffd6ec, #ffecb3)",
+      background: "radial-gradient(circle, #f9f0d1, #fcf8e8)",
       filter: "blur(70px)",
       pointerEvents: "none",
       opacity: 0.45,
@@ -206,10 +206,10 @@ const Home = () => {
       width: "280px",
       height: "280px",
       borderRadius: "50%",
-      background: "radial-gradient(circle, #b3f0e0, #b3d9ff)",
+      background: "radial-gradient(circle, var(--color-gold), #f9e6b3)",
       filter: "blur(70px)",
       pointerEvents: "none",
-      opacity: 0.45,
+      opacity: 0.15,
       animation: "blobFloat 10s ease-in-out infinite",
       animationDelay: "-3s",
       top: "40%",
@@ -226,10 +226,10 @@ const Home = () => {
       borderRadius: "24px",
       padding: "40px 48px",
       marginBottom: "40px",
-      background: "linear-gradient(135deg, #9b6fe8 0%, #6baee0 60%, #a8d4ff 100%)",
+      background: "var(--gradient-primary)",
       position: "relative",
       overflow: "hidden",
-      boxShadow: "0 16px 48px rgba(124,92,191,0.3)",
+      boxShadow: "0 16px 48px rgba(11, 102, 120, 0.25)",
       animation: "rise 0.6s cubic-bezier(0.16,1,0.3,1) both",
     },
     heroDeco1: {
@@ -277,7 +277,7 @@ const Home = () => {
       animation: "dotpulse 2s ease-in-out infinite",
     },
     heroTitle: {
-      fontFamily: "'Fraunces', serif",
+      fontFamily: "var(--font-family-heading)",
       fontSize: "36px",
       fontWeight: 600,
       color: "white",
@@ -315,6 +315,8 @@ const Home = () => {
       color: "rgba(255,255,255,0.7)",
       marginTop: "4px",
       fontWeight: 500,
+      textTransform: "uppercase",
+      letterSpacing: "0.5px",
     },
     sectionHeader: {
       display: "flex",
@@ -323,22 +325,22 @@ const Home = () => {
       marginBottom: "20px",
     },
     sectionTitle: {
-      fontFamily: "'Fraunces', serif",
+      fontFamily: "var(--font-family-heading)",
       fontSize: "22px",
       fontWeight: 600,
-      color: "#1e1b2e",
+      color: "var(--color-text)",
     },
     sectionTitleSpan: {
       fontSize: "13px",
-      fontFamily: "'Plus Jakarta Sans', sans-serif",
+      fontFamily: "var(--font-family-sans)",
       fontStyle: "normal",
       fontWeight: 500,
-      color: "#8b85a1",
+      color: "var(--color-text-secondary)",
       marginLeft: "10px",
     },
     viewAll: {
       fontSize: "13px",
-      color: "#7c5cbf",
+      color: "var(--color-primary)",
       textDecoration: "none",
       fontWeight: 600,
       display: "flex",
@@ -363,7 +365,7 @@ const Home = () => {
       display: "flex",
       flexDirection: "column",
       gap: "12px",
-      boxShadow: "0 4px 20px rgba(124,92,191,0.12)",
+      boxShadow: "0 4px 20px rgba(11, 102, 120, 0.08)",
       transition: "all 0.25s ease",
       cursor: "pointer",
     },
@@ -377,27 +379,31 @@ const Home = () => {
       fontSize: "20px",
     },
     siGreen: {
-      background: "linear-gradient(135deg, #d4f7e7, #b8f0d5)",
+      background: "linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.2))",
+      color: "var(--color-success)",
     },
     siOrange: {
-      background: "linear-gradient(135deg, #ffe8cc, #ffd6aa)",
+      background: "linear-gradient(135deg, rgba(241, 179, 42, 0.1), rgba(241, 179, 42, 0.2))",
+      color: "var(--color-secondary)",
     },
     siRed: {
-      background: "linear-gradient(135deg, #ffd5d5, #ffb8b8)",
+      background: "linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.2))",
+      color: "var(--color-danger)",
     },
     siBlue: {
-      background: "linear-gradient(135deg, #d5e8ff, #b8d5ff)",
+      background: "linear-gradient(135deg, rgba(11, 102, 120, 0.1), rgba(11, 102, 120, 0.2))",
+      color: "var(--color-primary)",
     },
     statNum: {
-      fontFamily: "'Fraunces', serif",
+      fontFamily: "var(--font-family-heading)",
       fontSize: "32px",
       fontWeight: 600,
       lineHeight: 1,
-      color: "#1e1b2e",
+      color: "var(--color-text)",
     },
     statLabel: {
       fontSize: "13px",
-      color: "#8b85a1",
+      color: "var(--color-text-secondary)",
       fontWeight: 500,
     },
     statBadge: {
@@ -410,24 +416,20 @@ const Home = () => {
       borderRadius: "100px",
     },
     badgeGreen: {
-      background: "rgba(255,255,255,0.72)",
-      backdropFilter: "blur(20px)",
-      WebkitBackdropFilter: "blur(20px)",
-      border: "1px solid rgba(255,255,255,0.8)",
-      color: "#5a4a8a",
-      boxShadow: "0 4px 20px rgba(124,92,191,0.12)",
+      background: "rgba(40, 167, 69, 0.1)",
+      color: "var(--color-success)",
     },
     badgeOrange: {
-      background: "rgba(255,159,67,0.12)",
-      color: "#c77b00",
+      background: "rgba(241, 179, 42, 0.1)",
+      color: "var(--color-secondary)",
     },
     badgeRed: {
-      background: "rgba(255,99,99,0.12)",
-      color: "#c74747",
+      background: "rgba(220, 53, 69, 0.1)",
+      color: "var(--color-danger)",
     },
     badgeBlue: {
-      background: "rgba(91,155,213,0.12)",
-      color: "#3a7fc1",
+      background: "rgba(11, 102, 120, 0.1)",
+      color: "var(--color-primary)",
     },
     servicesGrid: {
       display: "grid",
@@ -445,7 +447,7 @@ const Home = () => {
       display: "flex",
       alignItems: "center",
       gap: "18px",
-      boxShadow: "0 4px 20px rgba(124,92,191,0.12)",
+      boxShadow: "0 4px 20px rgba(11, 102, 120, 0.08)",
       textDecoration: "none",
       color: "inherit",
       transition: "all 0.25s ease",
@@ -460,7 +462,7 @@ const Home = () => {
       top: 0,
       bottom: 0,
       width: "4px",
-      background: "linear-gradient(180deg, #9b6fe8, #6baee0)",
+      background: "var(--gradient-primary)",
       opacity: 0,
       transition: "opacity 0.25s",
       borderRadius: "4px 0 0 4px",
@@ -476,20 +478,25 @@ const Home = () => {
       flexShrink: 0,
       transition: "transform 0.25s",
     },
-    svcPurple: {
-      background: "linear-gradient(135deg, #e8d5ff, #d5c0ff)",
+    svcTeal: {
+      background: "linear-gradient(135deg, rgba(11, 102, 120, 0.1), rgba(11, 102, 120, 0.2))",
+      color: "var(--color-primary)",
     },
-    svcBlue: {
-      background: "linear-gradient(135deg, #d5e8ff, #c0d5ff)",
+    svcGold: {
+      background: "linear-gradient(135deg, rgba(241, 179, 42, 0.1), rgba(241, 179, 42, 0.2))",
+      color: "var(--color-secondary)",
     },
-    svcMint: {
-      background: "linear-gradient(135deg, #d5ffe8, #c0ffd5)",
+    svcTealLight: {
+      background: "linear-gradient(135deg, rgba(18, 130, 153, 0.1), rgba(18, 130, 153, 0.2))",
+      color: "var(--color-primary-light)",
     },
-    svcPink: {
-      background: "linear-gradient(135deg, #ffd5e8, #ffc0d5)",
+    svcGoldLight: {
+      background: "linear-gradient(135deg, rgba(212, 160, 23, 0.1), rgba(212, 160, 23, 0.2))",
+      color: "#d4a017",
     },
-    svcPeach: {
-      background: "linear-gradient(135deg, #ffe8d5, #ffd5c0)",
+    svcTealDark: {
+      background: "linear-gradient(135deg, rgba(4, 77, 92, 0.1), rgba(4, 77, 92, 0.2))",
+      color: "var(--color-primary-hover)",
     },
     svcInfo: {
       flex: 1,
@@ -497,15 +504,15 @@ const Home = () => {
     svcTitle: {
       fontSize: "15px",
       fontWeight: 700,
-      color: "#1e1b2e",
+      color: "var(--color-text)",
       marginBottom: "4px",
     },
     svcDesc: {
       fontSize: "13px",
-      color: "#8b85a1",
+      color: "var(--color-text-secondary)",
     },
     svcArrow: {
-      color: "#8b85a1",
+      color: "var(--color-text-secondary)",
       flexShrink: 0,
       transition: "all 0.25s",
     },
@@ -529,13 +536,13 @@ const Home = () => {
         }
         .home-stat-card:hover {
           transform: translateY(-4px);
-          box-shadow: 0 12px 36px rgba(124,92,191,0.15);
+          box-shadow: 0 12px 36px rgba(11, 102, 120, 0.15);
           background: rgba(255,255,255,0.85);
         }
         .home-service-card:hover {
           transform: translateX(6px);
           background: rgba(255,255,255,0.88);
-          box-shadow: 0 8px 32px rgba(124,92,191,0.15);
+          box-shadow: 0 8px 32px rgba(11, 102, 120, 0.15);
         }
         .home-service-card:hover::before {
           opacity: 1;
@@ -544,7 +551,7 @@ const Home = () => {
           transform: scale(1.08);
         }
         .home-service-card:hover .svc-arrow {
-          color: #7c5cbf;
+          color: var(--color-primary);
           transform: translateX(4px);
         }
         .view-all:hover {
@@ -661,10 +668,10 @@ const Home = () => {
                 >
                   <div style={{
                     ...styles.svcIcon,
-                    ...(item.color === "purple" ? styles.svcPurple :
-                        item.color === "blue" ? styles.svcBlue :
-                        item.color === "mint" ? styles.svcMint :
-                        item.color === "pink" ? styles.svcPink : styles.svcPeach)
+                    ...(item.color === "teal" ? styles.svcTeal :
+                        item.color === "gold" ? styles.svcGold :
+                        item.color === "teal-light" ? styles.svcTealLight :
+                        item.color === "gold-light" ? styles.svcGoldLight : styles.svcTealDark)
                   }}>
                     {item.icon}
                   </div>

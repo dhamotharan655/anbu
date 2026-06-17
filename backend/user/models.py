@@ -88,6 +88,9 @@ class Staff(Document):
 
     # Weekly off days (e.g., ["Sunday", "Saturday"])
     weekly_off_days = ListField(StringField(), default=[])
+    
+    # Branch assignment
+    branch_name = StringField(max_length=100, null=True, blank=True)
 
     meta = {'collection': 'staffs'}
 
@@ -115,6 +118,7 @@ class DeletedStaff(Document):
     email = StringField(required=False)
     phone = StringField(max_length=15)
     location = StringField(max_length=200)
+    branch_name = StringField(max_length=100, null=True, blank=True)
     photo_url = StringField()
     deleted_at = DateTimeField(default=get_ist_now)
 
@@ -208,6 +212,7 @@ class BookServiceComplaint(Document):
     # NEW: Additional product fields for completion flow
     additional_product = StringField(required=False, null=True)
     additional_product_quantity = IntField(default=0)
+    staff_incentive = FloatField(default=0.0)
 
     # Payment related fields (may exist in older documents)
     payment_due_date = DateTimeField(null=True)
@@ -227,8 +232,11 @@ class BookServiceComplaint(Document):
     whatsapp_sent_to_customer = BooleanField(default=False)
     whatsapp_sent_to_staff = BooleanField(default=False)
     booking_whatsapp_sent = BooleanField(default=False)
+    
+    # Branch assignment
+    branch_name = StringField(max_length=100, null=True, blank=True)
 
-    meta = {'collection': 'book_service_complaints'}
+    meta = {'collection': 'book_service_complaints', 'strict': False}
 
     # ✅ Generate complaint number
     @staticmethod
@@ -328,7 +336,18 @@ class BookServiceComplaint(Document):
             except Exception as e:
                 print(f"Error fetching motor total in calculate_grand_total: {e}")
 
-        return round(booking_total + additional_total + client_amount + motor_total, 2)
+        # 5. Expired / Scrap Items Deduction
+        expired_total = 0
+        try:
+            # Import locally to avoid circular dependencies if needed
+            # (ExpiredItem is in the same file, but this is safe)
+            expired_items = ExpiredItem.objects(complaint_no=self.complaint_no)
+            for ei in expired_items:
+                expired_total += float(ei.buying_price or 0)
+        except Exception as e:
+            print(f"Error fetching expired items total in calculate_grand_total: {e}")
+
+        return round(max(0, booking_total + additional_total + client_amount + motor_total - expired_total), 2)
 
     def save(self, *args, **kwargs):
         """
@@ -447,6 +466,9 @@ class Products(Document):
     product_name = StringField(max_length=100, required=True)
     #model_number = StringField(max_length=100, required=True)
     description = StringField(null=True)
+    branch_name = StringField(max_length=100, null=True, blank=True)
+
+    meta = {'collection': 'products', 'strict': False}
 
     def __str__(self):
         return self.product_name
@@ -465,9 +487,9 @@ class StaffAttendance(Document):
     )
     # Extended payroll fields
     attendance_type = StringField(
-        choices=['present', 'absent', 'leave'],
+        choices=['present', 'absent', 'leave', 'holiday'],
         default='absent'
-    )  # present, absent, leave
+    )  # present, absent, leave, holiday
     work_type = StringField(
         choices=['full_day', 'half_day'],
         default='full_day'
@@ -478,8 +500,9 @@ class StaffAttendance(Document):
     override_reason = StringField(null=True)   # Reason if multiplier > 1 on special day
     marked_by = StringField(required=True)  # Admin user who marked attendance
     marked_at = DateTimeField(default=get_ist_now)
+    branch_name = StringField(max_length=100, null=True, blank=True)
 
-    meta = {'collection': 'staff_attendance'}
+    meta = {'collection': 'staff_attendance', 'strict': False}
 
     def __str__(self):
         return f"{self.staff_name} - {self.date.strftime('%Y-%m-%d')} - {self.status}"
@@ -520,12 +543,16 @@ class StaffPayroll(Document):
     # Optional adjustments
     bonus = FloatField(default=0)
     deduction = FloatField(default=0)
+    total_incentives = FloatField(default=0)
     final_salary = FloatField(default=0)
+    
+    # Branch assignment
+    branch_name = StringField(max_length=100, null=True, blank=True)
     
     # Metadata
     generated_at = DateTimeField(default=get_ist_now)
     
-    meta = {'collection': 'staff_payroll'}
+    meta = {'collection': 'staff_payroll', 'strict': False}
 
 
 # ------------------------------
@@ -546,11 +573,16 @@ class HolidayCalendar(Document):
     is_paid = BooleanField(default=True)
     is_auto = BooleanField(default=False)
     is_active = BooleanField(default=True)
+    
+    # Branch assignment
+    branch_name = StringField(max_length=100, null=True, blank=True)
+    
     created_at = DateTimeField(default=get_ist_now)
     updated_at = DateTimeField(default=get_ist_now)
 
     meta = {
         'collection': 'holiday_calendar',
+        'strict': False,
         'indexes': [
             {'fields': ['date', 'staff_id'], 'unique': True},
             'staff_id'
@@ -589,8 +621,11 @@ class StockItem(Document):
     motor_specs = DictField(null=True, blank=True)  # Motor specifications (kw, hp, rpm, slots, etc.)
     # ⭐ NEW: Motor brands with detailed structure (for multi-brand support)
     motor_brands = ListField(DictField(), null=True, blank=True)  # List of {brand_name: str, quantity: int, specification_id: str, purchase_price: float, selling_price: float, minimum_price: float, created_at: date}
+    
+    # Branch assignment
+    branch_name = StringField(max_length=100, null=True, blank=True)
 
-    meta = {'collection': 'stock_items'}
+    meta = {'collection': 'stock_items', 'strict': False}
 
     def save(self, *args, **kwargs):
         """
@@ -648,7 +683,7 @@ class StockItem(Document):
         
         return True, f"Added {quantity_to_add} units. New quantity: {self.quantity}"
 
-    def reduce_stock(self, quantity_to_reduce, brand_name=None, brand_id=None):
+    def reduce_stock(self, quantity_to_reduce, brand_name=None, brand_id=None, check_threshold=False):
         """
         Reduce stock quantity with validation.
         Supports brand-specific reduction for motors using MotorVariant.
@@ -682,6 +717,10 @@ class StockItem(Document):
             if quantity_to_reduce > variant.count:
                 return False, f"Insufficient stock for brand '{brand_name}'. Available: {variant.count}"
             
+            # Check threshold if requested
+            if check_threshold and (variant.count - quantity_to_reduce) < self.minimum_threshold:
+                return False, f"Stock for brand '{brand_name}' would fall below minimum threshold of {self.minimum_threshold}. Available: {variant.count}"
+            
             # 2. Reduce variant count
             variant.count -= quantity_to_reduce
             variant.save()
@@ -709,6 +748,11 @@ class StockItem(Document):
             # Normal product reduction
             if quantity_to_reduce > self.quantity:
                 return False, f"Insufficient stock. Available: {self.quantity}"
+            
+            # Check threshold if requested
+            if check_threshold and (self.quantity - quantity_to_reduce) < self.minimum_threshold:
+                return False, f"Stock would fall below minimum threshold of {self.minimum_threshold}. Available: {self.quantity}"
+
             self.quantity -= quantity_to_reduce
         
         self.save()
@@ -927,9 +971,12 @@ class MotorVariant(Document):
     remarks = StringField(null=True)
     winding_details = ListField(DictField(), null=True)
     
+    # Branch assignment
+    branch_name = StringField(max_length=100, null=True, blank=True)
+    
     created_at = DateTimeField(default=get_ist_now)
 
-    meta = {'collection': 'motor_variants'}
+    meta = {'collection': 'motor_variants', 'strict': False}
 
     def __str__(self):
         return f"{self.brand} ({self.count})"
@@ -978,6 +1025,9 @@ class StockHistory(Document):
     # ⭐ NEW: Link to job context
     complaint_no = StringField(max_length=50, null=True, blank=True)
     customer_id = StringField(max_length=50, null=True, blank=True)
+    
+    # Branch assignment
+    branch_name = StringField(max_length=100, null=True, blank=True)
     
     created_at = DateTimeField(default=get_ist_now)
     
@@ -1043,6 +1093,10 @@ class MotorDetails(Document):
     
     # Metadata
     created_by = StringField(max_length=100)
+    
+    # Branch assignment
+    branch_name = StringField(max_length=100, null=True, blank=True)
+    
     created_at = DateTimeField(default=get_ist_now)
     updated_at = DateTimeField(default=get_ist_now)
     
@@ -1123,7 +1177,10 @@ class StaffLeaveBalance(Document):
     created_at = DateTimeField(default=get_ist_now)
     updated_at = DateTimeField(default=get_ist_now)
     
-    meta = {'collection': 'staff_leave_balance'}
+    # Branch assignment
+    branch_name = StringField(max_length=100, null=True, blank=True)
+    
+    meta = {'collection': 'staff_leave_balance', 'strict': False}
 
     def __str__(self):
         return f"{self.staff_name} - {self.year} - {self.leave_remaining} days remaining"
@@ -1159,7 +1216,10 @@ class StaffLoan(Document):
     notes = StringField(null=True)
     created_at = DateTimeField(default=get_ist_now)
     
-    meta = {'collection': 'staff_loans'}
+    # Branch assignment
+    branch_name = StringField(max_length=100, null=True, blank=True)
+    
+    meta = {'collection': 'staff_loans', 'strict': False}
 
     def __str__(self):
         return f"{self.staff_name} - {self.loan_amount} - {self.status}"
@@ -1196,7 +1256,74 @@ class PaymentDetails(Document):
     
     created_at = DateTimeField(default=get_ist_now)
     
-    meta = {'collection': 'payment_details'}
+    # Branch assignment
+    branch_name = StringField(max_length=100, null=True, blank=True)
+    
+    meta = {'collection': 'payment_details', 'strict': False}
     
     def __str__(self):
         return f"{self.complaint_no} - ₹{self.amount_paid} - {self.status}"
+
+
+# ------------------------------
+#   Branch Management Model
+# ------------------------------
+class Branch(Document):
+    """
+    Branch management model for tracking different business locations.
+    """
+    branch_id = StringField(required=True, unique=True)
+    name = StringField(required=True, max_length=100)
+    location = StringField(max_length=200, null=True, blank=True)
+    is_active = BooleanField(default=True)
+    created_at = DateTimeField(default=get_ist_now)
+
+    meta = {'collection': 'branches', 'strict': False}
+
+    def __str__(self):
+        return self.name
+
+
+# ------------------------------
+#   Job Types Model
+# ------------------------------
+class JobType(Document):
+    """
+    Dynamic job types for service complaints and bookings.
+    """
+    name = StringField(required=True, unique=True)
+    is_active = BooleanField(default=True)
+    created_at = DateTimeField(default=get_ist_now)
+
+    meta = {'collection': 'job_types', 'strict': False}
+
+    def __str__(self):
+        return self.name
+
+
+# ------------------------------
+#   Expired / Scrap Items Model
+# ------------------------------
+class ExpiredItem(Document):
+    """
+    Model for tracking scrap/expired items collected from customers.
+    """
+    name = StringField(required=True)
+    complaint_no = StringField(null=True, blank=True)
+    customer_name = StringField(null=True, blank=True)
+    
+    buying_price = FloatField(default=0.0)
+    sold_price = FloatField(null=True)
+    
+    buy_date = DateTimeField(default=get_ist_now)
+    sold_date = DateTimeField(null=True)
+    
+    created_at = DateTimeField(default=get_ist_now)
+    
+    # Branch assignment
+    branch_name = StringField(max_length=100, null=True, blank=True)
+
+    meta = {'collection': 'expired_items', 'strict': False}
+
+    def __str__(self):
+        return f"{self.name} - {self.customer_name}"

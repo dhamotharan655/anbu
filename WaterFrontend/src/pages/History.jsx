@@ -13,7 +13,8 @@ import {
   FiCheckCircle,
   FiPhone,
   FiUserCheck,
-  FiDollarSign
+  FiDollarSign,
+  FiClock
 } from "react-icons/fi";
 
 // Reusable component to display a row of info
@@ -104,11 +105,29 @@ const History = () => {
     <div className="page-container history-page">
       {/* HEADER */}
       <section className="page-section">
-        <h1 className="section-title">Service History</h1>
-        <p className="section-subtitle">Completed service records and payment details</p>
+        <div className="header-flex" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '1rem' }}>
+          <div className="header-icon-box" style={{ 
+            width: '56px', 
+            height: '56px', 
+            background: 'var(--gradient-primary)', 
+            borderRadius: '16px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            color: 'white',
+            fontSize: '1.5rem',
+            boxShadow: 'var(--shadow-md)'
+          }}>
+            <FiClock />
+          </div>
+          <div>
+            <h1 className="section-title" style={{ margin: 0, fontSize: '1.85rem', fontWeight: 800, color: 'var(--color-primary)' }}>Service History</h1>
+            <p className="section-subtitle" style={{ margin: '4px 0 0', color: 'var(--color-text-secondary)' }}>Completed service records and payment details</p>
+          </div>
+        </div>
 
-        <div className="dashboard-controls">
-          <div className="search-bar">
+        <div className="dashboard-controls" style={{ marginTop: '2rem' }}>
+          <div className="search-bar" style={{ maxWidth: '500px' }}>
             <FiSearch />
             <input
               type="text"

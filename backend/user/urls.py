@@ -108,13 +108,6 @@ urlpatterns = [
     path('download-invoice/<str:invoice_number>/', views.download_invoice, name='download_invoice'),
 
     # ------------------------------
-    #   Motor Details APIs (Three Phase Motor)
-    # ------------------------------
-    path('motor-details/', views.motor_details_list, name='motor_details_list'),
-    path('motor-details/<str:motor_id>/', views.motor_details_detail, name='motor_details_detail'),
-    path('motor-details/search/', views.motor_details_search, name='motor_details_search'),
-
-    # ------------------------------
     #   Payment Details APIs
     # ------------------------------
     # Main endpoint with complaint_id
@@ -162,10 +155,24 @@ urlpatterns = [
     path('staff-loans/<str:loan_id>/', views.staff_loan_detail, name='staff_loan_detail'),
 
     # ------------------------------
-    #   NEW: Motor Details Enhancement APIs
+    #   Branch Management APIs
     # ------------------------------
-    path('motor-by-complaint/', views.get_motor_by_complaint, name='get_motor_by_complaint'),
-    path('cleanup-duplicate-motors/', views.cleanup_duplicate_motors, name='cleanup_duplicate_motors'),
+    path('branches/', views.get_branches, name='get_branches'),
+    path('branches/create/', views.create_branch, name='create_branch'),
+    path('branches/<str:branch_id>/update/', views.update_branch, name='update_branch'),
+    path('branches/<str:branch_id>/delete/', views.delete_branch, name='delete_branch'),
+
+    # ------------------------------
+    #   Job Types APIs
+    # ------------------------------
+    path('job-types/', views.job_type_list, name='job_type_list'),
+    path('job-types/<str:job_type_id>/delete/', views.job_type_detail, name='job_type_detail'),
+
+    # ------------------------------
+    #   Expired / Scrap Items APIs
+    # ------------------------------
+    path('expired-items/', views.expired_item_list, name='expired_item_list'),
+    path('expired-items/<str:item_id>/', views.expired_item_detail, name='expired_item_detail'),
 
 ]
 

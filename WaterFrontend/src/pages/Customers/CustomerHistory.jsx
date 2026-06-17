@@ -599,20 +599,20 @@ const CustomerHistory = () => {
                 <FiCreditCard size={16} />
                 <span>Payment Summary</span>
               </div>
-              <div style={{ fontSize: '13px', color: '#64748b' }}>
-                Total: <strong style={{ color: '#1e293b' }}>₹{totalGrand.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+              <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                Total: <strong style={{ color: 'var(--color-text)' }}>₹{totalGrand.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
               </div>
-              <div style={{ fontSize: '13px', color: '#64748b' }}>
+              <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                 Paid: <strong style={{ color: '#059669' }}>₹{totalPaidAll.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
               </div>
-              <div style={{ fontSize: '13px', color: '#64748b' }}>
+              <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                 Due: <strong style={{ color: totalDueAll > 0 ? '#dc2626' : '#059669' }}>₹{totalDueAll.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
               </div>
-              <div style={{ fontSize: '13px', color: '#64748b' }}>
-                <span style={{ background: '#d1fae5', color: '#059669', padding: '2px 8px', borderRadius: '10px', fontWeight: '600', fontSize: '12px' }}>{paidCount} Paid</span>
+              <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                <span style={{ background: 'rgba(5, 150, 105, 0.15)', color: '#059669', padding: '2px 8px', borderRadius: '10px', fontWeight: '600', fontSize: '12px' }}>{paidCount} Paid</span>
                 {' '}
                 {overdueCount > 0 && (
-                  <span style={{ background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: '10px', fontWeight: '600', fontSize: '12px' }}>{overdueCount} Overdue</span>
+                  <span style={{ background: 'rgba(220, 38, 38, 0.15)', color: '#dc2626', padding: '2px 8px', borderRadius: '10px', fontWeight: '600', fontSize: '12px' }}>{overdueCount} Overdue</span>
                 )}
               </div>
             </div>
@@ -653,9 +653,9 @@ const CustomerHistory = () => {
             style={{
               padding: '10px 16px',
               borderRadius: '8px',
-              border: showFilters ? 'none' : '1px solid #ddd',
-              background: showFilters ? '#9b6fe8' : 'white',
-              color: showFilters ? 'white' : '#666',
+              border: showFilters ? 'none' : '1px solid var(--color-border)',
+              background: showFilters ? 'var(--color-primary)' : 'white',
+              color: showFilters ? 'white' : 'var(--color-text-secondary)',
               cursor: 'pointer',
               fontWeight: '600',
               fontSize: '14px'

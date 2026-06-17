@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api";
+import { useScrollToRef } from "../hooks/useScrollToRef";
 import ProductHistory from "../components/ProductHistory";
 import {
   FiTrendingUp,
@@ -21,17 +22,17 @@ import {
 
 /* -------------------- CONSTANTS -------------------- */
 const COLORS = {
-  primary: "#7c5cbf",
-  secondary: "#6baee0",
-  accent: "#9b6fe8",
-  success: "#2d9e6b",
-  danger: "#eb5968",
-  warning: "#c77b00",
-  text: "#1e1b2e",
-  muted: "#8b85a1",
-  white: "#ffffff",
+  primary: "var(--color-primary)",
+  secondary: "var(--color-primary-light)",
+  accent: "var(--color-gold)",
+  success: "var(--color-success)",
+  danger: "var(--color-danger)",
+  warning: "var(--color-warning)",
+  text: "var(--color-text)",
+  muted: "var(--color-text-secondary)",
+  white: "var(--color-white)",
   glass: "rgba(255,255,255,0.72)",
-  glassBorder: "rgba(255,255,255,0.8)",
+  glassBorder: "var(--glass-border)",
 };
 
 const glassCard = {
@@ -40,7 +41,7 @@ const glassCard = {
   WebkitBackdropFilter: "blur(20px)",
   border: `1px solid ${COLORS.glassBorder}`,
   borderRadius: "20px",
-  boxShadow: "0 4px 20px rgba(124,92,191,0.12)",
+  boxShadow: "var(--shadow-md, 0 4px 20px rgba(11, 102, 120, 0.08))",
 };
 
 /* -------------------- COMPONENT -------------------- */
@@ -58,14 +59,8 @@ const StaffPerformance = () => {
   const [modalData, setModalData] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
 
-  // Scroll to top when modal opens
-  useEffect(() => {
-    if (showModal) {
-      window.scrollTo(0, 0);
-      document.body.scrollTop = 0;
-      document.documentElement.scrollTop = 0;
-    }
-  }, [showModal]);
+  // Focus modal when it opens
+  const modalRef = useScrollToRef(showModal);
 
   useEffect(() => { fetchStaffPerformance(); }, []);
 
@@ -141,10 +136,10 @@ const StaffPerformance = () => {
     <div className="page-container">
       <style>{`
         .perf-day-card:hover {
-          background: linear-gradient(135deg, #9b6fe8, #6baee0) !important;
+          background: var(--gradient-primary) !important;
           color: white !important;
           transform: translateY(-3px);
-          box-shadow: 0 8px 24px rgba(124,92,191,0.28) !important;
+          box-shadow: 0 8px 24px rgba(11, 102, 120, 0.25) !important;
         }
         .perf-day-card:hover p { color: rgba(255,255,255,0.85) !important; }
       `}</style>
@@ -159,11 +154,11 @@ const StaffPerformance = () => {
         {/* FILTER */}
         <section className="page-section">
           <div style={{ ...glassCard, padding: "1.5rem" }}>
-            <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontFamily: "'Fraunces',serif", color: COLORS.text, marginBottom: "1.25rem", fontSize: "1.1rem" }}>
+            <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontFamily: "var(--font-family-heading)", color: COLORS.text, marginBottom: "1.25rem", fontSize: "1.1rem" }}>
               <FiFilter color={COLORS.primary} />
               Filters
               {filtersApplied && (
-                <span style={{ background: "linear-gradient(135deg,#9b6fe8,#6baee0)", color: "white", padding: "2px 10px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 700, marginLeft: "4px" }}>Active</span>
+                <span style={{ background: "var(--gradient-primary)", color: "white", padding: "2px 10px", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 700, marginLeft: "4px" }}>Active</span>
               )}
             </h3>
 
@@ -171,7 +166,7 @@ const StaffPerformance = () => {
               <div>
                 <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px", color: COLORS.muted, marginBottom: "0.45rem" }}>Staff Name</label>
                 <input
-                  style={{ width: "100%", background: "rgba(255,255,255,0.88)", border: "1.5px solid rgba(124,92,191,0.15)", borderRadius: "14px", padding: "0.7rem 1rem", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: COLORS.text, outline: "none", boxSizing: "border-box" }}
+                  style={{ width: "100%", background: "var(--color-white)", border: "1.5px solid var(--color-border)", borderRadius: "14px", padding: "0.7rem 1rem", fontFamily: "var(--font-family-sans)", fontSize: "0.9rem", color: COLORS.text, outline: "none", boxSizing: "border-box" }}
                   placeholder="Search staff name..."
                   value={staffNameFilter}
                   onChange={(e) => setStaffNameFilter(e.target.value)}
@@ -179,11 +174,11 @@ const StaffPerformance = () => {
               </div>
               <div>
                 <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px", color: COLORS.muted, marginBottom: "0.45rem" }}>Start Date</label>
-                <input type="date" style={{ width: "100%", background: "rgba(255,255,255,0.88)", border: "1.5px solid rgba(124,92,191,0.15)", borderRadius: "14px", padding: "0.7rem 1rem", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: COLORS.text, outline: "none", boxSizing: "border-box" }} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <input type="date" style={{ width: "100%", background: "var(--color-white)", border: "1.5px solid var(--color-border)", borderRadius: "14px", padding: "0.7rem 1rem", fontFamily: "var(--font-family-sans)", fontSize: "0.9rem", color: COLORS.text, outline: "none", boxSizing: "border-box" }} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </div>
               <div>
                 <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.8px", color: COLORS.muted, marginBottom: "0.45rem" }}>End Date</label>
-                <input type="date" style={{ width: "100%", background: "rgba(255,255,255,0.88)", border: "1.5px solid rgba(124,92,191,0.15)", borderRadius: "14px", padding: "0.7rem 1rem", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: "0.9rem", color: COLORS.text, outline: "none", boxSizing: "border-box" }} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <input type="date" style={{ width: "100%", background: "var(--color-white)", border: "1.5px solid var(--color-border)", borderRadius: "14px", padding: "0.7rem 1rem", fontFamily: "var(--font-family-sans)", fontSize: "0.9rem", color: COLORS.text, outline: "none", boxSizing: "border-box" }} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </div>
             </div>
 
@@ -206,19 +201,20 @@ const StaffPerformance = () => {
             <section key={staff.staff_name} className="page-section">
               <div style={{ ...glassCard, padding: "1.5rem" }}>
                 {/* Staff name */}
-                <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.3rem", fontWeight: 600, color: COLORS.text, marginBottom: "1rem" }}>
-                  <span style={{ background: "linear-gradient(135deg,#9b6fe8,#6baee0)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", marginRight: "0.5rem" }}>#{index + 1}</span>
+                <h2 style={{ fontFamily: "var(--font-family-heading)", fontSize: "1.3rem", fontWeight: 600, color: COLORS.text, marginBottom: "1rem" }}>
+                  <span style={{ background: "var(--gradient-primary)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", marginRight: "0.5rem" }}>#{index + 1}</span>
                   {staff.staff_name}
                 </h2>
 
                 {/* Summary pills */}
                 <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
-                  {[
-                    { icon: <FiCheckSquare />, label: "Jobs", val: staff.total_jobs_completed, col: "rgba(45,158,107,0.12)", text: "#2d9e6b" },
-                    { icon: <FiDollarSign />, label: "Company", val: formatCurrency(staff.company_payments), col: "rgba(124,92,191,0.1)", text: "#7c5cbf" },
-                    { icon: <FiDollarSign />, label: "Client", val: formatCurrency(staff.client_payments), col: "rgba(58,127,193,0.1)", text: "#3a7fc1" },
-                  ].map((s, i) => (
-                    <div key={i} style={{ background: s.col, borderRadius: "14px", padding: "0.75rem 1.1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    {[
+                      { icon: <FiCheckSquare />, label: "Jobs", val: staff.total_jobs_completed, col: "rgba(var(--color-success-rgb), 0.12)", text: "var(--color-success)" },
+                      { icon: <FiDollarSign />, label: "Company", val: formatCurrency(staff.company_payments), col: "rgba(var(--color-primary-rgb), 0.1)", text: "var(--color-primary)" },
+                      { icon: <FiDollarSign />, label: "Client", val: formatCurrency(staff.client_payments), col: "rgba(var(--color-info-rgb), 0.1)", text: "var(--color-info)" },
+                      { icon: <FiTrendingUp />, label: "Incentive", val: formatCurrency(staff.total_incentives), col: "rgba(245, 158, 11, 0.12)", text: "#d97706" },
+                    ].map((s, i) => (
+                      <div key={i} style={{ background: s.col, borderRadius: "14px", padding: "0.75rem 1.1rem", display: "flex", alignItems: "center", gap: "0.5rem", minWidth: "140px" }}>
                       <span style={{ color: s.text }}>{s.icon}</span>
                       <div>
                         <div style={{ fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", color: COLORS.muted }}>{s.label}</div>
@@ -241,13 +237,13 @@ const StaffPerformance = () => {
                         key={date}
                         className="perf-day-card"
                         onClick={() => fetchDailyJobs(staff.staff_name, date)}
-                        style={{ background: "rgba(255,255,255,0.6)", border: "1.5px solid rgba(124,92,191,0.12)", borderRadius: "16px", padding: "1rem", textAlign: "center", cursor: "pointer", transition: "all 0.25s ease", position: "relative" }}
+                        style={{ background: "rgba(var(--color-primary-rgb), 0.04)", border: "1.5px solid var(--color-border)", borderRadius: "16px", padding: "1rem", textAlign: "center", cursor: "pointer", transition: "all 0.25s ease", position: "relative" }}
                       >
                         <FiEye style={{ position: "absolute", top: "10px", right: "10px", opacity: 0.5 }} size={14} />
                         <strong style={{ display: "block", fontSize: "0.9rem", color: "inherit", marginBottom: "0.4rem" }}>{formatDate(date)}</strong>
                         <p style={{ fontSize: "0.83rem", color: COLORS.muted, margin: "0.2rem 0" }}>{day.jobs} jobs</p>
                         <p style={{ fontSize: "0.78rem", color: COLORS.muted, margin: "0.1rem 0" }}>Co: {formatCurrency(day.company_payments)}</p>
-                        <p style={{ fontSize: "0.78rem", color: COLORS.muted, margin: "0.1rem 0" }}>Cl: {formatCurrency(day.client_payments)}</p>
+                        <p style={{ fontSize: "0.78rem", color: COLORS.muted, margin: "0.1rem 0" }}>Incentive: <span style={{ color: '#d97706', fontWeight: 600 }}>{formatCurrency(day.incentives)}</span></p>
                       </div>
                     ))}
                 </div>
@@ -271,6 +267,7 @@ const StaffPerformance = () => {
           onClick={closeModal}
         >
           <div
+            ref={modalRef}
             style={{
               background: 'white',
               borderRadius: '12px',
@@ -295,10 +292,10 @@ const StaffPerformance = () => {
             >
               <h2
                 style={{
-                  fontFamily: "'Syne', sans-serif",
+                  fontFamily: "var(--font-family-heading)",
                   fontSize: '20px',
                   fontWeight: 700,
-                  color: '#1E1B4B',
+                  color: 'var(--color-primary)',
                   margin: 0
                 }}
               >
@@ -330,10 +327,10 @@ const StaffPerformance = () => {
         ) : modalData?.jobs?.length > 0 ? (
           <div style={{ display: "grid", gap: "1rem" }}>
             {modalData.jobs.map((job, index) => (
-              <div key={job.complaint_no} style={{ background: "rgba(255,255,255,0.6)", border: "1px solid rgba(124,92,191,0.12)", borderRadius: "16px", padding: "1.25rem" }}>
+              <div key={job.complaint_no} style={{ background: "rgba(var(--color-primary-rgb), 0.04)", border: "1px solid var(--color-border)", borderRadius: "16px", padding: "1.25rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.85rem" }}>
-                  <h3 style={{ fontFamily: "'Fraunces',serif", fontSize: "1rem", color: COLORS.primary, margin: 0 }}>#{index + 1} — {job.complaint_no}</h3>
-                  <span style={{ background: job.status === "completed" ? "rgba(45,158,107,0.12)" : "rgba(124,92,191,0.12)", color: job.status === "completed" ? "#2d9e6b" : "#7c5cbf", padding: "0.25rem 0.7rem", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase" }}>{job.status}</span>
+                  <h3 style={{ fontFamily: "var(--font-family-heading)", fontSize: "1rem", color: COLORS.primary, margin: 0 }}>#{index + 1} — {job.complaint_no}</h3>
+                  <span style={{ background: job.status === "completed" ? "rgba(5, 150, 105, 0.12)" : "rgba(11, 102, 120, 0.12)", color: job.status === "completed" ? "#059669" : "#0b6678", padding: "0.25rem 0.7rem", borderRadius: "100px", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase" }}>{job.status}</span>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: "0.65rem" }}>
                   {[
@@ -379,10 +376,11 @@ const StaffPerformance = () => {
                 <div style={{ marginTop: "0.85rem", display: "flex", gap: "1.25rem", flexWrap: "wrap", fontSize: "0.85rem" }}>
                   <div><FiCreditCard color="#2d9e6b" style={{ marginRight: "0.4rem" }} /><strong>Client:</strong> {formatCurrency(job.client_payment)}</div>
                   <div><FiCreditCard color={COLORS.primary} style={{ marginRight: "0.4rem" }} /><strong>Company:</strong> {formatCurrency(job.company_payment)}</div>
+                  <div><FiTrendingUp color="#d97706" style={{ marginRight: "0.4rem" }} /><strong>Incentive:</strong> {formatCurrency(job.staff_incentive)}</div>
                   <div><FiClock color={COLORS.muted} style={{ marginRight: "0.4rem" }} /><strong>Completed:</strong> {new Date(job.completed_at).toLocaleString("en-IN")}</div>
                 </div>
-                {job.remarks && <div style={{ marginTop: "0.75rem", padding: "0.65rem", background: "rgba(124,92,191,0.06)", borderRadius: "10px", fontSize: "0.84rem" }}><strong>Remarks:</strong> {job.remarks}</div>}
-                {job.completed_remarks && <div style={{ marginTop: "0.5rem", padding: "0.65rem", background: "rgba(45,158,107,0.06)", borderRadius: "10px", fontSize: "0.84rem" }}><strong>Completed Remarks:</strong> {job.completed_remarks}</div>}
+                {job.remarks && <div style={{ marginTop: "0.75rem", padding: "0.65rem", background: "rgba(11, 102, 120, 0.06)", borderRadius: "10px", fontSize: "0.84rem" }}><strong>Remarks:</strong> {job.remarks}</div>}
+                {job.completed_remarks && <div style={{ marginTop: "0.5rem", padding: "0.65rem", background: "rgba(5, 150, 105, 0.06)", borderRadius: "10px", fontSize: "0.84rem" }}><strong>Completed Remarks:</strong> {job.completed_remarks}</div>}
               </div>
             ))}
           </div>

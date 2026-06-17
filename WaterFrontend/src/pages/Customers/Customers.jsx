@@ -168,6 +168,26 @@ const Customers = () => {
       }
     };
     fetchCustomers();
+  }, [filter]);
+
+  useEffect(() => {
+    if (refreshTriggers.customers > 0) {
+      const fetchCustomers = async () => {
+        try {
+          let queryParams = "";
+          if (filter === "in_service" || filter === "out_service") {
+            queryParams = `?service_type=${filter}`;
+          }
+          const res = await api.get(`/customers/${queryParams}`);
+          setCustomers(Array.isArray(res.data) ? res.data : []);
+        } catch (err) {
+          console.error("Fetch failed", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchCustomers();
+    }
   }, [refreshTriggers.customers, filter]);
 
   /* FETCH PRODUCTS */
@@ -255,7 +275,7 @@ const Customers = () => {
         try {
           const response = await fetch(serviceUrl, {
             headers: {
-              'User-Agent': 'RubanElectricals/1.0'
+              'User-Agent': 'AnbuEnterprises/1.0'
             }
           });
 
@@ -665,20 +685,21 @@ const Customers = () => {
             onChange={e => setCustomerTypeFilter(e.target.value)}
             style={{
               padding: '8px 12px',
-              borderRadius: '8px',
-              border: '1px solid rgba(255,255,255,0.2)',
-              background: 'rgba(255,255,255,0.1)',
-              color: '#fff',
+              borderRadius: 'var(--border-radius-md, 10px)',
+              border: '1.5px solid var(--color-border)',
+              background: 'var(--glass-bg)',
+              color: 'var(--color-text)',
               fontSize: '14px',
               cursor: 'pointer',
               outline: 'none',
               marginLeft: '10px',
-              height: '38px'
+              height: '38px',
+              fontFamily: 'var(--font-family-sans)',
             }}
           >
-            <option value="all" style={{color: '#333'}}>All Types</option>
-            <option value="our_customer" style={{color: '#333'}}>Our Customers</option>
-            <option value="external_customer" style={{color: '#333'}}>External Customers</option>
+            <option value="all">All Types</option>
+            <option value="our_customer">Our Customers</option>
+            <option value="external_customer">External Customers</option>
           </select>
 
           <button
@@ -1001,48 +1022,144 @@ const Customers = () => {
                   {addFormSuccess}
                 </div>
               )}
-              <div className="form-group">
-                <label>Customer Name *</label>
-                <input
-                  type="text"
-                  name="customer_name"
-                  value={addFormData.customer_name}
-                  onChange={handleAddFormChange}
-                  placeholder="Enter customer name"
-                  required
-                />
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Customer Name *</label>
+                  <input
+                    type="text"
+                    name="customer_name"
+                    value={addFormData.customer_name}
+                    onChange={handleAddFormChange}
+                    placeholder="Enter customer name"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Phone *</label>
+                  <input
+                    type="text"
+                    name="phone"
+                    value={addFormData.phone}
+                    onChange={handleAddFormChange}
+                    placeholder="Enter 10-digit phone number"
+                    required
+                    maxLength="15"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Alternate Number</label>
+                  <input
+                    type="text"
+                    name="alternate_number"
+                    value={addFormData.alternate_number}
+                    onChange={handleAddFormChange}
+                    placeholder="Optional alternate"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Email</label>
+                  <input
+                    type="email"
+                    name="customer_email"
+                    value={addFormData.customer_email}
+                    onChange={handleAddFormChange}
+                    placeholder="Enter email address"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Customer Type</label>
+                  <select
+                    name="customer_type"
+                    value={addFormData.customer_type}
+                    onChange={handleAddFormChange}
+                  >
+                    <option value="our_customer">Our Customer</option>
+                    <option value="external_customer">External Customer</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Job Type</label>
+                  <select
+                    name="job_type"
+                    value={addFormData.job_type}
+                    onChange={handleAddFormChange}
+                  >
+                    <option value="">Select job type...</option>
+                    <option value="motor_sale">Motor Sale</option>
+                    <option value="motor_service">Motor Service</option>
+                    <option value="general_service">General Service</option>
+                  </select>
+                </div>
               </div>
-              <div className="form-group">
-                <label>Phone *</label>
-                <input
-                  type="text"
-                  name="phone"
-                  value={addFormData.phone}
-                  onChange={handleAddFormChange}
-                  placeholder="Enter 10-digit phone number"
-                  required
-                  maxLength="15"
-                />
+
+              {/* Products - Full width */}
+              <div className="form-group full-width">
+                <label>Products <span className="optional">(Select multiple)</span></label>
+                <div className="product-selector-grid">
+                  <select
+                    name="productName"
+                    value={newProduct.productName}
+                    onChange={handleNewProductChange}
+                  >
+                    <option value="">Select a product</option>
+                    {products.map((product) => (
+                      <option key={product.id} value={product.product_name}>
+                        {product.product_name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    name="quantity"
+                    value={newProduct.quantity}
+                    onChange={handleNewProductChange}
+                    min="1"
+                    placeholder="Qty"
+                  />
+                  <button
+                    type="button"
+                    className="btn-add-item"
+                    onClick={addProduct}
+                    disabled={!newProduct.productName}
+                  >
+                    Add Item
+                  </button>
+                </div>
+                
+                {selectedProducts.length > 0 && (
+                  <div className="selected-products-container">
+                    {selectedProducts.map((prod, index) => (
+                      <div key={index} className="product-item">
+                        <span>
+                          <strong>{prod.productName}</strong> × {prod.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          className="product-remove-btn"
+                          onClick={() => removeProduct(index)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <div className="product-summary-total">
+                      <span>Total Items</span>
+                      <span>{calculateTotalQuantity()}</span>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="form-group">
-                <label>Alternate Number</label>
-                <input
-                  type="text"
-                  name="alternate_number"
-                  value={addFormData.alternate_number}
-                  onChange={handleAddFormChange}
-                  placeholder="Optional alternate phone number"
-                />
-              </div>
-              <div className="form-group">
+
+              {/* Address - Full width */}
+              <div className="form-group full-width">
                 <label>Address *</label>
                 <div className="input-with-button">
                   <textarea
                     name="address"
                     value={addFormData.address}
                     onChange={handleAddFormChange}
-                    rows="3"
-                    placeholder="Enter address or click GPS button"
+                    rows="2"
+                    placeholder="Enter address or capture GPS"
                     required
                   />
                   <button
@@ -1060,125 +1177,17 @@ const Customers = () => {
                   </button>
                 </div>
                 {addGpsError && (
-                  <small className="gps-error" style={{ color: '#dc3545', display: 'block', marginTop: '5px' }}>
+                  <small className="gps-error-txt">
                     {addGpsError}
                   </small>
                 )}
                 {addGpsLocation && !addGpsError && (
-                  <small className="gps-coords" style={{ color: '#28a745', display: 'block', marginTop: '5px' }}>
-                    ✓ GPS: {addGpsLocation.latitude.toFixed(6)}, {addGpsLocation.longitude.toFixed(6)}
+                  <small className="gps-success-txt">
+                    ✓ GPS Location Captured
                   </small>
                 )}
               </div>
-              <div className="form-group">
-                <label>Email</label>
-                <input
-                  type="email"
-                  name="customer_email"
-                  value={addFormData.customer_email}
-                  onChange={handleAddFormChange}
-                  placeholder="Enter email address (optional)"
-                />
-              </div>
-              <div className="form-group">
-                <label>Customer Type</label>
-                <select
-                  name="customer_type"
-                  value={addFormData.customer_type}
-                  onChange={handleAddFormChange}
-                >
-                  <option value="our_customer">Our Customer</option>
-                  <option value="external_customer">External Customer</option>
-                </select>
-              </div>
-              {/* Multi-Product Selection (like Booking page) */}
-              <div className="form-group">
-                <label>Products <span className="optional">(Optional - Select multiple)</span></label>
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                  <select
-                    name="productName"
-                    value={newProduct.productName}
-                    onChange={handleNewProductChange}
-                    style={{ flex: 2 }}
-                  >
-                    <option value="">Select a product</option>
-                    {products.map((product) => (
-                      <option key={product.id} value={product.product_name}>
-                        {product.product_name}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    name="quantity"
-                    value={newProduct.quantity}
-                    onChange={handleNewProductChange}
-                    min="1"
-                    placeholder="Qty"
-                    style={{ flex: 1, width: '70px' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={addProduct}
-                    disabled={!newProduct.productName}
-                    style={{ 
-                      flex: 1,
-                      padding: '8px 12px',
-                      background: newProduct.productName ? '#28a745' : '#6c757d',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: newProduct.productName ? 'pointer' : 'not-allowed'
-                    }}
-                  >
-                    Add
-                  </button>
-                </div>
-                {/* Selected Products List */}
-                {selectedProducts.length > 0 && (
-                  <div className="selected-products-container">
-                    {selectedProducts.map((prod, index) => (
-                      <div key={index} className="product-item">
-                        <span>
-                          <strong>{prod.productName}</strong> × {prod.quantity}
-                        </span>
-                        <button
-                          type="button"
-                          className="product-remove-btn"
-                          onClick={() => removeProduct(index)}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                    <div style={{ 
-                      marginTop: '1rem', 
-                      paddingTop: '0.75rem', 
-                      borderTop: '1px solid #e2daff',
-                      fontWeight: '800',
-                      color: '#7c5cbf',
-                      display: 'flex',
-                      justifyContent: 'space-between'
-                    }}>
-                      <span>Total Items</span>
-                      <span>{calculateTotalQuantity()}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="form-group">
-                <label>Job Type <span className="optional">(Optional)</span></label>
-                <select
-                  name="job_type"
-                  value={addFormData.job_type}
-                  onChange={handleAddFormChange}
-                >
-                  <option value="">Select job type</option>
-                  <option value="motor_sale">Motor Sale</option>
-                  <option value="motor_service">Motor Service</option>
-                  <option value="general_service">General Service</option>
-                </select>
-              </div>
+
               <div className="modal-actions">
                 <button
                   type="button"
@@ -1193,7 +1202,7 @@ const Customers = () => {
                   className="btn-primary"
                   disabled={addFormLoading}
                 >
-                  {addFormLoading ? 'Adding...' : 'Add Customer'}
+                  {addFormLoading ? 'Processing...' : 'Add Customer'}
                 </button>
               </div>
             </form>

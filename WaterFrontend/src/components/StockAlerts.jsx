@@ -23,7 +23,9 @@ const StockAlerts = ({ onDismiss }) => {
     const fetchStockAlerts = async () => {
         setLoading(true);
         try {
-            const response = await api.get('/stocks/alerts/', getAuthHeaders());
+            const branch = sessionStorage.getItem('branch_name');
+            const url = branch ? `/stocks/alerts/?branch_name=${branch}` : '/stocks/alerts/';
+            const response = await api.get(url, getAuthHeaders());
             setAlerts(response.data);
             if (response.data.length > 0) {
                 setShowAlerts(true);

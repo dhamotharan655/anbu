@@ -25,25 +25,25 @@
  */
 export const normalizePhoneNumber = (phoneNumber) => {
   if (!phoneNumber) return '';
-  
+
   // Remove all non-digit characters except leading +
   let normalized = phoneNumber.replace(/[^\d+]/g, '');
-  
+
   // Remove leading + if present
   if (normalized.startsWith('+')) {
     normalized = normalized.substring(1);
   }
-  
+
   // Remove leading 0 if present (common in Indian numbers)
   if (normalized.startsWith('0')) {
     normalized = normalized.substring(1);
   }
-  
+
   // Add India country code (91) if not already present
   if (!normalized.startsWith('91')) {
     normalized = '91' + normalized;
   }
-  
+
   return normalized;
 };
 
@@ -56,7 +56,7 @@ export const normalizePhoneNumber = (phoneNumber) => {
 export const generateWhatsAppLink = (phoneNumber, message = '') => {
   const normalizedNumber = normalizePhoneNumber(phoneNumber);
   const encodedMessage = encodeURIComponent(message);
-  
+
   return `https://wa.me/${normalizedNumber}${message ? `?text=${encodedMessage}` : ''}`;
 };
 

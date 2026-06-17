@@ -1,6 +1,23 @@
 import React, { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import rumahLogo from "./assets/Ruban-Electricals-Logo.jpeg";
+import logo from "./assets/main_logo.jpg";
+import {
+  FiHome,
+  FiBarChart2,
+  FiDollarSign,
+  FiCalendar,
+  FiUsers,
+  FiBriefcase,
+  FiUser,
+  FiTrendingUp,
+  FiPackage,
+  FiFileText,
+  FiMessageSquare,
+  FiGrid,
+  FiShield,
+  FiClock,
+
+} from "react-icons/fi";
 
 const Layout = () => {
   const navigate = useNavigate();
@@ -27,19 +44,21 @@ const Layout = () => {
   };
 
   const navLinks = [
-    { to: "/home", text: "Home", access: "all", icon: "🏠" },
-    { to: "/dashboard", text: "Dashboard", access: "dashboard", icon: "📊" },
-    { to: "/payment-due", text: "Payment Due", access: "dashboard", icon: "💰" },
-    { to: "/booking", text: "Booking", access: "booking", icon: "📅" },
-    { to: "/staff", text: "Staff", access: "staff", icon: "👥" },
-    { to: "/payroll", text: "Payroll", access: "payroll", icon: "💵" },
-    { to: "/customers", text: "Customers", access: "customers", icon: "👤" },
-    { to: "/staff-performance", text: "Performance", access: "staff-performance", icon: "📈" },
-    { to: "/stock-management", text: "Stock", access: "stock-management", icon: "📦" },
-    { to: "/invoices", text: "Invoices", access: "invoices", icon: "🧾" },
-    { to: "/whatsapp-pending", text: "Pending Messages", access: "all", icon: "💬" },
-    { to: "/motor-history", text: "Motor History", access: "motor-history", icon: "⚡" },
-    { to: "/permissions", text: "Permissions", access: "bigadmin", icon: "🔐" },
+    { to: "/home", text: "Home", access: "all", icon: <FiHome /> },
+    { to: "/dashboard", text: "Dashboard", access: "dashboard", icon: <FiBarChart2 /> },
+    { to: "/service-reminders", text: "Reminders", access: "dashboard", icon: <FiClock /> },
+    { to: "/payment-due", text: "Payment Due", access: "dashboard", icon: <FiDollarSign /> },
+    { to: "/booking", text: "Booking", access: "booking", icon: <FiCalendar /> },
+    { to: "/staff", text: "Staff", access: "staff", icon: <FiUsers /> },
+
+    { to: "/payroll", text: "Payroll", access: "payroll", icon: <FiBriefcase /> },
+    { to: "/customers", text: "Customers", access: "customers", icon: <FiUser /> },
+    { to: "/staff-performance", text: "Performance", access: "staff-performance", icon: <FiTrendingUp /> },
+    { to: "/stock-management", text: "Stock", access: "stock-management", icon: <FiPackage /> },
+    { to: "/invoices", text: "Invoices", access: "invoices", icon: <FiFileText /> },
+    { to: "/whatsapp-pending", text: "Pending Msg", access: "all", icon: <FiMessageSquare /> },
+    { to: "/branch-management", text: "Branches", access: "bigadmin", icon: <FiGrid /> },
+    { to: "/permissions", text: "Permissions", access: "bigadmin", icon: <FiShield /> },
   ];
 
   const renderLink = (link, sidebar = false) => {
@@ -82,10 +101,13 @@ const Layout = () => {
       <aside className={`sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
           <NavLink to="/home" className="sidebar-logo-link">
-            <img src={rumahLogo} alt="Ruban Electricals Logo" className="sidebar-logo" />
+            <div className="sidebar-logo-container">
+              <img src={logo} alt="Anbu Logo" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "8px" }} />
+            </div>
             <span className="sidebar-title">
-              <span className="title-line">Ruban</span>
-              <span className="title-line">Electricals</span>
+              <span className="title-line">Anbu</span>
+              <span className="title-line">Enterprises</span>
+              <span className="subtitle">Sales & Service</span>
             </span>
           </NavLink>
           <button
@@ -127,7 +149,10 @@ const Layout = () => {
         <div className="mobile-overlay" onClick={() => setIsMobileMenuOpen(false)}>
           <nav className="mobile-menu" onClick={(e) => e.stopPropagation()}>
             <div className="mobile-menu-header">
-              <img src={rumahLogo} alt="Logo" className="mobile-menu-logo" />
+              <div className="mobile-logo-container">
+                <img src={logo} alt="Anbu Logo" style={{ width: "24px", height: "24px", objectFit: "cover", borderRadius: "4px", marginRight: "8px" }} />
+                <span className="logo-text">Anbu</span>
+              </div>
               <button className="mobile-close-btn" onClick={() => setIsMobileMenuOpen(false)}>✕</button>
             </div>
             {navLinks.map((link) => renderLink(link, false))}

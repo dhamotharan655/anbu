@@ -13,37 +13,47 @@
 :root {
   /* Font */
   --font-family-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-family-heading: 'Fraunces', serif;
+  --font-family-heading: 'Plus Jakarta Sans', sans-serif;
 
-  /* Brand Colors — Purple-Blue Glassmorphic */
-  --color-primary: #7c5cbf;
-  --color-primary-hover: #6a4daa;
-  --color-primary-light: #9b6fe8;
-  --color-secondary: #6baee0;
+  /* Brand Colors — Anbu Enterprises (Teal & Gold) */
+  --color-primary: #0b6678;
+  --color-primary-hover: #044d5c;
+  --color-primary-light: #128299;
+  --color-secondary: #f1b32a;
+  --color-accent: #f1b32a;
 
   /* Gradients */
-  --gradient-primary: linear-gradient(135deg, #9b6fe8 0%, #6baee0 100%);
-  --gradient-bg: linear-gradient(135deg, #f0e6ff 0%, #dceeff 40%, #ffe6f0 100%);
-  --gradient-hero: linear-gradient(135deg, #9b6fe8 0%, #6baee0 60%, #a8d4ff 100%);
+  --gradient-primary: linear-gradient(135deg, #0b6678 0%, #128299 100%);
+  --gradient-bg: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  --gradient-hero: linear-gradient(135deg, #0b6678 0%, #044d5c 60%, #002c36 100%);
+  --gradient-gold: linear-gradient(135deg, #f1b32a 0%, #d4a017 100%);
 
   /* Glass Effect */
-  --glass-bg: rgba(255, 255, 255, 0.72);
-  --glass-bg-strong: rgba(255, 255, 255, 0.88);
-  --glass-border: rgba(255, 255, 255, 0.8);
+  --glass-bg: rgba(255, 255, 255, 0.82);
+  --glass-bg-strong: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(11, 102, 120, 0.15);
   --glass-blur: blur(20px);
 
   /* Text */
-  --color-text: #1e1b2e;
-  --color-text-secondary: #8b85a1;
+  --color-text: #1a1a1a;
+  --color-text-secondary: #5a5a5a;
   --color-white: #ffffff;
-  --color-border: rgba(124, 92, 191, 0.12);
-  --color-background: linear-gradient(135deg, #f0e6ff 0%, #dceeff 40%, #ffe6f0 100%);
+  --color-border: rgba(11, 102, 120, 0.12);
+  --color-background: #f8f9fa;
 
   /* Status */
-  --color-success: #6baee0;
-  --color-warning: #c77b00;
-  --color-danger: #eb5968;
-  --color-info: #3a7fc1;
+  --color-success: #28a745;
+  --color-success-rgb: 40, 167, 69;
+  --color-warning: #ffc107;
+  --color-warning-rgb: 255, 193, 7;
+  --color-danger: #dc3545;
+  --color-danger-rgb: 220, 53, 69;
+  --color-info: #17a2b8;
+  --color-info-rgb: 23, 162, 184;
+
+  /* Brand RGB */
+  --color-primary-rgb: 11, 102, 120;
+  --color-gold-rgb: 241, 179, 42;
 
   /* Spacing */
   --spacing-1: 0.25rem;
@@ -54,16 +64,16 @@
   --spacing-6: 3rem;
 
   /* Border Radius */
-  --border-radius-sm: 8px;
-  --border-radius-md: 14px;
-  --border-radius-lg: 20px;
-  --border-radius-xl: 28px;
+  --border-radius-sm: 6px;
+  --border-radius-md: 10px;
+  --border-radius-lg: 16px;
+  --border-radius-xl: 24px;
 
   /* Shadows */
-  --shadow-sm: 0 2px 8px rgba(124, 92, 191, 0.08);
-  --shadow-md: 0 4px 20px rgba(124, 92, 191, 0.12);
-  --shadow-lg: 0 12px 36px rgba(124, 92, 191, 0.18);
-  --shadow-primary: 0 6px 24px rgba(124, 92, 191, 0.32);
+  --shadow-sm: 0 2px 8px rgba(11, 102, 120, 0.08);
+  --shadow-md: 0 4px 20px rgba(11, 102, 120, 0.12);
+  --shadow-lg: 0 12px 36px rgba(11, 102, 120, 0.18);
+  --shadow-primary: 0 6px 24px rgba(11, 102, 120, 0.32);
 }
 
 body {
@@ -161,9 +171,9 @@ a:hover {
 .warranty-section {
   margin-top: var(--spacing-4);
   padding: var(--spacing-3);
-  background: linear-gradient(135deg, rgba(155, 111, 232, 0.08) 0%, rgba(107, 174, 224, 0.08) 100%);
+  background: linear-gradient(135deg, rgba(11, 102, 120, 0.08) 0%, rgba(241, 179, 42, 0.08) 100%);
   border-radius: var(--border-radius-md);
-  border: 1px solid rgba(124, 92, 191, 0.2);
+  border: 1px solid var(--color-border);
 }
 
 .warranty-title {
@@ -196,4 +206,224 @@ a:hover {
   background: var(--gradient-primary);
   color: white !important;
   text-decoration: none;
+}
+
+/* ============================================================
+   GLOBAL LAYOUT & COMPONENT CLASSES
+   ============================================================ */
+
+/* Section Typography */
+.section-title {
+  font-family: var(--font-family-heading);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-2);
+}
+
+.section-subtitle {
+  font-family: var(--font-family-sans);
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-5);
+}
+
+/* Dashboard Controls & Search */
+.dashboard-controls {
+  margin-bottom: var(--spacing-5);
+  display: flex;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.search-bar {
+  position: relative;
+  flex: 1;
+  min-width: 280px;
+  display: flex;
+  align-items: center;
+}
+
+.search-bar svg {
+  position: absolute;
+  left: 1rem;
+  color: var(--color-primary-light);
+  width: 1.25rem;
+  height: 1.25rem;
+  pointer-events: none;
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 0.875rem 1rem 0.875rem 3rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  font-family: var(--font-family-sans);
+  font-size: 0.95rem;
+  color: var(--color-text);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  outline: none;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.search-bar input:focus {
+  border-color: var(--color-primary);
+  background: var(--white);
+  box-shadow: var(--shadow-md);
+}
+
+/* Card System */
+.complaint-list, .grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--spacing-4);
+}
+
+.complaint-card, .dashboard-card {
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-xl);
+  padding: var(--spacing-4);
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.complaint-card:hover, .dashboard-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-primary-light);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-4);
+}
+
+.card-title {
+  font-family: var(--font-family-sans);
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--color-primary);
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.completed {
+  background: rgba(40, 167, 69, 0.1);
+  color: var(--color-success);
+  border: 1px solid rgba(40, 167, 69, 0.2);
+}
+
+.status-badge.pending {
+  background: rgba(241, 179, 42, 0.1);
+  color: var(--color-secondary);
+  border: 1px solid rgba(241, 179, 42, 0.2);
+}
+
+.status-badge.overdue {
+  background: rgba(220, 53, 69, 0.1);
+  color: var(--color-danger);
+  border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+/* Reminder Specifics */
+.reminder-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--spacing-4);
+}
+
+.reminder-card {
+  composes: complaint-card;
+}
+
+.reminder-card.overdue {
+  border-left: 4px solid var(--color-danger);
+}
+
+.overdue-date {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+
+/* Info Rows */
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.info-row-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--color-primary-light);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.info-row-label {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.info-row-value {
+  color: var(--color-text);
+  flex: 1;
+}
+
+/* States */
+.loading-state, .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.loading-state svg, .empty-state svg {
+  color: var(--color-primary-light);
+  margin-bottom: 1.5rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.empty-subtitle {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  margin-top: 0.5rem;
 }

@@ -2,9 +2,8 @@ import React, { useState } from "react";
 import api from "../api";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import logoImage from "../assets/Ruban-Electricals-Logo.jpeg";
-
-import { FiLogIn, FiUser, FiLock, FiShield, FiPackage, FiFileText, FiBarChart2, FiEye, FiEyeOff } from "react-icons/fi";
+import logoImage from "../assets/main_logo.jpg";
+import { FiLogIn, FiUser, FiLock, FiEye, FiEyeOff, FiShield, FiZap, FiUsers, FiTrendingUp } from "react-icons/fi";
 
 const AdminLogin = () => {
   const [username, setUsername] = useState("");
@@ -12,12 +11,13 @@ const AdminLogin = () => {
   const [usernameError, setUsernameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async () => {
     setUsernameError("");
     setPasswordError("");
+    setIsLoading(true);
 
     try {
       const response = await api.post(`login/`, {
@@ -25,600 +25,517 @@ const AdminLogin = () => {
         password,
       });
 
-      console.log("Login successful:", response.data);
-
       const token = response.data.token;
       const role = response.data.role;
-      const permissions = response.data.permissions || [];
 
       sessionStorage.setItem("token", token);
       sessionStorage.setItem("user_id", response.data.user_id);
-      sessionStorage.setItem("role", response.data.role);
+      sessionStorage.setItem("role", role);
       sessionStorage.setItem("full_name", username);
       sessionStorage.setItem("permissions", JSON.stringify(response.data.permissions));
 
-      if (role === 'admin' || role === 'bigadmin') {
+      if (role === "admin" || role === "bigadmin") {
         try {
-          const attendanceResponse = await api.get('staff-attendance/today/');
-          const attendanceData = attendanceResponse.data;
-          
-          if (!attendanceData.attendance_marked) {
-            sessionStorage.setItem('showAttendanceReminder', 'true');
+          const attendanceResponse = await api.get("staff-attendance/today/");
+          if (!attendanceResponse.data.attendance_marked) {
+            sessionStorage.setItem("showAttendanceReminder", "true");
           }
-        } catch (attendanceError) {
-          console.error('Error checking attendance status:', attendanceError);
+        } catch (e) {
+          console.error("Attendance check failed:", e);
         }
       }
-      
+
       navigate("/Home");
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
-        const errorMessage = error.response.data.detail;
-
-        if (errorMessage === "Invalid username") {
-          setUsernameError(errorMessage);
-        } else if (errorMessage === "password incorrect") {
-          setPasswordError(errorMessage);
-        } else {
-          setPasswordError(errorMessage || "An unexpected error occurred.");
-        }
+        const msg = error.response.data.detail;
+        if (msg === "Invalid username") setUsernameError(msg);
+        else setPasswordError(msg || "An unexpected error occurred.");
       } else {
         setPasswordError("Network error or unexpected issue.");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const togglePassword = () => {
-    setShowPassword(!showPassword);
-  };
+  const stats = [
+    { icon: <FiUsers size={18} />, label: "Staff Managed", value: "50+" },
+    { icon: <FiTrendingUp size={18} />, label: "Daily Jobs", value: "30+" },
+    { icon: <FiZap size={18} />, label: "Uptime", value: "99.9%" },
+  ];
 
   return (
     <>
       <style>{`
-        @keyframes blobFloat {
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:ital,wght@0,600;1,600&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        @keyframes floatOrb {
           0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(20px, -30px) scale(1.04); }
-          66% { transform: translate(-15px, 20px) scale(0.97); }
+          33% { transform: translate(30px, -40px) scale(1.06); }
+          66% { transform: translate(-20px, 25px) scale(0.95); }
         }
-        @keyframes dotpulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.4); opacity: 0.5; }
+        @keyframes fadeSlideUp {
+          from { opacity: 0; transform: translateY(40px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
-        @keyframes rise {
-          from { opacity: 0; transform: translateY(36px) scale(0.98); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+        @keyframes fadeSlideRight {
+          from { opacity: 0; transform: translateX(-40px); }
+          to   { opacity: 1; transform: translateX(0); }
         }
-        .pill:hover {
-          background: rgba(255,255,255,0.85);
-          transform: translateX(4px);
-          box-shadow: 0 4px 16px rgba(124,92,191,0.1);
+        @keyframes pulse-ring {
+          0%   { transform: scale(0.9); opacity: 0.7; }
+          50%  { transform: scale(1.05); opacity: 0.3; }
+          100% { transform: scale(0.9); opacity: 0.7; }
         }
-        .btn-signin:hover {
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+
+        .login-input {
+          width: 100%;
+          background: rgba(255,255,255,0.95);
+          border: 1.5px solid rgba(255,255,255,0.3);
+          border-radius: 14px;
+          padding: 14px 18px 14px 48px;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-size: 15px;
+          color: #111827;
+          outline: none;
+          transition: all 0.3s ease;
+          -webkit-text-fill-color: #111827;
+        }
+        .login-input::placeholder { color: #9ca3af; }
+        .login-input:focus {
+          border-color: rgba(241,179,42,0.7);
+          background: #ffffff;
+          box-shadow: 0 0 0 4px rgba(241,179,42,0.12);
+        }
+        .login-input.error {
+          border-color: rgba(239,68,68,0.7);
+          box-shadow: 0 0 0 4px rgba(239,68,68,0.1);
+        }
+        .btn-login {
+          width: 100%;
+          padding: 16px;
+          border: none;
+          border-radius: 16px;
+          background: linear-gradient(135deg, #f1b32a 0%, #e09b10 100%);
+          color: #1a0a00;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-size: 16px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          box-shadow: 0 8px 28px rgba(241,179,42,0.35);
+          position: relative;
+          overflow: hidden;
+          letter-spacing: -0.01em;
+        }
+        .btn-login:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 12px 36px rgba(124,92,191,0.38);
+          box-shadow: 0 14px 40px rgba(241,179,42,0.45);
         }
-        .btn-signin:active {
-          transform: translateY(0);
-        }
-        .btn-signin::before {
+        .btn-login:active:not(:disabled) { transform: translateY(0); }
+        .btn-login:disabled { opacity: 0.7; cursor: not-allowed; }
+        .btn-login::after {
           content: '';
           position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
-          transition: left 0.5s ease;
+          inset: 0;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+          transform: translateX(-100%);
+          transition: transform 0.6s ease;
         }
-        .btn-signin:hover::before {
-          left: 100%;
+        .btn-login:hover::after { transform: translateX(100%); }
+
+        .stat-chip:hover {
+          background: rgba(255,255,255,0.12) !important;
+          border-color: rgba(241,179,42,0.4) !important;
         }
-        .remember input:checked ~ .cb-box {
-          background: linear-gradient(135deg, #9b6fe8, #6baee0);
-          border-color: transparent;
+
+        @media (max-width: 900px) {
+          .login-left { display: none !important; }
+          .login-card { width: 100% !important; max-width: 440px !important; border-radius: 28px !important; }
+          .login-wrapper { padding: 1rem !important; }
         }
-        .remember input:checked ~ .cb-box::after {
-          content: '';
-          width: 5px;
-          height: 9px;
-          border: 2px solid white;
-          border-top: none;
-          border-left: none;
-          transform: rotate(45deg) translateY(-1px);
-          display: block;
-        }
-        @media (max-width: 680px) {
-          .left-panel { display: none !important; }
-          .right-panel { width: 100% !important; }
+        @media (max-width: 480px) {
+          .login-card { border-radius: 20px !important; }
         }
       `}</style>
+
+      {/* Full-screen container */}
       <div style={{
         minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #f0e6ff 0%, #dceeff 40%, #ffe6f0 100%)",
+        background: "linear-gradient(135deg, #071e26 0%, #0b3a4a 40%, #0d4d61 70%, #0b3a4a 100%)",
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
         position: "relative",
         overflow: "hidden",
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
-      }}>
-        {/* Animated blobs */}
-        <div style={{
-          position: "fixed",
-          width: "500px",
-          height: "500px",
-          borderRadius: "50%",
-          background: "radial-gradient(circle, #c9a8ff, #a8d4ff)",
-          filter: "blur(70px)",
-          top: "-150px",
-          left: "-100px",
-          opacity: 0.55,
-          animation: "blobFloat 10s ease-in-out infinite",
-          pointerEvents: "none",
-        }}></div>
-        <div style={{
-          position: "fixed",
-          width: "400px",
-          height: "400px",
-          borderRadius: "50%",
-          background: "radial-gradient(circle, #ffd6ec, #ffecb3)",
-          filter: "blur(70px)",
-          bottom: "-100px",
-          right: "-80px",
-          opacity: 0.55,
-          animation: "blobFloat 10s ease-in-out infinite",
-          animationDelay: "-5s",
-          pointerEvents: "none",
-        }}></div>
-        <div style={{
-          position: "fixed",
-          width: "280px",
-          height: "280px",
-          borderRadius: "50%",
-          background: "radial-gradient(circle, #b3f0e0, #b3d9ff)",
-          filter: "blur(70px)",
-          top: "40%",
-          right: "20%",
-          opacity: 0.55,
-          animation: "blobFloat 10s ease-in-out infinite",
-          animationDelay: "-3s",
-          pointerEvents: "none",
-        }}></div>
-        
-        {/* Decorative circles */}
-        <div style={{
-          position: "fixed",
-          borderRadius: "50%",
-          border: "1.5px solid rgba(124,92,191,0.1)",
-          pointerEvents: "none",
-          width: "300px",
-          height: "300px",
-          top: "5%",
-          left: "5%",
-        }}></div>
-        <div style={{
-          position: "fixed",
-          borderRadius: "50%",
-          border: "1.5px solid rgba(124,92,191,0.1)",
-          pointerEvents: "none",
-          width: "180px",
-          height: "180px",
-          bottom: "10%",
-          left: "15%",
-        }}></div>
-        <div style={{
-          position: "fixed",
-          borderRadius: "50%",
-          border: "1.5px solid rgba(124,92,191,0.1)",
-          pointerEvents: "none",
-          width: "120px",
-          height: "120px",
-          top: "20%",
-          right: "10%",
-        }}></div>
+      }} className="login-wrapper">
 
+        {/* Animated background orbs */}
+        {[
+          { size: 600, top: "-200px", left: "-150px", color: "#0e8fa8", delay: "0s", opacity: 0.18 },
+          { size: 450, bottom: "-150px", right: "-100px", color: "#f1b32a", delay: "-4s", opacity: 0.12 },
+          { size: 300, top: "40%", right: "18%", color: "#0b6678", delay: "-2s", opacity: 0.22 },
+        ].map((orb, i) => (
+          <div key={i} style={{
+            position: "fixed",
+            width: orb.size, height: orb.size,
+            borderRadius: "50%",
+            background: `radial-gradient(circle, ${orb.color}, transparent 70%)`,
+            filter: "blur(80px)",
+            top: orb.top, bottom: orb.bottom,
+            left: orb.left, right: orb.right,
+            opacity: orb.opacity,
+            animation: `floatOrb ${10 + i * 3}s ease-in-out infinite`,
+            animationDelay: orb.delay,
+            pointerEvents: "none",
+          }} />
+        ))}
+
+        {/* Decorative grid dots */}
+        <div style={{
+          position: "fixed", inset: 0, pointerEvents: "none",
+          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)",
+          backgroundSize: "36px 36px",
+        }} />
+
+        {/* Spinning ring accent */}
+        <div style={{
+          position: "fixed", width: "700px", height: "700px",
+          border: "1px solid rgba(241,179,42,0.06)",
+          borderRadius: "50%", top: "-200px", right: "-200px",
+          animation: "spin-slow 60s linear infinite",
+          pointerEvents: "none",
+        }} />
+        <div style={{
+          position: "fixed", width: "450px", height: "450px",
+          border: "1px solid rgba(11,102,120,0.1)",
+          borderRadius: "50%", bottom: "-100px", left: "-100px",
+          animation: "spin-slow 40s linear infinite reverse",
+          pointerEvents: "none",
+        }} />
+
+        {/* Main card */}
         <div style={{
           display: "flex",
-          width: "880px",
-          maxWidth: "95vw",
-          minHeight: "560px",
-          borderRadius: "32px",
+          width: "900px",
+          maxWidth: "96vw",
+          minHeight: "580px",
+          borderRadius: "36px",
           overflow: "hidden",
-          background: "rgba(255,255,255,0.65)",
-          backdropFilter: "blur(28px)",
-          WebkitBackdropFilter: "blur(28px)",
-          border: "1px solid rgba(255,255,255,0.75)",
-          boxShadow: "0 32px 80px rgba(124,92,191,0.18), 0 0 0 1px rgba(255,255,255,0.5)",
+          background: "rgba(255,255,255,0.04)",
+          backdropFilter: "blur(32px)",
+          WebkitBackdropFilter: "blur(32px)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 40px 100px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
           position: "relative",
           zIndex: 10,
-          animation: "rise 0.75s cubic-bezier(0.16,1,0.3,1) both",
+          animation: "fadeSlideUp 0.8s cubic-bezier(0.16,1,0.3,1) both",
         }}>
-          {/* Left Panel */}
-          <div className="left-panel" style={{
+
+          {/* ── LEFT BRANDING PANEL ── */}
+          <div className="login-left" style={{
             flex: 1,
-            background: "linear-gradient(160deg, rgba(200,170,255,0.3) 0%, rgba(170,210,255,0.2) 100%)",
-            padding: "52px 44px",
+            padding: "56px 48px",
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
-            borderRight: "1px solid rgba(255,255,255,0.6)",
+            borderRight: "1px solid rgba(255,255,255,0.08)",
+            background: "linear-gradient(160deg, rgba(11,102,120,0.25) 0%, rgba(7,30,38,0.4) 100%)",
             position: "relative",
             overflow: "hidden",
+            animation: "fadeSlideRight 0.9s cubic-bezier(0.16,1,0.3,1) both",
           }}>
-            <div style={{ position: "relative", zIndex: 1 }}>
+
+            {/* Gold top accent line */}
+            <div style={{
+              position: "absolute", top: 0, left: "48px", right: "48px",
+              height: "2px",
+              background: "linear-gradient(90deg, transparent, rgba(241,179,42,0.6), transparent)",
+            }} />
+
+            {/* Logo & brand */}
+            <div>
               <div style={{
-                width: "70px",
-                height: "70px",
-                borderRadius: "18px",
-                background: "linear-gradient(135deg, #9b6fe8, #6baee0)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: "24px",
-                boxShadow: "0 8px 24px rgba(124,92,191,0.3)",
+                width: "76px", height: "76px",
+                borderRadius: "22px",
+                background: "#ffffff",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                marginBottom: "28px",
+                boxShadow: "0 12px 32px rgba(11,102,120,0.4)",
                 overflow: "hidden",
+                position: "relative",
+                padding: "8px", // add padding so the logo breathes
               }}>
-                <img src={logoImage} alt="Ruban Electricals Logo" style={{ width: "100%", height: "100%", objectFit: "cover" }}/>
+                <img src={logoImage} alt="Logo" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                {/* Pulse ring */}
+                <div style={{
+                  position: "absolute", inset: "-8px",
+                  borderRadius: "28px",
+                  border: "1.5px solid rgba(14,143,168,0.4)",
+                  animation: "pulse-ring 2.5s ease-in-out infinite",
+                }} />
               </div>
-              <div style={{
+
+              <h1 style={{
                 fontFamily: "'Fraunces', serif",
-                fontSize: "28px",
+                fontSize: "36px",
                 fontWeight: 600,
-                letterSpacing: "-0.5px",
                 lineHeight: 1.15,
-                marginBottom: "6px",
-                background: "linear-gradient(135deg, #6a3eb8, #3a7fc1)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}>Ruban Electricals</div>
-              <div style={{ fontSize: "13px", color: "#8b85a1" }}>Admin Control Portal</div>
+                color: "white",
+                marginBottom: "8px",
+                letterSpacing: "-0.5px",
+              }}>
+                Anbu{" "}
+                <span style={{
+                  fontStyle: "italic",
+                  background: "linear-gradient(135deg, #f1b32a, #fad97a)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}>Enterprises</span>
+              </h1>
+              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "15px", marginBottom: "48px" }}>
+                Admin Control Portal — Sales &amp; Service
+              </p>
+
+              {/* Feature list */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                {[
+                  { title: "Workforce Management", desc: "Track attendance, payroll & performance", color: "#0e8fa8" },
+                  { title: "Customer & Orders", desc: "Manage bookings, invoices & reminders", color: "#f1b32a" },
+                  { title: "Stock & Inventory", desc: "Real-time product tracking & alerts", color: "#10b981" },
+                ].map((item, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "flex-start", gap: "14px",
+                    padding: "14px 16px",
+                    background: "rgba(255,255,255,0.05)",
+                    borderRadius: "16px",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    transition: "all 0.25s ease",
+                  }}>
+                    <div style={{
+                      width: "10px", height: "10px",
+                      borderRadius: "50%",
+                      background: item.color,
+                      marginTop: "5px",
+                      flexShrink: 0,
+                      boxShadow: `0 0 10px ${item.color}`,
+                    }} />
+                    <div>
+                      <div style={{ color: "white", fontWeight: 700, fontSize: "13.5px", marginBottom: "2px" }}>{item.title}</div>
+                      <div style={{ color: "rgba(255,255,255,0.45)", fontSize: "12px" }}>{item.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <div style={{
-                fontSize: "11px",
-                textTransform: "uppercase",
-                letterSpacing: "2px",
-                color: "#8b85a1",
-                marginBottom: "16px",
-                fontWeight: 600,
-              }}>What you can manage</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div className="pill" style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  padding: "13px 16px",
-                  background: "rgba(255,255,255,0.65)",
-                  border: "1px solid rgba(255,255,255,0.85)",
+            {/* Stats row */}
+            <div style={{ display: "flex", gap: "12px", marginTop: "36px" }}>
+              {stats.map((s, i) => (
+                <div key={i} className="stat-chip" style={{
+                  flex: 1, textAlign: "center",
+                  padding: "12px 8px",
+                  background: "rgba(255,255,255,0.06)",
                   borderRadius: "14px",
-                  backdropFilter: "blur(10px)",
+                  border: "1px solid rgba(255,255,255,0.1)",
                   transition: "all 0.25s ease",
-                  cursor: "pointer",
+                  cursor: "default",
                 }}>
-                  <div style={{
-                    width: "36px",
-                    height: "36px",
-                    borderRadius: "10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "17px",
-                    flexShrink: 0,
-                    background: "linear-gradient(135deg, #e8d5ff, #d5c0ff)",
-                  }}>
-                    <FiPackage size={18} color="#7c5cbf" />
-                  </div>
-                  <div style={{ fontSize: "13px", fontWeight: 500, color: "#1e1b2e" }}>
-                    Inventory Control
-                    <span style={{ display: "block", fontSize: "11px", color: "#8b85a1", fontWeight: 400, marginTop: "1px" }}>Track stock, products & categories</span>
-                  </div>
+                  <div style={{ color: "#f1b32a", marginBottom: "4px", display: "flex", justifyContent: "center" }}>{s.icon}</div>
+                  <div style={{ color: "white", fontWeight: 800, fontSize: "16px" }}>{s.value}</div>
+                  <div style={{ color: "rgba(255,255,255,0.4)", fontSize: "10px", marginTop: "2px" }}>{s.label}</div>
                 </div>
-                <div className="pill" style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  padding: "13px 16px",
-                  background: "rgba(255,255,255,0.65)",
-                  border: "1px solid rgba(255,255,255,0.85)",
-                  borderRadius: "14px",
-                  backdropFilter: "blur(10px)",
-                  transition: "all 0.25s ease",
-                  cursor: "pointer",
-                }}>
-                  <div style={{
-                    width: "36px",
-                    height: "36px",
-                    borderRadius: "10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "17px",
-                    flexShrink: 0,
-                    background: "linear-gradient(135deg, #d5e8ff, #c0d5ff)",
-                  }}>
-                    <FiFileText size={18} color="#5b9bd5" />
-                  </div>
-                  <div style={{ fontSize: "13px", fontWeight: 500, color: "#1e1b2e" }}>
-                    Orders & Invoices
-                    <span style={{ display: "block", fontSize: "11px", color: "#8b85a1", fontWeight: 400, marginTop: "1px" }}>Manage customer orders in real-time</span>
-                  </div>
-                </div>
-                <div className="pill" style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  padding: "13px 16px",
-                  background: "rgba(255,255,255,0.65)",
-                  border: "1px solid rgba(255,255,255,0.85)",
-                  borderRadius: "14px",
-                  backdropFilter: "blur(10px)",
-                  transition: "all 0.25s ease",
-                  cursor: "pointer",
-                }}>
-                  <div style={{
-                    width: "36px",
-                    height: "36px",
-                    borderRadius: "10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "17px",
-                    flexShrink: 0,
-                    background: "linear-gradient(135deg, #ffd5e8, #ffc0d5)",
-                  }}>
-                    <FiBarChart2 size={18} color="#d55b9b" />
-                  </div>
-                  <div style={{ fontSize: "13px", fontWeight: 500, color: "#1e1b2e" }}>
-                    Reports & Analytics
-                    <span style={{ display: "block", fontSize: "11px", color: "#8b85a1", fontWeight: 400, marginTop: "1px" }}>Sales insights and performance</span>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
-          {/* Right Panel */}
-          <div className="right-panel" style={{
-            width: "370px",
-            padding: "52px 44px",
+          {/* ── RIGHT FORM PANEL ── */}
+          <div style={{
+            width: "380px",
+            padding: "56px 44px",
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
           }}>
-            <div>
+
+            {/* Header */}
+            <div style={{ marginBottom: "36px" }}>
               <div style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "7px",
-                fontSize: "11px",
-                textTransform: "uppercase",
-                letterSpacing: "2px",
-                color: "#7c5cbf",
-                fontWeight: 700,
-                marginBottom: "14px",
+                display: "inline-flex", alignItems: "center", gap: "8px",
+                background: "rgba(241,179,42,0.1)",
+                border: "1px solid rgba(241,179,42,0.25)",
+                borderRadius: "100px",
+                padding: "5px 14px",
+                marginBottom: "20px",
               }}>
-                <div style={{
-                  width: "7px",
-                  height: "7px",
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg, #9b6fe8, #6baee0)",
-                  animation: "dotpulse 2s ease-in-out infinite",
-                }}></div>
-                Admin Access
+                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#f1b32a", boxShadow: "0 0 8px #f1b32a" }} />
+                <span style={{ color: "#f1b32a", fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px" }}>
+                  Secure Access
+                </span>
               </div>
-              <div style={{
+
+              <h2 style={{
                 fontFamily: "'Fraunces', serif",
-                fontSize: "32px",
+                fontSize: "30px",
                 fontWeight: 600,
+                color: "white",
                 lineHeight: 1.2,
-                marginBottom: "6px",
+                marginBottom: "8px",
+                letterSpacing: "-0.3px",
               }}>
-                Hello, <em style={{
-                  fontStyle: "italic",
-                  background: "linear-gradient(135deg, #9b6fe8, #6baee0)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                }}>Admin!</em>
-              </div>
-              <div style={{ fontSize: "14px", color: "#8b85a1", marginBottom: "36px" }}>Sign in to continue to your dashboard</div>
+                Welcome back
+              </h2>
+              <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "14px" }}>
+                Sign in to your admin dashboard
+              </p>
             </div>
 
+            {/* Form */}
             <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
+
+              {/* Username field */}
               <div style={{ marginBottom: "18px" }}>
                 <label style={{
-                  display: "block",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
-                  color: "#8b85a1",
+                  display: "block", color: "rgba(255,255,255,0.55)",
+                  fontSize: "11px", fontWeight: 700,
+                  textTransform: "uppercase", letterSpacing: "1.2px",
                   marginBottom: "8px",
                 }}>Username</label>
                 <div style={{ position: "relative" }}>
-                  <FiUser size={18} style={{
-                    position: "absolute",
-                    left: "15px",
-                    top: "50%",
+                  <FiUser size={17} style={{
+                    position: "absolute", left: "16px", top: "50%",
                     transform: "translateY(-50%)",
-                    color: "#b0a8c8",
+                    color: usernameError ? "#ef4444" : "#0b6678",
                     pointerEvents: "none",
-                    transition: "color 0.3s",
                   }} />
                   <input
                     type="text"
-                    placeholder="Enter username"
-                    style={{
-                      width: "100%",
-                      background: "rgba(255,255,255,0.85)",
-                      border: usernameError ? "1.5px solid #eb5968" : "1.5px solid rgba(180,160,220,0.25)",
-                      borderRadius: "14px",
-                      padding: "13px 16px 13px 44px",
-                      fontFamily: "'Plus Jakarta Sans', sans-serif",
-                      fontSize: "15px",
-                      color: "#1e1b2e",
-                      outline: "none",
-                      transition: "all 0.3s ease",
-                      boxShadow: "0 2px 8px rgba(124,92,191,0.06)",
-                      boxSizing: "border-box",
-                    }}
+                    placeholder="Enter your username"
+                    className={`login-input ${usernameError ? "error" : ""}`}
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    onChange={(e) => { setUsername(e.target.value); setUsernameError(""); }}
+                    autoComplete="username"
                   />
                 </div>
-                {usernameError && <span style={{ color: "#eb5968", fontSize: "12px", marginTop: "4px", marginLeft: "16px" }}>{usernameError}</span>}
+                {usernameError && (
+                  <p style={{ color: "#ef4444", fontSize: "12px", marginTop: "6px", paddingLeft: "4px" }}>
+                    ⚠ {usernameError}
+                  </p>
+                )}
               </div>
 
-              <div style={{ marginBottom: "18px" }}>
+              {/* Password field */}
+              <div style={{ marginBottom: "24px" }}>
                 <label style={{
-                  display: "block",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
-                  color: "#8b85a1",
+                  display: "block", color: "rgba(255,255,255,0.55)",
+                  fontSize: "11px", fontWeight: 700,
+                  textTransform: "uppercase", letterSpacing: "1.2px",
                   marginBottom: "8px",
                 }}>Password</label>
                 <div style={{ position: "relative" }}>
-                  <FiLock size={18} style={{
-                    position: "absolute",
-                    left: "15px",
-                    top: "50%",
+                  <FiLock size={17} style={{
+                    position: "absolute", left: "16px", top: "50%",
                     transform: "translateY(-50%)",
-                    color: "#b0a8c8",
+                    color: passwordError ? "#ef4444" : "#0b6678",
                     pointerEvents: "none",
-                    transition: "color 0.3s",
                   }} />
                   <input
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter password"
-                    style={{
-                      width: "100%",
-                      background: "rgba(255,255,255,0.85)",
-                      border: passwordError ? "1.5px solid #eb5968" : "1.5px solid rgba(180,160,220,0.25)",
-                      borderRadius: "14px",
-                      padding: "13px 16px 13px 44px",
-                      fontFamily: "'Plus Jakarta Sans', sans-serif",
-                      fontSize: "15px",
-                      color: "#1e1b2e",
-                      outline: "none",
-                      transition: "all 0.3s ease",
-                      boxShadow: "0 2px 8px rgba(124,92,191,0.06)",
-                      boxSizing: "border-box",
-                    }}
+                    placeholder="Enter your password"
+                    className={`login-input ${passwordError ? "error" : ""}`}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
+                    autoComplete="current-password"
+                    style={{ paddingRight: "48px" }}
                   />
-                  <button type="button" style={{
-                    position: "absolute",
-                    right: "14px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "#c0b8d8",
-                    transition: "color 0.3s",
-                    padding: "4px",
-                    lineHeight: 0,
-                  }} onClick={togglePassword}>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: "absolute", right: "14px", top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none", border: "none", cursor: "pointer",
+                      color: "#6b7280", padding: "4px",
+                      lineHeight: 0, transition: "color 0.2s",
+                    }}
+                  >
                     {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
                   </button>
                 </div>
-                {passwordError && <span style={{ color: "#eb5968", fontSize: "12px", marginTop: "4px", marginLeft: "16px" }}>{passwordError}</span>}
+                {passwordError && (
+                  <p style={{ color: "#ef4444", fontSize: "12px", marginTop: "6px", paddingLeft: "4px" }}>
+                    ⚠ {passwordError}
+                  </p>
+                )}
               </div>
 
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "24px",
-              }}>
-                <label className="remember" style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  color: "#8b85a1",
-                  userSelect: "none",
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    style={{ display: "none" }}
-                  />
-                  <div className="cb-box" style={{
-                    width: "17px",
-                    height: "17px",
-                    border: "1.5px solid rgba(124,92,191,0.3)",
-                    borderRadius: "5px",
-                    background: "white",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transition: "all 0.2s",
-                    flexShrink: 0,
-                  }}></div>
-                  Remember me
-                </label>
-                <a href="#" style={{ fontSize: "13px", color: "#7c5cbf", textDecoration: "none", fontWeight: 500, transition: "opacity 0.2s" }}>Forgot password?</a>
-              </div>
-
-              <button type="submit" className="btn-signin" style={{
-                width: "100%",
-                padding: "15px",
-                border: "none",
-                borderRadius: "16px",
-                background: "linear-gradient(135deg, #9b6fe8 0%, #6baee0 100%)",
-                color: "white",
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
-                fontSize: "15px",
-                fontWeight: 700,
-                cursor: "pointer",
-                transition: "all 0.3s ease",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "10px",
-                boxShadow: "0 6px 24px rgba(124,92,191,0.3)",
-                position: "relative",
-                overflow: "hidden",
-              }}>
-                <FiLogIn size={18} />
-                Sign In to Dashboard
+              {/* Submit */}
+              <button type="submit" className="btn-login" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <div style={{
+                      width: "18px", height: "18px",
+                      border: "2px solid rgba(0,0,0,0.3)",
+                      borderTopColor: "#1a0a00",
+                      borderRadius: "50%",
+                      animation: "spin-slow 0.7s linear infinite",
+                    }} />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    <FiLogIn size={18} />
+                    Sign In to Dashboard
+                  </>
+                )}
               </button>
             </form>
 
+            {/* Footer */}
             <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              margin: "20px 0",
-              color: "#8b85a1",
-              fontSize: "12px",
-            }}>
-              <span style={{ flex: 1, height: "1px", background: "rgba(124,92,191,0.12)" }}></span>
-              <span>protected access</span>
-              <span style={{ flex: 1, height: "1px", background: "rgba(124,92,191,0.12)" }}></span>
-            </div>
-
-            <div style={{
+              marginTop: "32px",
+              padding: "16px",
+              background: "rgba(255,255,255,0.04)",
+              borderRadius: "14px",
+              border: "1px solid rgba(255,255,255,0.08)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: "6px",
+              gap: "8px",
+              color: "rgba(255,255,255,0.35)",
               fontSize: "12px",
-              color: "#8b85a1",
             }}>
-              <FiShield size={13} />
-              Your data is protected & encrypted
+              <FiShield size={13} color="rgba(241,179,42,0.6)" />
+              Your data is encrypted &amp; secured
             </div>
           </div>
+
         </div>
+
+        {/* Bottom brand tag */}
+        <div style={{
+          position: "fixed", bottom: "20px",
+          color: "rgba(255,255,255,0.18)",
+          fontSize: "11px", fontWeight: 500,
+          letterSpacing: "0.5px",
+          zIndex: 20,
+        }}>
+          © 2025 Anbu Enterprises — All rights reserved
+        </div>
+
       </div>
     </>
   );

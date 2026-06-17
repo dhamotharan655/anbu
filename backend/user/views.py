@@ -22,12 +22,14 @@ from .models import *
 from .models import (
     Staff, StaffAttendance, StaffPayroll, ClientDetails, Products, 
     StockItem, StockHistory, PaymentTransaction, StaffLeaveBalance, 
-    StaffLoan, PaymentDetails, MotorDetails, MotorVariant, HolidayCalendar,
-    BookServiceComplaint
+    StaffLoan, PaymentDetails, HolidayCalendar,
+    BookServiceComplaint, JobType, ExpiredItem
 )
 from .serializers import (
-    MotorDetailsSerializer, MotorVariantSerializer, HolidayCalendarSerializer,
-    ClientDetailsSerializer
+    HolidayCalendarSerializer,
+    ClientDetailsSerializer,
+    JobTypeSerializer,
+    ExpiredItemSerializer
 )
 from .utils.attendance_utils import resolve_attendance, getAttendanceStatus
 from .invoice_generator import number_to_words
@@ -92,7 +94,7 @@ def reverse_geocode(latitude, longitude):
             'accept-language': 'en'
         }
         headers = {
-            'User-Agent': 'RubanElectricals/1.0 (contact@example.com)'
+             'User-Agent': 'RubanElectricals/1.0 (contact@example.com)'
         }
         
         response = requests.get(url, params=params, headers=headers, timeout=5)
@@ -223,7 +225,6 @@ from .serializers import (
     StockAddSerializer,
     StockReduceSerializer,
     StockAlertSerializer,
-    MotorDetailsSerializer,
     PaymentTransactionSerializer,
     StaffLeaveBalanceSerializer,
     StaffLoanSerializer
@@ -246,6 +247,7 @@ def update_permissions(request, user_id):
     return Response({"message": "Permissions updated"})
 
 from .serializers import UserSerializer, LoginSerializer
+from django.contrib.auth.hashers import check_password, make_password
 
 @api_view(["POST"])
 def login(request):
@@ -260,7 +262,22 @@ def login(request):
     except User.DoesNotExist:
         return Response({"detail": "Invalid username"}, status=400)
 
-    if user.password != password:
+    # Support both hashed and plain text passwords (with upgrade)
+    is_correct = False
+    is_hashed = (user.password.startswith('pbkdf2_sha256$') or 
+                 user.password.startswith('bcrypt') or 
+                 user.password.startswith('argon2'))
+    
+    if is_hashed:
+        is_correct = check_password(password, user.password)
+    else:
+        is_correct = (user.password == password)
+        if is_correct:
+            # Upgrade password to hashed version
+            user.password = make_password(password)
+            user.save()
+
+    if not is_correct:
         return Response({"detail": "password incorrect"}, status=400)
 
     return Response({
@@ -301,7 +318,7 @@ def create_user(request):
         
         user = User(
             full_name=full_name,
-            password=password,
+            password=make_password(password),
             role=role,
             permissions=permissions,
             is_active=is_active
@@ -363,6 +380,7 @@ def update_permissions(request, user_id):
     user.permissions = request.data.get("permissions", [])
     user.save()
     return Response({"message": "Permissions updated"})
+
 # ------------------------------
 #   Add Staff (with photo upload)
 # ------------------------------
@@ -391,7 +409,8 @@ def add_staff(request):
             email=email,
             photo_url=photo_url,
             per_day_salary=per_day_salary,
-            monthly_salary=monthly_salary
+            monthly_salary=monthly_salary,
+            branch_name=request.data.get('branch_name')
         )
 
         # Handle weekly off days
@@ -435,6 +454,10 @@ def edit_staff(request, staff_id):
     # Update salary_last_updated when salary is changed
     if 'per_day_salary' in request.data or 'monthly_salary' in request.data:
         staff.salary_last_updated = get_ist_now()
+
+    # Update branch
+    if 'branch_name' in request.data:
+        staff.branch_name = request.data.get('branch_name')
 
     # Update weekly off days
     weekly_off_days_raw = request.data.get('weekly_off_days')
@@ -521,7 +544,8 @@ def get_staff(request):
                 "per_day_salary": getattr(s, 'per_day_salary', 0) or 0,
                 "monthly_salary": getattr(s, 'monthly_salary', 0) or 0,
                 "weekly_off_days": getattr(s, 'weekly_off_days', []),
-                "salary_last_updated": format_date(getattr(s, 'salary_last_updated', None)) if hasattr(s, 'salary_last_updated') and s.salary_last_updated else None
+                "salary_last_updated": format_date(getattr(s, 'salary_last_updated', None)) if hasattr(s, 'salary_last_updated') and s.salary_last_updated else None,
+                "branch_name": getattr(s, 'branch_name', '')
             }
             for s in staffs
         ]
@@ -720,12 +744,20 @@ def service_reminders(request):
 @api_view(['GET', 'POST'])
 def complaint_list(request):
     if request.method == 'GET':
-        complaints = BookServiceComplaint.objects.order_by('-date_created')
-        
-        # ⭐ Use the enhanced serializer for consistent formatting and totals
-        # This replaces the manual calculation logic previously here
-        serializer = BookServiceComplaintSerializer(complaints, many=True)
-        return Response(serializer.data)
+        try:
+            branch_filter = request.GET.get('branch_name')
+            query = BookServiceComplaint.objects
+            if branch_filter:
+                query = query.filter(branch_name=branch_filter)
+                
+            complaints = query.order_by('-date_created')
+            
+            # ⭐ Use the enhanced serializer for consistent formatting and totals
+            # This replaces the manual calculation logic previously here
+            serializer = BookServiceComplaintSerializer(complaints, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
 
 
     elif request.method == 'POST':
@@ -750,108 +782,39 @@ def complaint_list(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-def create_motor_history_record(complaint, product_info, brand_id=None):
-    """
-    ⭐ NEW: Helper to create MotorDetails (History) from a sale product.
-    Ensures that sold motors appear in the 'Motor History' page.
-    """
-    try:
-        from .models import MotorDetails, StockItem
-        print(f"=== MOTOR HISTORY TRIGGER: {complaint.complaint_no} ===")
-        
-        name = product_info.get('productName') or product_info.get('name') or product_info.get('product_name')
-        brand_name = product_info.get('motor_brand') or product_info.get('brand_name') or product_info.get('brand')
-        brand_id = brand_id or product_info.get('brand_id')
 
-        # 1. Duplicate check - consider motor_brand to allow multiple different motors
-        existing = MotorDetails.objects(complaint_id=complaint.complaint_no, motor_brand=brand_name).first()
-        if existing:
-            print(f"⏩ Motor history already exists for {complaint.complaint_no} and brand {brand_name}")
-            return True
-
-        print(f"[DEBUG] Processing Motor: {name} (Brand: {brand_name}, ID: {brand_id})")
-        
-        # 2. Fetch specifications from StockItem brand
-        specs = {}
-        pricing = {}
-        motor_stock = StockItem.objects(name__iexact="motor").first() 
-        if motor_stock and motor_stock.motor_brands:
-            selected = None
-            if brand_id:
-                selected = next((b for b in motor_stock.motor_brands if str(b.get('id','')) == str(brand_id)), None)
-            if not selected and brand_name:
-                selected = next((b for b in motor_stock.motor_brands if (b.get('brand_name') or b.get('brand', '')).lower() == brand_name.lower()), None)
+# [STAR] Global helper for robust stock item lookup (Fuzzy Matching)
+def get_stock_item(name, branch_name=None):
+    if not name: return None
+    name = str(name).strip()
+    
+    # 1. Exact case-insensitive match (stripped)
+    query = {"name__iexact": name}
+    if branch_name: query["branch_name"] = branch_name
+    item = StockItem.objects(**query).first()
+    if item: return item
+    
+    # 2. Fuzzy match - look for substrings (e.g., "Motor" in "Crompton Motor")
+    query_all = {}
+    if branch_name: query_all["branch_name"] = branch_name
+    all_items = StockItem.objects(**query_all)
+    best_match = None
+    input_name = name.lower()
+    
+    for i in all_items:
+        stock_name = i.name.lower().strip()
+        # Direct check or substring match
+        if input_name == stock_name or input_name in stock_name or stock_name in input_name:
+            # If it contains "motor", prioritize it for motor-sounding names
+            if 'motor' in input_name and 'motor' in stock_name:
+                return i
+            best_match = i
             
-            if selected:
-                print(f"[DEBUG] Found variant specs for brand: {brand_name}")
-                specs = selected.get('specification', {})
-                pricing = selected.get('pricing', {})
-            else:
-                print(f"[DEBUG] No variant specs found for brand/ID in stock")
-
-        # Helper functions to safely extract numbers from strings like "137mm"
-        def safe_int(v):
-            if v in (None, ''): return None
-            if isinstance(v, (int, float)): return int(v)
-            try:
-                import re
-                m = re.search(r'\d+', str(v))
-                return int(m.group()) if m else None
-            except:
-                return None
-
-        def safe_float(v):
-            if v in (None, ''): return None
-            if isinstance(v, (int, float)): return float(v)
-            try:
-                import re
-                m = re.search(r'\d+\.?\d*', str(v))
-                return float(m.group()) if m else None
-            except:
-                return None
-
-        # 3. Save to MotorDetails
-        new_history = MotorDetails(
-            complaint_id=complaint.complaint_no,
-            customer_name=complaint.customer_name,
-            customer_phone=complaint.phone,
-            job_type='motor_sale',
-            job_category='motor_sale',
-            company_name=specs.get('motor_make', 'Stock Sale'),
-            motor_make=specs.get('motor_make', ''),
-            motor_brand=brand_name or specs.get('motor_brand'),
-            serial_no=product_info.get('serial_no') or specs.get('serial_no', f"SALE-{complaint.complaint_no.split('-')[-1]}"),
-            kw=str(specs.get('kw', '')),
-            hp=specs.get('horsepower') or str(specs.get('hp', '')),
-            rpm=safe_int(specs.get('rpm')),
-            no_of_slots=safe_int(specs.get('no_of_slots')),
-            core_length=safe_int(specs.get('core_length')),
-            load_current=safe_float(specs.get('load_current')),
-            swg=str(specs.get('swg', '')) if specs.get('swg') is not None else None,
-            connection=specs.get('connection', 'Delta'),
-            total_set=safe_int(specs.get('total_set')),
-            total_weight=str(specs.get('total_weight', '')),
-            resistance_value=str(specs.get('resistance_value', '')),
-            winder_name=specs.get('winder_name', 'Stock'),
-            remarks=f"Motor sale from stock. Price: ₹{product_info.get('final_price', pricing.get('selling_price', 0))}",
-            motor_amount=float(product_info.get('final_price') or pricing.get('selling_price') or 0),
-            discount_percent=float(product_info.get('discount_percent') or 0),
-            winding_details=specs.get('winding_details', []),
-            opening_date=get_ist_now(),
-            closing_date=get_ist_now()
-        )
-        new_history.save()
-        print(f"✅ Motor Details (History) saved for {brand_name} (Job: {complaint.complaint_no})")
-        return True
-    except Exception as e:
-        print(f"❌ Error creating motor history: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    return best_match
 
 def process_stock_reduction_for_complaint(complaint, request=None):
     """
-    Reduced stock for all products in a complaint (initial + additional)
+    Reduced stock for all products in a complaint (initial + additional + motors)
     when finalized.
     """
     if not complaint.status or complaint.status.lower() != "completed":
@@ -859,7 +822,7 @@ def process_stock_reduction_for_complaint(complaint, request=None):
     
     # Check if already reduced to prevent double deduction
     if hasattr(complaint, 'stock_reduced') and complaint.stock_reduced:
-        print(f"⏩ Stock already reduced for {complaint.complaint_no}")
+        print(f"[INFO] Stock already reduced for {complaint.complaint_no}. Skipping.")
         return
 
     import json
@@ -868,104 +831,99 @@ def process_stock_reduction_for_complaint(complaint, request=None):
     if request:
         performed_by = request.headers.get('X-User-Name') or "System"
 
-    # 1. Process initial products (product_name)
+    processed_brands = [] # Track brands processed to avoid double deduction for motors
+    all_products_to_process = []
+
+    # 1. Collect initial products (product_name)
     if complaint.product_name:
         try:
             if isinstance(complaint.product_name, str):
                 try:
-                    products = json.loads(complaint.product_name)
+                    p_list = json.loads(complaint.product_name)
+                    if not isinstance(p_list, list): p_list = [p_list]
                 except:
-                    products = [{"productName": complaint.product_name, "quantity": getattr(complaint, 'product_quantity', 1) or 1}]
+                    p_list = [{"productName": complaint.product_name, "quantity": getattr(complaint, 'product_quantity', 1) or 1}]
             else:
-                products = complaint.product_name
-                
-            if isinstance(products, list):
-                for p in products:
-                    name = p.get('productName') or p.get('name') or p.get('product_name')
-                    qty = int(p.get('quantity') or p.get('qty') or 1)
-                    brand = p.get('motor_brand') or p.get('brand')
-                    brand_id = p.get('brand_id')
-                    
-                    if name:
-                        stock_item = StockItem.objects(name=name).first()
-                        if stock_item:
-                            old_qty = stock_item.quantity
-                            success, msg = stock_item.reduce_stock(qty, brand_name=brand, brand_id=brand_id)
-                            if success:
-                                stock_item.reload() 
-                                record_stock_history(
-                                    stock_item=stock_item,
-                                    operation_type='reduce',
-                                    quantity=qty,
-                                    previous_quantity=old_qty,
-                                    new_quantity=stock_item.quantity,
-                                    performed_by=performed_by,
-                                    notes=f"Initial booking product for {complaint.complaint_no}",
-                                    motor_brand=brand,
-                                    type='out',
-                                    source='booking',
-                                    complaint_no=complaint.complaint_no,
-                                    customer_id=complaint.customer_id
-                                )
-                                # ⭐ AUTO-HISTORY: Create MotorDetails record for motor sales
-                                if 'motor' in name.lower():
-                                    create_motor_history_record(complaint, p, brand_id=brand_id)
-                                
-                                reduced_count += 1
+                p_list = complaint.product_name
+            
+            if isinstance(p_list, list):
+                for p in p_list:
+                    p['source_type'] = 'booking'
+                    all_products_to_process.append(p)
         except Exception as e:
-            print(f"Error reducing initial stock for {complaint.complaint_no}: {e}")
+            print(f"[ERROR] Parsing initial products for {complaint.complaint_no}: {e}")
 
-    # 2. Process additional products (additional_product)
+    # 2. Collect additional products (additional_product)
     if complaint.additional_product:
         try:
             if isinstance(complaint.additional_product, str):
                 try:
-                    additional_prods = json.loads(complaint.additional_product)
+                    a_list = json.loads(complaint.additional_product)
+                    if not isinstance(a_list, list): a_list = [a_list]
                 except:
-                    additional_prods = [{"productName": complaint.additional_product, "quantity": complaint.additional_product_quantity or 1}]
+                    a_list = [{"productName": complaint.additional_product, "quantity": complaint.additional_product_quantity or 1}]
             else:
-                additional_prods = complaint.additional_product
+                a_list = complaint.additional_product
                 
-            if isinstance(additional_prods, list):
-                for p in additional_prods:
-                    name = p.get('productName') or p.get('name') or p.get('product_name')
-                    qty = int(p.get('quantity') or p.get('qty') or 1)
-                    brand = p.get('motor_brand') or p.get('brand')
-                    brand_id = p.get('brand_id')
-                    
-                    if name:
-                        stock_item = StockItem.objects(name=name).first()
-                        if stock_item:
-                            old_qty = stock_item.quantity
-                            success, msg = stock_item.reduce_stock(qty, brand_name=brand, brand_id=brand_id)
-                            if success:
-                                stock_item.reload()
-                                record_stock_history(
-                                    stock_item=stock_item,
-                                    operation_type='reduce',
-                                    quantity=qty,
-                                    previous_quantity=old_qty,
-                                    new_quantity=stock_item.quantity,
-                                    performed_by=performed_by,
-                                    notes=f"Additional product for {complaint.complaint_no}",
-                                    motor_brand=brand,
-                                    type='out',
-                                    source='additional_product',
-                                    complaint_no=complaint.complaint_no,
-                                    customer_id=complaint.customer_id
-                                )
-                                # ⭐ AUTO-HISTORY: Create MotorDetails record for motor sales
-                                if 'motor' in name.lower():
-                                    create_motor_history_record(complaint, p, brand_id=brand_id)
-
-                                reduced_count += 1
+            if isinstance(a_list, list):
+                for p in a_list:
+                    p['source_type'] = 'additional_product'
+                    all_products_to_process.append(p)
         except Exception as e:
-            print(f"Error reducing additional stock for {complaint.complaint_no}: {e}")
+            print(f"[ERROR] Parsing additional products for {complaint.complaint_no}: {e}")
+
+    # 3. Unified processing loop
+    for p in all_products_to_process:
+        try:
+            name = p.get('productName') or p.get('name') or p.get('product_name')
+            qty = int(p.get('quantity') or p.get('qty') or 1)
+            brand = p.get('motor_brand') or p.get('brand_name') or p.get('brand')
+            brand_id = p.get('brand_id')
+            source = p.get('source_type', 'transaction')
             
+            if name:
+                print(f"[SCAN] Searching stock for: {name} (qty: {qty})")
+                stock_item = get_stock_item(name, branch_name=getattr(complaint, 'branch_name', None))
+                if stock_item:
+                    old_qty = stock_item.quantity
+                    success, msg = stock_item.reduce_stock(qty, brand_name=brand, brand_id=brand_id, check_threshold=True)
+                    if success:
+                        stock_item.reload() 
+                        record_stock_history(
+                            stock_item=stock_item,
+                            operation_type='reduce',
+                            quantity=qty,
+                            previous_quantity=old_qty,
+                            new_quantity=stock_item.quantity,
+                            performed_by=performed_by,
+                            notes=f"{source.replace('_',' ').title()} for {complaint.complaint_no}",
+                            motor_brand=brand,
+                            type='out',
+                            source=source,
+                            complaint_no=complaint.complaint_no,
+                            customer_id=complaint.customer_id
+                        )
+                        # Track brand for history
+                        if brand: processed_brands.append(brand.lower())
+                        
+                        reduced_count += 1
+                        print(f"[OK] Reduced stock for {name} ({qty})")
+                else:
+                    print(f"[WARN] No stock item found matching: {name}")
+        except Exception as e:
+            print(f"[ERROR] Processing product {p.get('productName')} for {complaint.complaint_no}: {e}")
+
+    # 4. Final status update
     if reduced_count > 0:
         complaint.stock_reduced = True
         complaint.save()
-        print(f"✅ Stock reduction completed for {complaint.complaint_no} ({reduced_count} items)")
+        print(f"[OK] Stock reduction completed for {complaint.complaint_no} ({reduced_count} items)")
+    else:
+        # Prevent re-running if there were no items found (marks as processed)
+        complaint.stock_reduced = True
+        complaint.save()
+        print(f"[INFO] No items to reduce for {complaint.complaint_no}. Marked as processed.")
+
 
 
 @api_view(['GET', 'PUT', 'DELETE'])
@@ -1000,7 +958,38 @@ def complaint_detail(request, pk):
                 # ✅ NEW: UNIFIED STOCK REDUCTION ON COMPLETION
                 # ----------------------------------
                 process_stock_reduction_for_complaint(complaint, request)
-                # -----------------------------
+
+                # ----------------------------------
+                # ✅ NEW: Save Expired/Scrap Items collected from customer
+                # ----------------------------------
+                expired_items_data = request.data.get('expired_items', [])
+                if expired_items_data:
+                    try:
+                        if isinstance(expired_items_data, str):
+                            import json
+                            expired_items_data = json.loads(expired_items_data)
+                        for ei in expired_items_data:
+                            if ei.get('name'):
+                                ExpiredItem(
+                                    complaint_no=complaint.complaint_no,
+                                    name=ei.get('name', ''),
+                                    buying_price=float(ei.get('buying_price', 0)),
+                                    buy_date=get_ist_now(),
+                                    branch_name=complaint.branch_name
+                                ).save()
+                    except Exception as ex:
+                        print(f"[ExpiredItem] Error saving expired items: {ex}")
+
+                # ----------------------------------
+                # ✅ NEW: Save staff incentive on the complaint
+                # ----------------------------------
+                staff_incentive = request.data.get('staff_incentive', 0)
+                try:
+                    complaint.staff_incentive = float(staff_incentive)
+                except (TypeError, ValueError):
+                    complaint.staff_incentive = 0.0
+
+                complaint.save()
             # -----------------------------
             # SMS LOGIC (COMMENTED OUT)
             # -----------------------------
@@ -1247,13 +1236,21 @@ class BookServiceCreateView(APIView):
                     if not prod_name or prod_qty <= 0:
                         continue
                     
-                    # Find the stock item by product name
-                    stock_item = StockItem.objects(name=prod_name).first()
+                    # Find the stock item by product name and branch
+                    branch_name = data.get('branch_name', 'Main Branch')
+                    stock_item = StockItem.objects(name=prod_name, branch_name=branch_name).first()
                     
                     if not stock_item:
                         return Response({
                             "success": False,
                             "error": f"Product '{prod_name}' not found in stock."
+                        }, status=400)
+                    
+                    # ⭐ NEW: Minimum Threshold Validation
+                    if (stock_item.quantity - prod_qty) < stock_item.minimum_threshold:
+                        return Response({
+                            "success": False,
+                            "error": f"Cannot book '{prod_name}'. Stock would fall below the minimum threshold of {stock_item.minimum_threshold}."
                         }, status=400)
                     # Extract motor brand if available
                     motor_brand = product_item.get('motor_brand') or product_item.get('brand')
@@ -1336,77 +1333,17 @@ class BookServiceCreateView(APIView):
                     if isinstance(add_products_list, list):
                         for p in add_products_list:
                             prod_name = p.get('productName') or p.get('name') or p.get('product_name') or ''
-                            if 'motor' in prod_name.lower() or p.get('isMotor') or p.get('isMotorSale'):
-                                create_motor_history_record(complaint, p, brand_id=p.get('brand_id'))
+                            # motor history removed (purge)
 
             except Exception as e:
-                print(f"⚠️  Failed to auto-create MotorDetails for sale: {e}")
+                print(f"⚠️  Failed to process motor-related sale logic: {e}")
 
-        # ----------------------------------
-        # ✅ 9.5️⃣ AUTO-CREATE MOTOR DETAILS FOR MOTOR SERVICE (placeholder)
-        # ----------------------------------
-        # When a motor_service complaint is booked directly without going through
-        # the MotorDetails page, no MotorDetails record exists. The Dashboard queries
-        # MotorDetails for both motor_service and motor_sale, so we create a placeholder.
-        if (data.get("job_type") == "motor_service" or data.get("job_category") == "motor_service"):
-            try:
-                from user.models import MotorDetails
-                # Only create if no MotorDetails record already exists for this complaint
-                # (the serializer may have already created one if motor_data was sent)
-                existing_motor = MotorDetails.objects(complaint_id=complaint.complaint_no).first()
-                if not existing_motor:
-                    import json
-                    # Try to extract motor info from product list if available
-                    motor_brand = None
-                    motor_make = None
-                    serial_no = None
-                    motor_hp = None
-                    motor_kw = None
-                    if complaint.product_name:
-                        try:
-                            products = json.loads(complaint.product_name) if isinstance(complaint.product_name, str) else complaint.product_name
-                            if isinstance(products, list):
-                                for p in products:
-                                    prod_name = (p.get('productName') or p.get('name') or '').lower()
-                                    if 'motor' in prod_name:
-                                        motor_brand = p.get('motor_brand') or p.get('brand_name') or p.get('brand')
-                                        motor_make = p.get('motor_make')
-                                        serial_no = p.get('serial_no')
-                                        motor_hp = p.get('hp')
-                                        motor_kw = p.get('kw')
-                                        break
-                        except Exception:
-                            pass
-
-                    # Create placeholder MotorDetails record
-                    placeholder_motor = MotorDetails(
-                        complaint_id=complaint.complaint_no,
-                        customer_name=complaint.customer_name,
-                        customer_phone=complaint.phone,
-                        job_type='motor_service',
-                        job_category='motor_service',
-                        company_name=motor_brand or motor_make or 'Motor Service',
-                        motor_make=motor_make or '',
-                        motor_brand=motor_brand or '',
-                        serial_no=serial_no or f"SVC-{complaint.complaint_no.split('-')[-1]}",
-                        hp=str(motor_hp) if motor_hp else '',
-                        kw=str(motor_kw) if motor_kw else '',
-                        remarks=f"Motor service complaint - {complaint.details or ''}",
-                        opening_date=get_ist_now(),
-                    )
-                    placeholder_motor.save()
-                    print(f"✅ Created placeholder MotorDetails for motor_service complaint: {complaint.complaint_no}")
-                else:
-                    print(f"⏩ MotorDetails already exists for motor_service complaint: {complaint.complaint_no}")
-            except Exception as e:
-                print(f"⚠️  Failed to auto-create MotorDetails for motor_service: {e}")
-                import traceback
-                traceback.print_exc()
+        # Placeholder creation removed (motor module purge)
 
         # ----------------------------------
         # ✅ 11️⃣ HANDLE MOTOR DATA (Redundant creation removed - handled by serializer)
         # ----------------------------------
-        # The MotorDetails record is now created within the BookServiceComplaintSerializer.create() method
+        # The motor-related records creation removed (purge)
         # for both motor_service and motor_sale jobs.
         
         # Only keep the sale-specific logic that updates the complaint's product list if needed
@@ -1501,6 +1438,7 @@ from mongoengine.queryset.visitor import Q
 class SelectStaffListView(APIView):
     def get(self, request):
         mode = request.GET.get("mode", "available")
+        branch_filter = request.GET.get("branch_name")
 
         # Get today's date for attendance check
         from datetime import datetime, timedelta
@@ -1510,9 +1448,11 @@ class SelectStaffListView(APIView):
         # AVAILABLE STAFF MODE
         # -------------------
         if mode == "available":
-            # Get all staff (both active and inactive/pending)
-            # This allows assigning pending/inactive staff to jobs
-            available_staffs = Staff.objects()
+            # Get all staff
+            query = Staff.objects()
+            if branch_filter:
+                query = query.filter(branch_name=branch_filter)
+            available_staffs = query
 
             data = []
             for s in available_staffs:
@@ -1535,6 +1475,7 @@ class SelectStaffListView(APIView):
                         "phone": s.phone,
                         "location": s.location,
                         "photo_url": photo_url,
+                        "branch_name": s.branch_name or "Main Hub",
                     })
 
             return Response(data, status=status.HTTP_200_OK)
@@ -1560,6 +1501,7 @@ class SelectStaffListView(APIView):
                         "phone": staff.phone,
                         "location": staff.location,
                         "photo_url": photo_url,
+                        "branch_name": staff.branch_name or "Main Hub",
                         "complaints": []
                     }
 
@@ -1909,7 +1851,7 @@ def customer_list(request):
         serializer = BookServiceComplaintSerializer(data=data)
 
         if not serializer.is_valid():
-            print("❌ Complaint Errors:", serializer.errors)
+            print("[ERROR] Complaint Errors:", serializer.errors)
             return Response({
                 "success": False,
                 "errors": serializer.errors
@@ -2134,7 +2076,6 @@ def daily_performance_report(request):
 @api_view(['GET'])
 def get_customer_by_phone(request):
     phone = request.GET.get('phone')
-    print("Received phone:", phone)
 
     if not phone:
         return Response({"error": "Phone number is required"}, status=400)
@@ -2146,7 +2087,6 @@ def get_customer_by_phone(request):
     # If not found by main phone, try to find by alternate number
     if not client:
         client = ClientDetails.objects(alternate_number=phone, status="online").first()
-        print(f"Searching by alternate number: {phone}, found: {client is not None}")
 
     if not client:
         return Response(
@@ -2195,7 +2135,6 @@ def get_customer_by_phone(request):
             complaint_data["warranty_photo"] = c.warranty_photo
 
         complaint_list.append(complaint_data)
-        print("Complaint Added:", complaint_data)
 
     return Response({
         "found": True,
@@ -2216,7 +2155,6 @@ def get_customer_by_phone(request):
 @api_view(['GET'])
 def get_customer_by_id(request):
     customer_id = request.GET.get('customer_id')
-    print("Received customer_id:", customer_id)
 
     if not customer_id:
         return Response({"error": "Customer ID is required"}, status=400)
@@ -2268,7 +2206,6 @@ def get_customer_by_id(request):
         "complaints": complaint_list
     })
 
-
 # ------------------------------
 #   Get All Complaints (for Dashboard)
 # ------------------------------
@@ -2277,7 +2214,7 @@ def get_complaints(request):
     """
     Get all complaints for the dashboard
     """
-    from .models import StockItem, MotorDetails
+    from .models import StockItem
     
     try:
         complaints = BookServiceComplaint.objects.order_by('-date_created')
@@ -2294,16 +2231,7 @@ def get_complaints(request):
             
             # ⭐ NEW: Get motor details for this complaint
             motor_details = None
-            if c.job_type in ['motor_service', 'motor_sale']:
-                motor = MotorDetails.objects(complaint_id=c.complaint_no).first()
-                if motor:
-                    motor_details = {
-                        'company_name': motor.company_name,
-                        'motor_make': motor.motor_make,
-                        'serial_no': motor.serial_no,
-                        'hp': motor.hp,
-                        'kw': motor.kw
-                    }
+            motor_details = None  # motor_details removed (purge)
             
             # ⭐ NEW: Get payment history from PaymentDetails collection
             payment_history = []
@@ -2467,22 +2395,22 @@ def update_complaint(request, complaint_id):
 
         serializer = BookServiceComplaintSerializer(complaint, data=request.data, partial=True)
         if serializer.is_valid():
-            updated_complaint = serializer.save()
+            complaint = serializer.save()
             
             # Extract and save client_amount from remarks when completing
-            if updated_complaint.status and updated_complaint.status.lower() == "completed":
+            if complaint.status and complaint.status.lower() == "completed":
                 # Get client_amount - either from model or extract from remarks
                 client_amount = 0
-                if updated_complaint.client_amount:
-                    client_amount = float(updated_complaint.client_amount)
-                elif updated_complaint.remarks:
+                if complaint.client_amount:
+                    client_amount = float(complaint.client_amount)
+                elif complaint.remarks:
                     # Try to extract client_amount from remarks
                     try:
                         import re
-                        numbers = re.findall(r'\d+\.?\d*', str(updated_complaint.remarks))
+                        numbers = re.findall(r'\d+\.?\d*', str(complaint.remarks))
                         if numbers:
                             client_amount = float(numbers[0])
-                            updated_complaint.client_amount = client_amount
+                            complaint.client_amount = client_amount
                     except:
                         pass
                 
@@ -2500,18 +2428,16 @@ def update_complaint(request, complaint_id):
                 stock_map = {item.name: item.selling_price or 0 for item in stock_items}
                 
                 # Calculate booking products total (skip motor_sale products - handled separately)
-                if updated_complaint.product_name:
+                if complaint.product_name:
                     try:
                         import json
-                        products = json.loads(updated_complaint.product_name) if isinstance(updated_complaint.product_name, str) else updated_complaint.product_name
+                        products = json.loads(complaint.product_name) if isinstance(complaint.product_name, str) else complaint.product_name
                         if isinstance(products, list):
                             for p in products:
                                 # ✅ FIX: Handle motor_sale products separately (same as GET list view)
                                 if p.get('isMotorSale') or p.get('isMotor'):
                                     motor_amount = float(p.get('motorAmount') or p.get('motor_amount') or p.get('final_price') or p.get('selling_price') or 0)
-                                    motor_discount = float(p.get('discountPercent') or p.get('discount_percent') or 0)
-                                    if motor_discount > 0:
-                                        motor_amount = motor_amount - (motor_amount * motor_discount / 100)
+                                    # motor_amount string from frontend typically contains the final discounted price
                                     motor_total += motor_amount
                                     continue
                                 product_name = p.get('productName') or p.get('name') or p.get('product_name', '')
@@ -2527,10 +2453,10 @@ def update_complaint(request, complaint_id):
                         pass
                 
                 # Calculate additional products total
-                if updated_complaint.additional_product:
+                if complaint.additional_product:
                     try:
                         import json
-                        additional_prods = json.loads(updated_complaint.additional_product) if isinstance(updated_complaint.additional_product, str) else updated_complaint.additional_product
+                        additional_prods = json.loads(complaint.additional_product) if isinstance(complaint.additional_product, str) else complaint.additional_product
                         if isinstance(additional_prods, list):
                             for p in additional_prods:
                                 product_name = p.get('productName') or p.get('name') or p.get('product_name', '')
@@ -2552,33 +2478,33 @@ def update_complaint(request, complaint_id):
                 # If no products and only client_amount, grand_total = client_amount
                 # This is already handled by the calculation above (0 + 0 + client_amount + 0 = client_amount)
                 
-                updated_complaint.grand_total = grand_total
-                updated_complaint.total_amount = grand_total
+                complaint.grand_total = grand_total
+                complaint.total_amount = grand_total
                 
                 # ----------------------------------
                 # ✅ NEW: UNIFIED STOCK REDUCTION ON COMPLETION
                 # ----------------------------------
-                process_stock_reduction_for_complaint(updated_complaint, request)
+                process_stock_reduction_for_complaint(complaint, request)
                 
-                updated_complaint.save()
+                complaint.save()
             
             return Response({
                 "success": True,
                 "message": "Complaint updated successfully",
                 "complaint": {
-                    "id": str(updated_complaint.id),
-                    "complaint_no": updated_complaint.complaint_no,
-                    "customer_name": updated_complaint.customer_name,
-                    "customer_phone": updated_complaint.phone,
-                    "product_name": updated_complaint.product_name,
-                    "status": updated_complaint.status,
-                    "assigned_staff": updated_complaint.staff_name,
-                    "payment_method": updated_complaint.payment_method,
-                    "remarks": updated_complaint.remarks,
-                    "amount": updated_complaint.amount,
-                    "client_amount": updated_complaint.client_amount,
-                    "grand_total": updated_complaint.grand_total,
-                    "date_created": format_date(updated_complaint.date_created)
+                    "id": str(complaint.id),
+                    "complaint_no": complaint.complaint_no,
+                    "customer_name": complaint.customer_name,
+                    "customer_phone": complaint.phone,
+                    "product_name": complaint.product_name,
+                    "status": complaint.status,
+                    "assigned_staff": complaint.staff_name,
+                    "payment_method": complaint.payment_method,
+                    "remarks": complaint.remarks,
+                    "amount": complaint.amount,
+                    "client_amount": complaint.client_amount,
+                    "grand_total": complaint.grand_total,
+                    "date_created": format_date(complaint.date_created)
                 }
             }, status=status.HTTP_200_OK)
         return Response({
@@ -2697,31 +2623,8 @@ def update_payment(request, complaint_id):
             except:
                 grand_total = 0
         
-        # ⭐ Add motor_total for motor_sale jobs
-        motor_total = 0
-        if hasattr(complaint, 'job_type') and complaint.job_type == 'motor_sale':
-            try:
-                from user.models import MotorDetails
-                # Try to find motor details
-                motor = MotorDetails.objects(complaint_id=complaint.complaint_no).first()
-                if not motor and complaint.complaint_no:
-                    if complaint.complaint_no.startswith('#'):
-                        motor = MotorDetails.objects(complaint_id=complaint.complaint_no.lstrip('#')).first()
-                    else:
-                        motor = MotorDetails.objects(complaint_id=f'#{complaint.complaint_no}').first()
-                
-                if motor and motor.motor_amount:
-                    motor_price = float(motor.motor_amount or 0)
-                    motor_discount = float(getattr(motor, 'discount_percent', 0) or 0)
-                    # Calculate final motor price with discount
-                    if motor_discount > 0:
-                        motor_price = motor_price - (motor_price * motor_discount / 100)
-                    motor_total = motor_price
-            except Exception as e:
-                print(f"Error getting motor details for payment update: {e}")
-        
-        # Add motor_total to grand_total
-        grand_total = round(grand_total + motor_total, 2)
+        # motor_total calculation removed (purge)
+        grand_total = round(grand_total, 2)
         
         # STEP 1: Calculate new total received
         existing_amount_received = complaint.amount_received or 0
@@ -2890,32 +2793,7 @@ def update_payment_debug(request):
                 except:
                     grand_total = 0
             
-            # ⭐ Add motor_total for motor_sale jobs
-            motor_total = 0
-            if hasattr(complaint, 'job_type') and complaint.job_type == 'motor_sale':
-                try:
-                    from user.models import MotorDetails
-                    # Try to find motor details
-                    motor = MotorDetails.objects(complaint_id=complaint.complaint_no).first()
-                    if not motor and complaint.complaint_no:
-                        if complaint.complaint_no.startswith('#'):
-                            motor = MotorDetails.objects(complaint_id=complaint.complaint_no.lstrip('#')).first()
-                        else:
-                            motor = MotorDetails.objects(complaint_id=f'#{complaint.complaint_no}').first()
-                    
-                    if motor and motor.motor_amount:
-                        motor_price = float(motor.motor_amount or 0)
-                        motor_discount = float(getattr(motor, 'discount_percent', 0) or 0)
-                        # Calculate final motor price with discount
-                        if motor_discount > 0:
-                            motor_price = motor_price - (motor_price * motor_discount / 100)
-                        motor_total = motor_price
-                except Exception as e:
-                    print(f"Error getting motor details for payment update (debug): {e}")
-            
-            # Add motor_total to grand_total
-            grand_total = round(grand_total + motor_total, 2)
-            
+            # motor_total calculation removed (purge)
             due_amount = grand_total - float(amount_received) if amount_received else grand_total
             
             if due_amount == 0:
@@ -3217,7 +3095,7 @@ def get_pending_whatsapp_messages(request):
         
         # Query in smaller batches to avoid timeout
         try:
-            all_complaints_raw = BookServiceComplaint.objects.order_by('-created_at').limit(1000)
+            all_complaints_raw = BookServiceComplaint.objects.order_by('-date_created').limit(1000)
             for c in all_complaints_raw:
                 try:
                     has_pending = False
@@ -3313,10 +3191,12 @@ def staff_performance_report(request):
         "total_jobs_completed": 0,
         "client_payments": 0.0,
         "company_payments": 0.0,
+        "total_incentives": 0.0,
         "daily_work_completion": defaultdict(lambda: {
             "jobs": 0,
             "client_payments": 0.0,
-            "company_payments": 0.0
+            "company_payments": 0.0,
+            "incentives": 0.0
         })
     })
 
@@ -3349,6 +3229,11 @@ def staff_performance_report(request):
         report[staff]["daily_work_completion"][date_key]["jobs"] += 1
         report[staff]["daily_work_completion"][date_key]["client_payments"] += client_amount
         report[staff]["daily_work_completion"][date_key]["company_payments"] += company_amount
+        
+        # Incentives
+        incentive_amount = float(getattr(c, 'staff_incentive', 0) or 0)
+        report[staff]["total_incentives"] += incentive_amount
+        report[staff]["daily_work_completion"][date_key]["incentives"] += incentive_amount
 
     # Convert to frontend-friendly response
     response_data = []
@@ -3359,11 +3244,13 @@ def staff_performance_report(request):
             "total_jobs_completed": data["total_jobs_completed"],
             "client_payments": round(data["client_payments"], 2),
             "company_payments": round(data["company_payments"], 2),
+            "total_incentives": round(data["total_incentives"], 2),
             "daily_work_completion": {
                 date: {
                     "jobs": v["jobs"],
                     "client_payments": round(v["client_payments"], 2),
                     "company_payments": round(v["company_payments"], 2),
+                    "incentives": round(v["incentives"], 2),
                 }
                 for date, v in data["daily_work_completion"].items()
             }
@@ -3477,6 +3364,7 @@ def staff_daily_jobs(request):
                 "status": complaint.status,
                 "client_payment": round(client_payment, 2),
                 "company_payment": round(float(complaint.amount or 0), 2),
+                "staff_incentive": round(float(getattr(complaint, 'staff_incentive', 0) or 0), 2),
                 "payment_method": complaint.payment_method,
                 "completed_at": format_date(complaint.assigned_completed_at),
                 "remarks": complaint.remarks
@@ -3523,6 +3411,7 @@ def mark_staff_attendance(request):
             return Response({"error": "No attendance data provided"}, status=400)
 
         marked_count = 0
+        updated_count = 0
         skipped_count = 0
         errors = []
 
@@ -3549,8 +3438,27 @@ def mark_staff_attendance(request):
             ).first()
 
             if existing_attendance:
-                skipped_count += 1
-                continue
+                try:
+                    existing_attendance.status = status
+                    existing_attendance.attendance_type = attendance_type
+                    existing_attendance.work_type = work_type
+                    existing_attendance.salary_multiplier = salary_multiplier
+                    existing_attendance.salary_multiplier_reason = salary_multiplier_reason
+                    existing_attendance.marked_by = marked_by
+                    existing_attendance.marked_at = get_ist_now()
+                    
+                    # Handle override fields if applicable
+                    interpreted_status = getAttendanceStatus(staff_id, today)
+                    if interpreted_status in ["week_off", "holiday"]:
+                        existing_attendance.is_override = True
+                        existing_attendance.override_reason = item.get('override_reason', salary_multiplier_reason)
+                    
+                    existing_attendance.save()
+                    updated_count += 1
+                    continue
+                except Exception as e:
+                    errors.append(f"Failed to update attendance for {staff_name}: {str(e)}")
+                    continue
 
             # NEW: Intelligent Attendance Logic Layer
             # Check if marking on holiday or weekly off
@@ -3587,8 +3495,9 @@ def mark_staff_attendance(request):
 
         response_data = {
             "success": True,
-            "message": f"Attendance marked for {marked_count} staff members",
+            "message": f"Attendance processed: {marked_count} marked, {updated_count} updated",
             "marked_count": marked_count,
+            "updated_count": updated_count,
             "skipped_count": skipped_count
         }
 
@@ -4076,14 +3985,7 @@ def create_stock_item(request):
         if data.get('minimum_threshold') is None:
             return Response({"success": False, "error": "Minimum threshold is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Determine if motor
-        is_motor = bool(data.get('is_motor')) or 'motor' in str(data.get('name', '')).lower()
-        motor_brands = data.get('motor_brands') or []
-
-        # Calculate quantity for motors from brands
         quantity = int(data.get('quantity', 0) or 0)
-        if is_motor and motor_brands:
-            quantity = sum(int(b.get('quantity', 0) or b.get('count', 0) or 0) for b in motor_brands)
 
         # Create stock item directly (bypass serializer)
         stock_item = StockItem(
@@ -4095,8 +3997,7 @@ def create_stock_item(request):
             selling_price=float(data.get('selling_price', 0) or 0),
             buying_price=float(data.get('buying_price', 0) or 0),
             minimum_price=float(data.get('minimum_price', 0) or 0),
-            is_motor=is_motor,
-            motor_brands=motor_brands if is_motor else []
+            branch_name=str(data.get('branch_name', 'Main Branch'))
         )
         stock_item.save()
         print(f"[STOCK] Created: {stock_item.stock_id} - {stock_item.name} (qty: {stock_item.quantity})")
@@ -4132,45 +4033,6 @@ def create_stock_item(request):
             date_of_purchase=date_of_purchase
         )
 
-        # Sync motor variants (best effort)
-        if is_motor and motor_brands:
-            try:
-                from .models import MotorVariant
-                MotorVariant.objects(product=stock_item).delete()
-                for mb in motor_brands:
-                    spec = mb.get('specification') or {}
-                    pricing = mb.get('pricing') or mb
-                    mv = MotorVariant(
-                        product=stock_item,
-                        brand=str(mb.get('brand_name') or mb.get('brand') or 'Unknown'),
-                        count=int(mb.get('quantity') or mb.get('count') or 0),
-                        motor_make=str(spec.get('motor_make') or mb.get('motor_make') or ''),
-                        kw=str(spec.get('kw') or mb.get('kw') or ''),
-                        hp=float(spec.get('hp') or mb.get('hp') or 0) or None,
-                        rpm=int(spec.get('rpm') or mb.get('rpm') or 0) or None,
-                        phase=str(spec.get('phase') or mb.get('phase') or ''),
-                        voltage=str(spec.get('voltage') or mb.get('voltage') or ''),
-                        connection=str(spec.get('connection') or mb.get('connection') or ''),
-                        no_of_slots=int(spec.get('no_of_slots') or mb.get('no_of_slots') or 0) or None,
-                        core_length=str(spec.get('core_length') or mb.get('core_length') or ''),
-                        load_current=str(spec.get('load_current') or mb.get('load_current') or ''),
-                        swg=str(spec.get('swg') or mb.get('swg') or ''),
-                        total_set=str(spec.get('total_set') or mb.get('total_set') or ''),
-                        total_weight=str(spec.get('total_weight') or mb.get('total_weight') or ''),
-                        resistance_value=str(spec.get('resistance_value') or mb.get('resistance_value') or ''),
-                        winder_name=str(spec.get('winder_name') or mb.get('winder_name') or ''),
-                        remarks=str(spec.get('remarks') or mb.get('remarks') or ''),
-                        winding_details=spec.get('winding_details') or mb.get('winding_details'),
-                        supplier=str(pricing.get('supplier') or mb.get('supplier') or ''),
-                        purchase_price=float(pricing.get('purchase_price') or mb.get('purchase_price') or 0) or None,
-                        selling_price=float(pricing.get('selling_price') or mb.get('selling_price') or 0) or None,
-                        minimum_price=float(pricing.get('minimum_price') or mb.get('minimum_price') or 0) or None
-                    )
-                    mv.save()
-                print(f"[STOCK] Motor variants synced: {len(motor_brands)} brands")
-            except Exception as se:
-                print(f"[STOCK] Variants sync warning: {se}")
-
         return Response({
             "success": True,
             "message": "Stock item created successfully",
@@ -4186,9 +4048,14 @@ def create_stock_item(request):
 
     except Exception as e:
         import traceback
+        import sys
         print(f"[STOCK] CREATE EXCEPTION: {e}")
         traceback.print_exc()
-        return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({
+            "success": False, 
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])
@@ -4198,7 +4065,13 @@ def get_stock_items(request):
     """
     try:
         from datetime import datetime
-        stock_items = StockItem.objects.all().order_by('-created_at')
+        branch_filter = request.GET.get('branch_name')
+        
+        query = StockItem.objects.all()
+        if branch_filter:
+            query = query.filter(branch_name=branch_filter)
+            
+        stock_items = query.order_by('-created_at')
         data = []
         for item in stock_items:
             # Try to get the latest history record with supplier info
@@ -4246,7 +4119,7 @@ def get_stock_items(request):
                 "supplier": supplier,
                 "date_of_purchase": date_purchase,
                 "status": item.get_status(),
-                "motor_brands": item.motor_brands if item.motor_brands else [],
+                "branch_name": item.branch_name,
                 "created_at": format_date(item.created_at),
                 "updated_at": format_date(item.updated_at)
             })
@@ -4281,6 +4154,8 @@ def add_stock(request, stock_id):
             purchase_price_per_unit = serializer.validated_data.get('purchase_price_per_unit', None)
             total_purchase_amount = serializer.validated_data.get('total_purchase_amount', None)
             date_of_purchase_str = serializer.validated_data.get('date_of_purchase', None)
+            minimum_price = serializer.validated_data.get('minimum_price', None)
+            minimum_threshold = serializer.validated_data.get('minimum_threshold', None)
             
             # Debug logging
             print("=== ADD STOCK DEBUG ===")
@@ -4298,6 +4173,12 @@ def add_stock(request, stock_id):
                     date_of_purchase = datetime.strptime(date_of_purchase_str, '%Y-%m-%d')
                 except:
                     date_of_purchase = None
+
+            # Update minimum price and threshold if provided
+            if minimum_price is not None:
+                stock_item.minimum_price = minimum_price
+            if minimum_threshold is not None:
+                stock_item.minimum_threshold = minimum_threshold
             
             previous_quantity = stock_item.quantity
             success, message = stock_item.add_stock(quantity_to_add)
@@ -4435,7 +4316,7 @@ def reduce_stock(request, stock_id):
         source = request.data.get('source', 'manual')
         
         # ⭐ REFACTORED: Single source of truth for stock reduction (handles MotorVariant + brand_id mapping)
-        success, message = stock_item.reduce_stock(quantity_to_reduce, brand_name=motor_brand, brand_id=brand_id)
+        success, message = stock_item.reduce_stock(quantity_to_reduce)
         
         if success:
             # Record history
@@ -4448,7 +4329,6 @@ def reduce_stock(request, stock_id):
                 new_quantity=stock_item.quantity,
                 performed_by=performed_by,
                 notes=f"Stock reduced via {source}" + (f" for brand {motor_brand}" if motor_brand else ""),
-                motor_brand=motor_brand,
                 type='out',
                 source=source
             )
@@ -4551,6 +4431,10 @@ def update_stock_item(request, stock_id):
         if selling_price is not None:
             stock_item.selling_price = float(selling_price) if selling_price else None
         
+        minimum_price = request.data.get('minimum_price')
+        if minimum_price is not None:
+            stock_item.minimum_price = float(minimum_price) if minimum_price else None
+        
         stock_item.save()
         
         # Record history for the update with supplier info
@@ -4611,8 +4495,12 @@ def get_stock_alerts(request):
     Returns items that are low or out of stock
     """
     try:
-        # Get all stock items and filter in Python (not using F() in query)
-        all_items = StockItem.objects.all()
+        branch_name = request.GET.get('branch_name')
+        query = StockItem.objects
+        if branch_name:
+            query = query.filter(branch_name=branch_name)
+            
+        all_items = query.all()
         
         alert_items = []
         for item in all_items:
@@ -4651,7 +4539,7 @@ def get_stock_alerts(request):
 # ------------------------------
 #   Stock History Functions
 # ------------------------------
-def record_stock_history(stock_item, operation_type, quantity, previous_quantity, new_quantity, performed_by, notes=None, supplier=None, purchase_price_per_unit=None, total_purchase_amount=None, date_of_purchase=None, motor_brand=None, type=None, source=None, complaint_no=None, customer_id=None, unit=None):
+def record_stock_history(stock_item, operation_type, quantity, previous_quantity, new_quantity, performed_by, notes=None, supplier=None, purchase_price_per_unit=None, total_purchase_amount=None, date_of_purchase=None, type=None, source=None, complaint_no=None, customer_id=None, unit=None, branch_name=None):
     """
     Helper function to record stock history.
     """
@@ -4667,9 +4555,9 @@ def record_stock_history(stock_item, operation_type, quantity, previous_quantity
         print(f"notes: {notes}")
         print("==================================")
 
-        # If unit is not provided, get it from the stock item
-        if unit is None:
-            unit = stock_item.unit
+        # If branch_name not provided, use the stock_item's branch
+        if not branch_name:
+            branch_name = getattr(stock_item, 'branch_name', 'Main Branch')
 
         history = StockHistory(
             stock_id=stock_item.stock_id,
@@ -4678,24 +4566,24 @@ def record_stock_history(stock_item, operation_type, quantity, previous_quantity
             quantity=quantity,
             previous_quantity=previous_quantity,
             new_quantity=new_quantity,
-            unit=unit,
+            unit=unit or stock_item.unit,
             notes=notes,
             performed_by=performed_by,
             supplier=supplier,
             purchase_price_per_unit=purchase_price_per_unit,
             total_purchase_amount=total_purchase_amount,
             date_of_purchase=date_of_purchase,
-            motor_brand=motor_brand,
             type=type or ('out' if operation_type == 'reduce' else 'in'),
             source=source or 'manual',
             complaint_no=complaint_no,
-            customer_id=customer_id
+            customer_id=customer_id,
+            branch_name=branch_name
         )
         history.save()
-        print(f"✅ Stock history saved successfully for {stock_item.stock_id} (Operation: {operation_type})")
+        print(f"[OK] Stock history saved successfully for {stock_item.stock_id} (Operation: {operation_type})")
         return True
     except Exception as e:
-        print(f"❌ ERROR recording stock history: {str(e)}")
+        print(f"[ERROR] ERROR recording stock history: {str(e)}")
         import traceback
         traceback.print_exc()
         return False
@@ -4708,13 +4596,15 @@ def get_stock_history(request):
     """
     try:
         stock_id = request.GET.get('stock_id')
+        branch_name = request.GET.get('branch_name')
         
+        query_params = {}
         if stock_id:
-            # Get history for specific stock item
-            history = StockHistory.objects(stock_id=stock_id).order_by('-created_at')
-        else:
-            # Get all history
-            history = StockHistory.objects().order_by('-created_at')
+            query_params['stock_id'] = stock_id
+        if branch_name:
+            query_params['branch_name'] = branch_name
+            
+        history = StockHistory.objects(**query_params).order_by('-created_at')
         
         # Limit to recent 100 records if no specific stock_id
         if not stock_id:
@@ -4797,20 +4687,31 @@ def get_product_purchase_history(request):
     Returns list of completed bookings with product details
     """
     try:
+        branch_name = request.GET.get('branch_name')
+        query_params = {'status': 'completed'}
+        if branch_name:
+            query_params['branch_name'] = branch_name
+
         # Get completed bookings with product information
-        # EXCLUDE bookings that are motor services (only show sales and other product bookings)
+        # Include all completed bookings (including motor services if they have products)
         completed_bookings = BookServiceComplaint.objects(
-            status="completed",
-            job_category__ne="motor_service",
-            job_type__ne="motor_service"
-        ).order_by('-created_at').limit(100)
+            **query_params
+        ).order_by('-date_created').limit(200)
         
         data = []
         for booking in completed_bookings:
-            # Only include bookings that have products
-            if booking.product_name or booking.additional_product:
-                # Get customer name from customer_id
-                customer_name = "Unknown"
+            # Only include bookings that have products recorded in product_name or additional_product
+            # We also check that they are not just empty JSON arrays
+            has_products = False
+            
+            if booking.product_name and booking.product_name != "[]":
+                has_products = True
+            elif booking.additional_product and booking.additional_product != "[]":
+                has_products = True
+                
+            if has_products:
+                # Get customer name: try booking.customer_name first, then ClientDetails fallback
+                customer_name = booking.customer_name or "Unknown"
                 if booking.customer_id:
                     try:
                         customer = ClientDetails.objects(customer_id=booking.customer_id).first()
@@ -4825,12 +4726,13 @@ def get_product_purchase_history(request):
                     "customer_id": booking.customer_id,
                     "customer_name": customer_name,
                     "phone": booking.phone,
-                    "product_name": booking.product_name or None,
+                    "product_name": booking.product_name if booking.product_name != "[]" else None,
                     "product_quantity": booking.product_quantity or None,
-                    "additional_product": booking.additional_product or None,
+                    "additional_product": booking.additional_product if booking.additional_product != "[]" else None,
                     "additional_product_quantity": booking.additional_product_quantity or None,
                     "created_at": booking.date_created.strftime('%Y-%m-%d %H:%M:%S') if booking.date_created else None,
                     "completed_at": booking.assigned_completed_at.strftime('%Y-%m-%d %H:%M:%S') if booking.assigned_completed_at else None,
+                    "branch_name": booking.branch_name or "Main Branch",
                 }
                 data.append(booking_data)
         
@@ -4848,271 +4750,10 @@ from rest_framework.permissions import AllowAny
 
 # ------------------------------
 #   Motor Brand Management API Endpoints
-# ------------------------------
-@api_view(['POST'])
-def add_motor_brand(request, stock_id):
-    """
-    Add a new motor brand to a motor stock item.
-    POST /api/stocks/<stock_id>/brands/
-    """
-    try:
-        stock_item = StockItem.objects(stock_id=stock_id).first()
-        if not stock_item:
-            return Response({
-                "success": False,
-                "error": "Stock item not found"
-            }, status=status.HTTP_404_NOT_FOUND)
-        
-        if not stock_item.is_motor:
-            return Response({
-                "success": False,
-                "error": "This stock item is not a motor"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Validate required fields
-        brand_name = request.data.get('brand_name')
-        quantity = request.data.get('quantity')
-        
-        if not brand_name or not brand_name.strip():
-            return Response({
-                "success": False,
-                "error": "Brand name is required"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        if not quantity or int(quantity) <= 0:
-            return Response({
-                "success": False,
-                "error": "Quantity must be greater than 0"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Extract optional fields
-        specification_id = request.data.get('specification_id')
-        purchase_price = request.data.get('purchase_price')
-        selling_price = request.data.get('selling_price')
-        minimum_price = request.data.get('minimum_price')
-        
-        # Add motor brand
-        success, message = stock_item.add_motor_brand(
-            brand_name=brand_name,
-            quantity=int(quantity),
-            specification_id=specification_id,
-            purchase_price=float(purchase_price) if purchase_price else None,
-            selling_price=float(selling_price) if selling_price else None,
-            minimum_price=float(minimum_price) if minimum_price else None
-        )
-        
-        if success:
-            # Record history
-            performed_by = request.headers.get('X-User-Name', 'Unknown')
-            record_stock_history(
-                stock_item=stock_item,
-                operation_type='add',
-                quantity=int(quantity),
-                previous_quantity=stock_item.quantity - int(quantity),
-                new_quantity=stock_item.quantity,
-                performed_by=performed_by,
-                notes=f'Added motor brand: {brand_name}',
-                motor_brand=brand_name
-            )
-            
-            return Response({
-                "success": True,
-                "message": message,
-                "stock_item": {
-                    "stock_id": stock_item.stock_id,
-                    "name": stock_item.name,
-                    "quantity": stock_item.quantity,
-                    "motor_brands": stock_item.motor_brands
-                }
-            }, status=status.HTTP_200_OK)
-        else:
-            return Response({
-                "success": False,
-                "message": message
-            }, status=status.HTTP_400_BAD_REQUEST)
-            
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return Response({
-            "success": False,
-            "error": str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['PUT'])
-def update_motor_brand(request, stock_id, brand_name):
-    """
-    Update an existing motor brand.
-    PUT /api/stocks/<stock_id>/brands/<brand_name>/
-    """
-    try:
-        stock_item = StockItem.objects(stock_id=stock_id).first()
-        if not stock_item:
-            return Response({
-                "success": False,
-                "error": "Stock item not found"
-            }, status=status.HTTP_404_NOT_FOUND)
-        
-        if not stock_item.is_motor:
-            return Response({
-                "success": False,
-                "error": "This stock item is not a motor"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Extract fields to update
-        quantity = request.data.get('quantity')
-        specification_id = request.data.get('specification_id')
-        purchase_price = request.data.get('purchase_price')
-        selling_price = request.data.get('selling_price')
-        minimum_price = request.data.get('minimum_price')
-        
-        # Get current quantity before update
-        previous_quantity = stock_item.quantity
-        
-        # Update motor brand
-        success, message = stock_item.update_motor_brand(
-            brand_name=brand_name,
-            quantity=int(quantity) if quantity else None,
-            specification_id=specification_id,
-            purchase_price=float(purchase_price) if purchase_price else None,
-            selling_price=float(selling_price) if selling_price else None,
-            minimum_price=float(minimum_price) if minimum_price else None
-        )
-        
-        if success:
-            # Get quantity after update
-            new_quantity = stock_item.quantity
-            
-            # Record history if quantity changed
-            if previous_quantity != new_quantity:
-                performed_by = request.headers.get('X-User-Name', 'Unknown')
-                operation_type = 'add' if new_quantity > previous_quantity else 'reduce'
-                quantity_change = abs(new_quantity - previous_quantity)
-                
-                record_stock_history(
-                    stock_item=stock_item,
-                    operation_type=operation_type,
-                    quantity=quantity_change,
-                    previous_quantity=previous_quantity,
-                    new_quantity=new_quantity,
-                    performed_by=performed_by,
-                    notes=f'Updated motor brand: {brand_name}',
-                    motor_brand=brand_name
-                )
-            
-            return Response({
-                "success": True,
-                "message": message,
-                "stock_item": {
-                    "stock_id": stock_item.stock_id,
-                    "name": stock_item.name,
-                    "quantity": stock_item.quantity,
-                    "motor_brands": stock_item.motor_brands
-                }
-            }, status=status.HTTP_200_OK)
-        else:
-            return Response({
-                "success": False,
-                "message": message
-            }, status=status.HTTP_400_BAD_REQUEST)
-            
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return Response({
-            "success": False,
-            "error": str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['DELETE'])
-def delete_motor_brand(request, stock_id, brand_name):
-    """
-    Delete a motor brand from a motor stock item.
-    DELETE /api/stocks/<stock_id>/brands/<brand_name>/
-    """
-    try:
-        stock_item = StockItem.objects(stock_id=stock_id).first()
-        if not stock_item:
-            return Response({
-                "success": False,
-                "error": "Stock item not found"
-            }, status=status.HTTP_404_NOT_FOUND)
-        
-        if not stock_item.is_motor:
-            return Response({
-                "success": False,
-                "error": "This stock item is not a motor"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Remove motor brand
-        success, message = stock_item.remove_motor_brand(brand_name)
-        
-        if success:
-            return Response({
-                "success": True,
-                "message": message,
-                "stock_item": {
-                    "stock_id": stock_item.stock_id,
-                    "name": stock_item.name,
-                    "quantity": stock_item.quantity,
-                    "motor_brands": stock_item.motor_brands
-                }
-            }, status=status.HTTP_200_OK)
-        else:
-            return Response({
-                "success": False,
-                "message": message
-            }, status=status.HTTP_400_BAD_REQUEST)
-            
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return Response({
-            "success": False,
-            "error": str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(['GET'])
-def get_motor_brands(request, stock_id):
-    """
-    Get all motor brands for a motor stock item.
-    GET /api/stocks/<stock_id>/brands/
-    """
-    try:
-        stock_item = StockItem.objects(stock_id=stock_id).first()
-        if not stock_item:
-            return Response({
-                "success": False,
-                "error": "Stock item not found"
-            }, status=status.HTTP_404_NOT_FOUND)
-        
-        if not stock_item.is_motor:
-            return Response({
-                "success": False,
-                "error": "This stock item is not a motor"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Get all motor brands
-        brands = stock_item.get_all_motor_brands()
-        
-        return Response({
-            "success": True,
-            "stock_id": stock_item.stock_id,
-            "stock_name": stock_item.name,
-            "total_quantity": stock_item.quantity,
-            "brands": brands
-        }, status=status.HTTP_200_OK)
-            
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return Response({
-            "success": False,
-            "error": str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # ------------------------------
 #   INVOICE GENERATION
@@ -5162,7 +4803,7 @@ def generate_invoice(request, complaint_id):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # If invoice already generated, return existing data
-        if complaint.invoice_number and complaint.invoice_pdf_url:
+        if False: # complaint.invoice_number and complaint.invoice_pdf_url:
             return Response({
                 "invoice_number": complaint.invoice_number,
                 "pdf_url": complaint.invoice_pdf_url,
@@ -5207,549 +4848,6 @@ def generate_invoice_legacy(request, complaint_id):
     return generate_invoice(request, complaint_id)
 
 
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-        
-
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------ "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"]
-        
-
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-        
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-        
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-        
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-        
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-        
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-        
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-        
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-        
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-        
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-    
-    try:
-        # Import reportlab inside function to avoid startup errors
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib import colors
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
-        from reportlab.lib.units import inch
-        
-        # Fetch complaint - handle both ObjectId and complaint_no
-        import re
-        if len(str(complaint_id)) == 24 and str(complaint_id).isalnum():
-            # It looks like a MongoDB ObjectId (24 chars alphanumeric)
-            complaint = BookServiceComplaint.objects(id=complaint_id).first()
-        else:
-            # It's a complaint_no - find by complaint_no
-            complaint = BookServiceComplaint.objects(complaint_no=complaint_id).first()
-        
-        if not complaint:
-            return Response({
-                "error": "Complaint not found"
-            }, status=status.HTTP_404_NOT_FOUND)
-        
-        # Validate complaint is completed
-        if complaint.status != 'completed':
-            return Response({
-                "error": "Invoice can only be generated for completed jobs"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # If invoice already generated, return existing data
-        if complaint.invoice_number and complaint.invoice_pdf_url:
-            return Response({
-                "invoice_number": complaint.invoice_number,
-                "pdf_url": complaint.invoice_pdf_url,
-                "customer_phone": complaint.phone
-            })
-        
-        # Generate unique invoice number (format: INV-2026-1, INV-2026-2, etc.)
-        # Using the utility function that properly handles numeric sorting
-        invoice_number = get_next_invoice_number()
-        year = get_ist_now().year
-        
-        # Create invoices directory if not exists
-        invoices_dir = os.path.join(settings.MEDIA_ROOT, 'invoices')
-        os.makedirs(invoices_dir, exist_ok=True)
-        
-        # Generate PDF filename (match the new format)
-        # Extract the number from invoice_number for filename
-        invoice_num_for_file = invoice_number.split('-')[-1]
-        pdf_filename = f"Invoice_INV-{year}-{invoice_num_for_file}.pdf"
-        pdf_path = os.path.join(invoices_dir, pdf_filename)
-        
-        # For WhatsApp, we need full URL (use https:// for production)
-        # Get the host from request or use default
-        request_host = request.get_host() if request else 'localhost:8000'
-        # Use https:// scheme for clickable WhatsApp links
-        pdf_url = f"https://{request_host}{settings.MEDIA_URL}invoices/{pdf_filename}"
-        
-        # Create PDF document
-        doc = SimpleDocTemplate(pdf_path, pagesize=A4, leftMargin=0.5*inch, rightMargin=0.5*inch, topMargin=0.5*inch, bottomMargin=0.5*inch)
-        elements = []
-        
-        # Styles
-        styles = getSampleStyleSheet()
-        
-        # Custom styles
-        title_style = ParagraphStyle(
-            'CustomTitle',
-            parent=styles['Heading1'],
-            fontSize=18,
-            spaceAfter=5,
-            alignment=0,  # Left
-            textColor=colors.HexColor('#1a1a1a')
-        )
-        
-        normal_style = ParagraphStyle(
-            'NormalCustom',
-            parent=styles['Normal'],
-            fontSize=10,
-            spaceAfter=3,
-            textColor=colors.HexColor('#333333')
-        )
-        
-        small_style = ParagraphStyle(
-            'SmallCustom',
-            parent=styles['Normal'],
-            fontSize=9,
-            spaceAfter=2,
-            textColor=colors.HexColor('#555555')
-        )
-        
-        bold_style = ParagraphStyle(
-            'BoldCustom',
-            parent=styles['Normal'],
-            fontSize=10,
-            spaceAfter=3,
-            textColor=colors.HexColor('#1a1a1a'),
-            fontName='Helvetica-Bold'
-        )
-        
-        header_label_style = ParagraphStyle(
-            'HeaderLabel',
-            parent=styles['Normal'],
-            fontSize=9,
-            textColor=colors.HexColor('#666666')
-        )
-        
-        header_value_style = ParagraphStyle(
-            'HeaderValue',
-            parent=styles['Normal'],
-            fontSize=10,
-            textColor=colors.HexColor('#1a1a1a'),
-            fontName='Helvetica-Bold'
-        )
-        
-        # ==================== 1. HEADER SECTION ====================
-        # Add Company Logo
-        logo_path = os.path.join(settings.MEDIA_ROOT, 'company_logo.jpeg')
-        logo_element = None
-        if os.path.exists(logo_path):
-            try:
-                logo_element = Image(logo_path, width=1.2*inch, height=0.8*inch)
-            except:
-                logo_element = None
-        
-        # Company Info (Left)
-        if logo_element:
-            company_info = [
-                logo_element,
-                Paragraph("<b>RUBAN ELECTRICALS</b>", title_style),
-                Paragraph("Office Phone: 0461-2334343", normal_style),
-                Paragraph("Mobile: 9994390097", normal_style),
-                Paragraph("23/4A Palayamkottai Road, Tuticorin", normal_style),
-                Paragraph("Email: rubanelectricals@gmail.com", normal_style),
-            ]
-        else:
-            company_info = [
-                Paragraph("<b>RUBAN ELECTRICALS</b>", title_style),
-                Paragraph("Office Phone: 0461-2334343", normal_style),
-                Paragraph("Mobile: 9994390097", normal_style),
-                Paragraph("23/4A Palayamkottai Road, Tuticorin", normal_style),
-                Paragraph("Email: rubanelectricals@gmail.com", normal_style),
-            ]
-        
-        # Invoice Info (Right)
-        invoice_date = get_ist_now().strftime('%Y-%m-%d')
-        staff_name = complaint.staff_name or "N/A"
-        complaint_no_display = complaint.complaint_no or "N/A"
-        
-        invoice_info = [
-            [Paragraph("<b>Job ID:</b>", header_label_style), Paragraph(complaint_no_display, header_value_style)],
-            [Paragraph("<b>Estimate Number:</b>", header_label_style), Paragraph(invoice_number, header_value_style)],
-            [Paragraph("<b>Date:</b>", header_label_style), Paragraph(invoice_date, header_value_style)],
-            [Paragraph("<b>Ruban Employee:</b>", header_label_style), Paragraph(staff_name, header_value_style)],
-        ]
-        
-        # Header Table - Two columns
-        header_table = Table(
-            [[company_info, invoice_info]],
-            colWidths=[3.5*inch, 2.5*inch]
-        )
-        header_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#cccccc')),
-            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f5f5f5')),
-            ('BACKGROUND', (1, 0), (1, -1), colors.white),
-        ]))
-        elements.append(header_table)
-        elements.append(Spacer(1, 15))
-        
-        # ==================== 2. CUSTOMER & BANK DETAILS ====================
-        # Customer Details (Left)
-        customer_details_left = [
-            Paragraph("<b>Customer Details</b>", bold_style),
-            Paragraph(f"Customer Name: {complaint.customer_name or 'N/A'}", normal_style),
-            Paragraph(f"Mobile Number: {complaint.phone or 'N/A'}", normal_style),
-        ]
-        
-        # If there's an address, add it
-        if complaint.address:
-            customer_details_left.append(Paragraph(f"Address: {complaint.address}", normal_style))
-        
-        # Bank Details (Right)
-        bank_details_right = [
-            Paragraph("<b>Company Bank Details</b>", bold_style),
-            Paragraph("Company Name: Ruban Electricals", normal_style),
-            Paragraph("Bank Name: Union Bank of India", normal_style),
-            Paragraph("Branch: Ganesh Nagar Branch", normal_style),
-            Paragraph("Account Number: 410702010000000", normal_style),
-            Paragraph("IFSC Code: UBIN0541077", normal_style),
-        ]
-        
-        # Customer & Bank Table - Two columns
-        customer_bank_table = Table(
-            [[customer_details_left, bank_details_right]],
-            colWidths=[3.25*inch, 3.25*inch]
-        )
-        customer_bank_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 10),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#cccccc')),
-            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#fafafa')),
-        ]))
-        elements.append(customer_bank_table)
-        elements.append(Spacer(1, 15))
-        
-        # ==================== 3. INVOICE ITEM TABLE ====================
-        # Prepare item data using the serializer's parsing logic
-        items_data = []
-        
-        # Import StockItem for price lookup
-        from .models import StockItem
-        
-        # Get amounts for calculation
-        client_amount = float(complaint.client_amount or 0)
-        amount_field = float(complaint.amount or 0)
-        
-        def parse_products_for_invoice(product_field, quantity_field=None, default_price=0):
-            """Parse product field and return list of dicts with name, qty, price"""
-            if not product_field:
-                return []
-            
-            try:
-                import json
-                parsed = json.loads(product_field) if isinstance(product_field, str) else product_field
-                
-                if isinstance(parsed, list):
-                    result = []
-                    for p in parsed:
-                        product_name = p.get('productName') or p.get('name') or p.get('product_name', '')
-                        quantity = int(p.get('quantity') or p.get('qty') or 1)
-                        
-                        # Look up price from StockItem
-                        price = 0
-                        if product_name:
-                            stock_item = StockItem.objects(name=product_name).first()
-                            if stock_item and stock_item.selling_price:
-                                price = float(stock_item.selling_price)
-                        
-                        # If no price from StockItem, use default
-                        if price == 0 and default_price > 0:
-                            price = default_price / len(parsed)
-                        
-                        result.append({
-                            'name': product_name,
-                            'quantity': quantity,
-                            'price': price
-                        })
-                    
-                    # ⭐ FILTER: Exclude 'motor service' as it is a service, not a product 
-                    return [p for p in result if p.get('name', '').lower().strip() != 'motor service']
-            except:
-                pass
-            
-            # Return single product
-            product_name = str(product_field) if product_field else ''
-            quantity = int(quantity_field) if quantity_field else 1
-            
-            # ⭐ FILTER: Exclude 'motor service' as it is a service, not a product
-            if product_name.lower().strip() == 'motor service':
-                return []
-
-            # Look up price from StockItem
-            price = 0
-            if product_name:
-                stock_item = StockItem.objects(name=product_name).first()
-                if stock_item and stock_item.selling_price:
-                    price = float(stock_item.selling_price)
-            
-            # If still no price, use default
-            if price == 0 and default_price > 0:
-                price = default_price
-            
-            return [{'name': product_name, 'quantity': quantity, 'price': price}]
-        
-        # Parse main products - use client_amount as default price if no products found in StockItem
-        all_products = parse_products_for_invoice(complaint.product_name, complaint.product_quantity, client_amount)
-        
-        # Parse additional products - use amount field as default
-        additional_prods = parse_products_for_invoice(complaint.additional_product, complaint.additional_product_quantity, amount_field)
-        all_products.extend(additional_prods)
-        
-        # FIX: No fake product rows - Service Charge shown separately
-        # This prevents double counting when client_amount exists
-        
-        # Add products to invoice items
-        for prod in all_products:
-            prod_name = prod.get('name', '')
-            prod_qty = prod.get('quantity', 1)
-            prod_price = prod.get('price', 0)
-            line_total = prod_price * prod_qty
-            
-            items_data.append([
-                str(len(items_data) + 1),
-                prod_name,
-                "9987",  # HSN/SAC code
-                f"{prod_price:.2f}",
-                str(prod_qty),
-                "0",
-                f"{line_total:.2f}"
-            ])
-        
-        # Add header row
-        header_row = [
-            Paragraph("<b>Sl.No</b>", bold_style),
-            Paragraph("<b>Description of Goods</b>", bold_style),
-            Paragraph("<b>HSN/SAC</b>", bold_style),
-            Paragraph("<b>Unit Cost</b>", bold_style),
-            Paragraph("<b>Qty</b>", bold_style),
-            Paragraph("<b>Discount</b>", bold_style),
-            Paragraph("<b>Amount</b>", bold_style),
-        ]
-        
-        # ==================== 4. TOTAL CALCULATION ====================
-        # Calculate total from products in invoice items
-        products_total = sum(float(row[6]) for row in items_data)
-        
-        # Get client_amount (labour charges)
-        client_amount = float(complaint.client_amount or 0)
-        amount_field = float(complaint.amount or 0)
-        
-        # Labour Charges = client_amount
-        labour_charges = client_amount
-        
-        # Grand Total = Products Total + Labour Charges
-        grand_total = products_total + labour_charges
-        
-        # If grand_total is 0, fall back to amount_field
-        if grand_total == 0 and amount_field > 0:
-            grand_total = amount_field
-        
-        # If still 0, use products total only
-        if grand_total == 0:
-            grand_total = products_total
-        
-        # Build invoice table
-        invoice_items = [header_row] + items_data
-        
-        # If no items, add placeholder
-        if len(invoice_items) == 1:
-            invoice_items.append(["1", "Service", "9987", "0.00", "1", "0", "0.00"])
-        
-        invoice_table = Table(invoice_items, colWidths=[0.5*inch, 2*inch, 0.8*inch, 0.9*inch, 0.5*inch, 0.7*inch, 1*inch])
-        invoice_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c3e50')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('ALIGN', (0, 0), (0, -1), 'CENTER'),  # Sl.No - center
-            ('ALIGN', (1, 0), (1, -1), 'LEFT'),    # Description - left
-            ('ALIGN', (2, 0), (2, -1), 'CENTER'), # HSN - center
-            ('ALIGN', (3, 0), (3, -1), 'RIGHT'),  # Unit Cost - right
-            ('ALIGN', (4, 0), (4, -1), 'CENTER'),  # Qty - center
-            ('ALIGN', (5, 0), (5, -1), 'RIGHT'),  # Discount - right
-            ('ALIGN', (6, 0), (6, -1), 'RIGHT'),  # Amount - right
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('TOPPADDING', (0, 0), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cccccc')),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#2c3e50')),
-        ]))
-        elements.append(invoice_table)
-        elements.append(Spacer(1, 15))
-        
-        # ==================== 4. TOTAL CALCULATION ====================
-        total_section = [
-            ["", "", "", "", "Total Amount:", f"₹ {products_total:.2f}"],
-            ["", "", "", "", "Labour Charges:", f"₹ {labour_charges:.2f}"],
-            ["", "", "", "", "Grand Total:", f"₹ {grand_total:.2f}"],
-        ]
-        
-        total_table = Table(total_section, colWidths=[0.5*inch, 2*inch, 0.8*inch, 0.9*inch, 1.2*inch, 1*inch])
-        total_table.setStyle(TableStyle([
-            ('FONTNAME', (4, 0), (4, -1), 'Helvetica'),
-            ('FONTNAME', (5, 0), (5, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('ALIGN', (4, 0), (4, -1), 'RIGHT'),
-            ('ALIGN', (5, 0), (5, -1), 'RIGHT'),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('TOPPADDING', (0, 0), (-1, -1), 8),
-            ('LINEABOVE', (4, 0), (5, -1), 1, colors.HexColor('#2c3e50')),
-            ('BACKGROUND', (4, -1), (5, -1), colors.HexColor('#ecf0f1')),
-            ('FONTNAME', (4, -1), (5, -1), 'Helvetica-Bold'),
-        ]))
-        elements.append(total_table)
-        elements.append(Spacer(1, 10))
-        
-        # ==================== 5. AMOUNT IN WORDS ====================
-        amount_in_words = number_to_words(grand_total)
-        elements.append(Paragraph(f"<b>Amount in Words:</b> {amount_in_words} Rupees Only", bold_style))
-        elements.append(Spacer(1, 10))
-        
-        # ==================== 6. OTHER CHARGES ====================
-        other_charges_row = [
-            "", "", "", "", "Other Charges:", ""
-        ]
-        other_table = Table([other_charges_row], colWidths=[0.5*inch, 2*inch, 0.8*inch, 0.9*inch, 1.2*inch, 1*inch])
-        other_table.setStyle(TableStyle([
-            ('FONTNAME', (4, 0), (4, 0), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('ALIGN', (4, 0), (4, -1), 'RIGHT'),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ]))
-        elements.append(other_table)
-        elements.append(Spacer(1, 10))
-        
-        # ==================== 7. NOTE SECTION ====================
-        elements.append(Paragraph("<b>Note:</b> If you have any clarification please contact – 9994390097", normal_style))
-        elements.append(Spacer(1, 15))
-        
-        # ==================== 8. TERMS & CONDITIONS ====================
-        elements.append(Paragraph("<b>Terms & Conditions</b>", bold_style))
-        elements.append(Spacer(1, 20))
-        
-        # ==================== 9. SIGNATURE AREA ====================
-        signature_data = [
-            [Paragraph("<b>Customer Signature</b>", normal_style), Paragraph("<b>Authorised Signatory</b>", normal_style)]
-        ]
-        
-        signature_table = Table(signature_data, colWidths=[3.25*inch, 3.25*inch])
-        signature_table.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 30),
-            ('TOPPADDING', (0, 0), (-1, -1), 30),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#cccccc')),
-        ]))
-        elements.append(signature_table)
-        elements.append(Spacer(1, 20))
-        
-        # ==================== 10. FOOTER ====================
-        footer_style = ParagraphStyle(
-            'Footer',
-            parent=styles['Normal'],
-            fontSize=8,
-            alignment=1,  # Center
-            textColor=colors.HexColor('#888888'),
-            fontItalic=True
-        )
-        elements.append(Paragraph("This is a computer generated invoice. No signature required.", footer_style))
-        
-        # Build PDF
-        doc.build(elements)
-        
-        # Save invoice details to complaint
-        complaint.invoice_number = invoice_number
-        complaint.invoice_pdf_url = pdf_url
-        complaint.invoice_generated_at = get_ist_now()
-        complaint.save()
-        
-        return Response({
-            "invoice_number": invoice_number,
-            "pdf_url": pdf_url,
-            "customer_phone": complaint.phone
-        })
-        
-    except BookServiceComplaint.DoesNotExist:
-        return Response({
-            "error": "Complaint not found"
-        }, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return Response({
-            "error": f"Failed to generate invoice: {str(e)}"
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
 @api_view(['GET'])
 def get_all_invoices(request):
     """
@@ -5841,844 +4939,6 @@ def download_invoice(request, invoice_number):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # ------------------------------
-#   MOTOR DETAILS API
-# ------------------------------
-from .serializers import MotorDetailsSerializer
-
-@api_view(['GET', 'POST'])
-def motor_details_list(request):
-    """
-    Get all motor details or create new motor details
-    GET /api/motor-details/
-    POST /api/motor-details/
-    """
-    if request.method == 'GET':
-        try:
-            motors = MotorDetails.objects.order_by('-created_at')
-            serializer = MotorDetailsSerializer(motors, many=True)
-            return Response({
-                "success": True,
-                "count": motors.count(),
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({
-                "success": False,
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    elif request.method == 'POST':
-        try:
-            serializer = MotorDetailsSerializer(data=request.data)
-            if serializer.is_valid():
-                motor = serializer.save()
-                # Add created_by from request if provided
-                if request.data.get('created_by'):
-                    motor.created_by = request.data.get('created_by')
-                    motor.save()
-                return Response({
-                    "success": True,
-                    "message": "Motor details saved successfully",
-                    "data": MotorDetailsSerializer(motor).data
-                }, status=status.HTTP_201_CREATED)
-            return Response({
-                "success": False,
-                "errors": serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({
-                "success": False,
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-@api_view(['GET', 'PUT', 'DELETE'])
-def motor_details_detail(request, motor_id):
-    """
-    Get, update or delete motor details by ID
-    GET /api/motor-details/<motor_id>/
-    PUT /api/motor-details/<motor_id>/
-    DELETE /api/motor-details/<motor_id>/
-    """
-    try:
-        motor = MotorDetails.objects(id=motor_id).first()
-        if not motor:
-            return Response({
-                "success": False,
-                "error": "Motor details not found"
-            }, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({
-            "success": False,
-            "error": str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    if request.method == 'GET':
-        serializer = MotorDetailsSerializer(motor)
-        return Response({
-            "success": True,
-            "data": serializer.data
-        }, status=status.HTTP_200_OK)
-    
-    elif request.method == 'PUT':
-        try:
-            serializer = MotorDetailsSerializer(motor, data=request.data, partial=True)
-            if serializer.is_valid():
-                motor = serializer.save()
-                return Response({
-                    "success": True,
-                    "message": "Motor details updated successfully",
-                    "data": MotorDetailsSerializer(motor).data
-                }, status=status.HTTP_200_OK)
-            return Response({
-                "success": False,
-                "errors": serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({
-                "success": False,
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    elif request.method == 'DELETE':
-        try:
-            motor.delete()
-            return Response({
-                "success": True,
-                "message": "Motor details deleted successfully"
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({
-                "success": False,
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-@api_view(['GET'])
-def motor_details_search(request):
-    """
-    Search motor details by various fields
-    GET /api/motor-details/search/?serial_no=xxx&company_name=xxx&motor_make=xxx
-    """
-    try:
-        query = {}
-        
-        serial_no = request.GET.get('serial_no')
-        if serial_no:
-            query['serial_no__icontains'] = serial_no
-        
-        company_name = request.GET.get('company_name')
-        if company_name:
-            query['company_name__icontains'] = company_name
-        
-        motor_make = request.GET.get('motor_make')
-        if motor_make:
-            query['motor_make__icontains'] = motor_make
-        
-        winder_name = request.GET.get('winder_name')
-        if winder_name:
-            query['winder_name__icontains'] = winder_name
-        
-        motors = MotorDetails.objects(__raw__=query).order_by('-created_at')
-        serializer = MotorDetailsSerializer(motors, many=True)
-        return Response({
-            "success": True,
-            "count": motors.count(),
-            "data": serializer.data
-        }, status=status.HTTP_200_OK)
-    except Exception as e:
-        import traceback
-        return Response({
-            "error": str(e),
-            "traceback": traceback.format_exc()
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# ------------------------------
-#   MOTOR DETAILS APIs
-         
-        # Generate unique invoice number (format: INV-2026-1, INV-2026-2, etc.)
-        # Using the utility function that properly handles numeric sorting
-        invoice_number = get_next_invoice_number()
-        year = get_ist_now().year
-        
-        # Create invoices directory if not exists
-        invoices_dir = os.path.join(settings.MEDIA_ROOT, 'invoices')
-        os.makedirs(invoices_dir, exist_ok=True)
-        
-        # Generate PDF filename (match the new format)
-        # Extract the number from invoice_number for filename
-        invoice_num_for_file = invoice_number.split('-')[-1]
-        pdf_filename = f"Invoice_INV-{year}-{invoice_num_for_file}.pdf"
-        pdf_path = os.path.join(invoices_dir, pdf_filename)
-        
-        # For WhatsApp, we need full URL (use https:// for production)
-        # Get the host from request or use default
-        request_host = request.get_host() if request else 'localhost:8000'
-        # Use https:// scheme for clickable WhatsApp links
-        pdf_url = f"https://{request_host}{settings.MEDIA_URL}invoices/{pdf_filename}"
-# Create PDF document
-        doc = SimpleDocTemplate(pdf_path, pagesize=A4, leftMargin=0.5*inch, rightMargin=0.5*inch, topMargin=0.5*inch, bottomMargin=0.5*inch)
-        elements = []
-        
-        # Styles
-        styles = getSampleStyleSheet()
-        
-        # Custom styles
-        title_style = ParagraphStyle(
-            'CustomTitle',
-            parent=styles['Heading1'],
-            fontSize=18,
-            spaceAfter=5,
-            alignment=0,  # Left
-            textColor=colors.HexColor('#1a1a1a')
-        )
-        
-        normal_style = ParagraphStyle(
-            'NormalCustom',
-            parent=styles['Normal'],
-            fontSize=10,
-            spaceAfter=3,
-            textColor=colors.HexColor('#333333')
-        )
-        
-        small_style = ParagraphStyle(
-            'SmallCustom',
-            parent=styles['Normal'],
-            fontSize=9,
-            spaceAfter=2,
-            textColor=colors.HexColor('#555555')
-        )
-        
-        bold_style = ParagraphStyle(
-            'BoldCustom',
-            parent=styles['Normal'],
-            fontSize=10,
-            spaceAfter=3,
-            textColor=colors.HexColor('#1a1a1a'),
-            fontName='Helvetica-Bold'
-        )
-        
-        header_label_style = ParagraphStyle(
-            'HeaderLabel',
-            parent=styles['Normal'],
-            fontSize=9,
-            textColor=colors.HexColor('#666666')
-        )
-        
-        header_value_style = ParagraphStyle(
-            'HeaderValue',
-            parent=styles['Normal'],
-            fontSize=10,
-            textColor=colors.HexColor('#1a1a1a'),
-            fontName='Helvetica-Bold'
-        )
-        
-        # ==================== 1. HEADER SECTION ====================
-        # Add Company Logo
-        logo_path = os.path.join(settings.MEDIA_ROOT, 'company_logo.jpeg')
-        logo_element = None
-        if os.path.exists(logo_path):
-            try:
-                logo_element = Image(logo_path, width=1.2*inch, height=0.8*inch)
-            except:
-                logo_element = None
-        
-        # Company Info (Left)
-        if logo_element:
-            company_info = [
-                logo_element,
-                Paragraph("<b>RUBAN ELECTRICALS</b>", title_style),
-                Paragraph("Office Phone: 0461-2334343", normal_style),
-                Paragraph("Mobile: 9994390097", normal_style),
-                Paragraph("23/4A Palayamkottai Road, Tuticorin", normal_style),
-                Paragraph("Email: rubanelectricals@gmail.com", normal_style),
-            ]
-        else:
-            company_info = [
-                Paragraph("<b>RUBAN ELECTRICALS</b>", title_style),
-                Paragraph("Office Phone: 0461-2334343", normal_style),
-                Paragraph("Mobile: 9994390097", normal_style),
-                Paragraph("23/4A Palayamkottai Road, Tuticorin", normal_style),
-                Paragraph("Email: rubanelectricals@gmail.com", normal_style),
-            ]
-        
-        # Invoice Info (Right)
-        invoice_date = get_ist_now().strftime('%Y-%m-%d')
-        staff_name = complaint.staff_name or "N/A"
-        complaint_no_display = complaint.complaint_no or "N/A"
-        
-        invoice_info = [
-            [Paragraph("<b>Job ID:</b>", header_label_style), Paragraph(complaint_no_display, header_value_style)],
-            [Paragraph("<b>Estimate Number:</b>", header_label_style), Paragraph(invoice_number, header_value_style)],
-            [Paragraph("<b>Date:</b>", header_label_style), Paragraph(invoice_date, header_value_style)],
-            [Paragraph("<b>Ruban Employee:</b>", header_label_style), Paragraph(staff_name, header_value_style)],
-        ]
-        
-        # Header Table - Two columns
-        header_table = Table(
-            [[company_info, invoice_info]],
-            colWidths=[3.5*inch, 2.5*inch]
-        )
-        header_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#cccccc')),
-            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f5f5f5')),
-            ('BACKGROUND', (1, 0), (1, -1), colors.white),
-        ]))
-        elements.append(header_table)
-        elements.append(Spacer(1, 15))
-        
-        # ==================== 2. CUSTOMER & BANK DETAILS ====================
-        # Customer Details (Left)
-        customer_details_left = [
-            Paragraph("<b>Customer Details</b>", bold_style),
-            Paragraph(f"Customer Name: {complaint.customer_name or 'N/A'}", normal_style),
-            Paragraph(f"Mobile Number: {complaint.phone or 'N/A'}", normal_style),
-        ]
-        
-        # If there's an address, add it
-        if complaint.address:
-            customer_details_left.append(Paragraph(f"Address: {complaint.address}", normal_style))
-        
-        # Bank Details (Right)
-        bank_details_right = [
-            Paragraph("<b>Company Bank Details</b>", bold_style),
-            Paragraph("Company Name: Ruban Electricals", normal_style),
-            Paragraph("Bank Name: Union Bank of India", normal_style),
-            Paragraph("Branch: Ganesh Nagar Branch", normal_style),
-            Paragraph("Account Number: 410702010000000", normal_style),
-            Paragraph("IFSC Code: UBIN0541077", normal_style),
-        ]
-        
-        # Customer & Bank Table - Two columns
-        customer_bank_table = Table(
-            [[customer_details_left, bank_details_right]],
-            colWidths=[3.25*inch, 3.25*inch]
-        )
-        customer_bank_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 10),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#cccccc')),
-            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#fafafa')),
-        ]))
-        elements.append(customer_bank_table)
-        elements.append(Spacer(1, 15))
-        
-        # ==================== 3. INVOICE ITEM TABLE ====================
-        # Prepare item data using the serializer's parsing logic
-        items_data = []
-        
-        # Import StockItem for price lookup
-        from .models import StockItem
-        
-        # Get amounts for calculation
-        client_amount = float(complaint.client_amount or 0)
-        amount_field = float(complaint.amount or 0)
-        
-        def parse_products_for_invoice(product_field, quantity_field=None, default_price=0):
-            """Parse product field and return list of dicts with name, qty, price"""
-            if not product_field:
-                return []
-            
-            try:
-                import json
-                parsed = json.loads(product_field) if isinstance(product_field, str) else product_field
-                
-                if isinstance(parsed, list):
-                    result = []
-                    for p in parsed:
-                        product_name = p.get('productName') or p.get('name') or p.get('product_name', '')
-                        quantity = int(p.get('quantity') or p.get('qty') or 1)
-                        
-                        # Look up price from StockItem
-                        price = 0
-                        if product_name:
-                            stock_item = StockItem.objects(name=product_name).first()
-                            if stock_item and stock_item.selling_price:
-                                price = float(stock_item.selling_price)
-                        
-                        # If no price from StockItem, use default
-                        if price == 0 and default_price > 0:
-                            price = default_price / len(parsed)
-                        
-                        result.append({
-                            'name': product_name,
-                            'quantity': quantity,
-                            'price': price
-                        })
-                    
-                    # ⭐ FILTER: Exclude 'motor service' as it is a service, not a product 
-                    return [p for p in result if p.get('name', '').lower().strip() != 'motor service']
-            except:
-                pass
-            
-            # Return single product
-            product_name = str(product_field) if product_field else ''
-            quantity = int(quantity_field) if quantity_field else 1
-            
-            # ⭐ FILTER: Exclude 'motor service' as it is a service, not a product
-            if product_name.lower().strip() == 'motor service':
-                return []
-
-            # Look up price from StockItem
-            price = 0
-            if product_name:
-                stock_item = StockItem.objects(name=product_name).first()
-                if stock_item and stock_item.selling_price:
-                    price = float(stock_item.selling_price)
-            
-            # If still no price, use default
-            if price == 0 and default_price > 0:
-                price = default_price
-            
-            return [{'name': product_name, 'quantity': quantity, 'price': price}]
-        
-        # Parse main products - use client_amount as default price if no products found in StockItem
-        all_products = parse_products_for_invoice(complaint.product_name, complaint.product_quantity, client_amount)
-        
-        # Parse additional products - use amount field as default
-        additional_prods = parse_products_for_invoice(complaint.additional_product, complaint.additional_product_quantity, amount_field)
-        all_products.extend(additional_prods)
-        
-        # FIX: No fake product rows - Service Charge shown separately
-        # This prevents double counting when client_amount exists
-        
-        # Add products to invoice items
-        for prod in all_products:
-            prod_name = prod.get('name', '')
-            prod_qty = prod.get('quantity', 1)
-            prod_price = prod.get('price', 0)
-            line_total = prod_price * prod_qty
-            
-            items_data.append([
-                str(len(items_data) + 1),
-                prod_name,
-                "9987",  # HSN/SAC code
-                f"{prod_price:.2f}",
-                str(prod_qty),
-                "0",
-                f"{line_total:.2f}"
-            ])
-        
-        # Add header row
-        header_row = [
-            Paragraph("<b>Sl.No</b>", bold_style),
-            Paragraph("<b>Description of Goods</b>", bold_style),
-            Paragraph("<b>HSN/SAC</b>", bold_style),
-            Paragraph("<b>Unit Cost</b>", bold_style),
-            Paragraph("<b>Qty</b>", bold_style),
-            Paragraph("<b>Discount</b>", bold_style),
-            Paragraph("<b>Amount</b>", bold_style),
-        ]
-        
-        # ==================== 4. TOTAL CALCULATION ====================
-        # Calculate total from products in invoice items
-        products_total = sum(float(row[6]) for row in items_data)
-        
-        # Get client_amount (labour charges)
-        client_amount = float(complaint.client_amount or 0)
-        amount_field = float(complaint.amount or 0)
-        
-        # Labour Charges = client_amount
-        labour_charges = client_amount
-        
-        # Grand Total = Products Total + Labour Charges
-        grand_total = products_total + labour_charges
-        
-        # If grand_total is 0, fall back to amount_field
-        if grand_total == 0 and amount_field > 0:
-            grand_total = amount_field
-        
-        # If still 0, use products total only
-        if grand_total == 0:
-            grand_total = products_total
-        
-        # Build invoice table
-        invoice_items = [header_row] + items_data
-        
-        # If no items, add placeholder
-        if len(invoice_items) == 1:
-            invoice_items.append(["1", "Service", "9987", "0.00", "1", "0", "0.00"])
-        
-        invoice_table = Table(invoice_items, colWidths=[0.5*inch, 2*inch, 0.8*inch, 0.9*inch, 0.5*inch, 0.7*inch, 1*inch])
-        invoice_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c3e50')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('ALIGN', (0, 0), (0, -1), 'CENTER'),  # Sl.No - center
-            ('ALIGN', (1, 0), (1, -1), 'LEFT'),    # Description - left
-            ('ALIGN', (2, 0), (2, -1), 'CENTER'), # HSN - center
-            ('ALIGN', (3, 0), (3, -1), 'RIGHT'),  # Unit Cost - right
-            ('ALIGN', (4, 0), (4, -1), 'CENTER'),  # Qty - center
-            ('ALIGN', (5, 0), (5, -1), 'RIGHT'),  # Discount - right
-            ('ALIGN', (6, 0), (6, -1), 'RIGHT'),  # Amount - right
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('TOPPADDING', (0, 0), (-1, -1), 8),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cccccc')),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#2c3e50')),
-        ]))
-        elements.append(invoice_table)
-        elements.append(Spacer(1, 15))
-        
-        # ==================== 4. TOTAL CALCULATION ====================
-        total_section = [
-            ["", "", "", "", "Total Amount:", f"₹ {products_total:.2f}"],
-            ["", "", "", "", "Labour Charges:", f"₹ {labour_charges:.2f}"],
-            ["", "", "", "", "Grand Total:", f"₹ {grand_total:.2f}"],
-        ]
-        
-        total_table = Table(total_section, colWidths=[0.5*inch, 2*inch, 0.8*inch, 0.9*inch, 1.2*inch, 1*inch])
-        total_table.setStyle(TableStyle([
-            ('FONTNAME', (4, 0), (4, -1), 'Helvetica'),
-            ('FONTNAME', (5, 0), (5, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('ALIGN', (4, 0), (4, -1), 'RIGHT'),
-            ('ALIGN', (5, 0), (5, -1), 'RIGHT'),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('TOPPADDING', (0, 0), (-1, -1), 8),
-            ('LINEABOVE', (4, 0), (5, -1), 1, colors.HexColor('#2c3e50')),
-            ('BACKGROUND', (4, -1), (5, -1), colors.HexColor('#ecf0f1')),
-            ('FONTNAME', (4, -1), (5, -1), 'Helvetica-Bold'),
-        ]))
-        elements.append(total_table)
-        elements.append(Spacer(1, 10))
-        
-        # ==================== 5. AMOUNT IN WORDS ====================
-        amount_in_words = number_to_words(grand_total)
-        elements.append(Paragraph(f"<b>Amount in Words:</b> {amount_in_words} Rupees Only", bold_style))
-        elements.append(Spacer(1, 10))
-        
-        # ==================== 6. OTHER CHARGES ====================
-        other_charges_row = [
-            "", "", "", "", "Other Charges:", ""
-        ]
-        other_table = Table([other_charges_row], colWidths=[0.5*inch, 2*inch, 0.8*inch, 0.9*inch, 1.2*inch, 1*inch])
-        other_table.setStyle(TableStyle([
-            ('FONTNAME', (4, 0), (4, 0), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('ALIGN', (4, 0), (4, -1), 'RIGHT'),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ]))
-        elements.append(other_table)
-        elements.append(Spacer(1, 10))
-        
-        # ==================== 7. NOTE SECTION ====================
-        elements.append(Paragraph("<b>Note:</b> If you have any clarification please contact – 9994390097", normal_style))
-        elements.append(Spacer(1, 15))
-        
-        # ==================== 8. TERMS & CONDITIONS ====================
-        elements.append(Paragraph("<b>Terms & Conditions</b>", bold_style))
-        elements.append(Spacer(1, 20))
-        
-        # ==================== 9. SIGNATURE AREA ====================
-        signature_data = [
-            [Paragraph("<b>Customer Signature</b>", normal_style), Paragraph("<b>Authorised Signatory</b>", normal_style)]
-        ]
-        
-        signature_table = Table(signature_data, colWidths=[3.25*inch, 3.25*inch])
-        signature_table.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 30),
-            ('TOPPADDING', (0, 0), (-1, -1), 30),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#cccccc')),
-        ]))
-        elements.append(signature_table)
-        elements.append(Spacer(1, 20))
-        
-        # ==================== 10. FOOTER ====================
-        footer_style = ParagraphStyle(
-            'Footer',
-            parent=styles['Normal'],
-            fontSize=8,
-            alignment=1,  # Center
-            textColor=colors.HexColor('#888888'),
-            fontItalic=True
-        )
-        elements.append(Paragraph("This is a computer generated invoice. No signature required.", footer_style))
-        
-        # Build PDF
-        doc.build(elements)
-        
-        # Save invoice details to complaint
-        complaint.invoice_number = invoice_number
-        complaint.invoice_pdf_url = pdf_url
-        complaint.invoice_generated_at = get_ist_now()
-        complaint.save()
-        
-        return Response({
-            "invoice_number": invoice_number,
-            "pdf_url": pdf_url,
-            "customer_phone": complaint.phone
-        })
-        
-    except BookServiceComplaint.DoesNotExist:
-        return Response({
-            "error": "Complaint not found"
-        }, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return Response({
-            "error": f"Failed to generate invoice: {str(e)}"
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# ------------------------------
-#   GET ALL INVOICES
-# ------------------------------
-@api_view(['GET'])
-def get_all_invoices(request):
-    """
-    Get all invoices (completed complaints with invoices generated)
-    GET /api/invoices/
-    """
-    try:
-        # Get all complaints that have invoices generated
-        invoices = BookServiceComplaint.objects(
-            invoice_number__exists=True,
-            invoice_number__ne=None
-        ).order_by('-invoice_generated_at')
-        
-        # Get the host for full URLs
-        request_host = request.get_host() if request else 'localhost:8000'
-        
-        data = []
-        for invoice in invoices:
-            # Generate full URL for PDF (use https:// for WhatsApp compatibility)
-            pdf_url = invoice.invoice_pdf_url
-            if pdf_url and not pdf_url.startswith('http'):
-                pdf_url = f"https://{request_host}{pdf_url}"
-            
-            invoice_data = {
-                "id": str(invoice.id),
-                "complaint_no": invoice.complaint_no,
-                "invoice_number": invoice.invoice_number,
-                "invoice_pdf_url": pdf_url,
-                "invoice_generated_at": invoice.invoice_generated_at.strftime('%Y-%m-%d %H:%M:%S') if invoice.invoice_generated_at else None,
-                "customer_name": invoice.customer_name,
-                "customer_phone": invoice.phone,
-                "address": invoice.address,
-                "product_name": invoice.product_name,
-                "additional_product": invoice.additional_product,
-                "product_quantity": invoice.product_quantity,
-                "additional_product_quantity": invoice.additional_product_quantity,
-                "amount": invoice.client_amount or invoice.amount or 0,
-                "status": invoice.status
-            }
-            data.append(invoice_data)
-        
-        return Response(data)
-    except Exception as e:
-        return Response({
-            "error": str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# ------------------------------
-#   DOWNLOAD INVOICE PDF
-# ------------------------------
-@api_view(['GET'])
-def download_invoice(request, invoice_number):
-    """
-    Download invoice PDF with proper filename
-    GET /api/download-invoice/<invoice_number>/
-    """
-    try:
-        # Find the complaint with this invoice number
-        complaint = BookServiceComplaint.objects(invoice_number=invoice_number).first()
-        
-        if not complaint or not complaint.invoice_pdf_url:
-            return Response({
-                "error": "Invoice not found"
-            }, status=status.HTTP_404_NOT_FOUND)
-        
-        # Extract filename from PDF URL
-        pdf_filename = complaint.invoice_pdf_url.split('/')[-1]
-        pdf_path = os.path.join(settings.MEDIA_ROOT, 'invoices', pdf_filename)
-        
-        if not os.path.exists(pdf_path):
-            return Response({
-                "error": "Invoice file not found"
-            }, status=status.HTTP_404_NOT_FOUND)
-        
-        # Create response with proper Content-Disposition header
-        response = FileResponse(
-            open(pdf_path, 'rb'),
-            content_type='application/pdf'
-        )
-        response['Content-Disposition'] = f'attachment; filename="{pdf_filename}"'
-        
-        return response
-        
-    except Exception as e:
-        return Response({
-            "error": f"Failed to download invoice: {str(e)}"
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# ------------------------------
-#   MOTOR DETAILS API
-# ------------------------------
-from .serializers import MotorDetailsSerializer
-
-@api_view(['GET', 'POST'])
-def motor_details_list(request):
-    """
-    Get all motor details or create new motor details
-    GET /api/motor-details/
-    POST /api/motor-details/
-    """
-    if request.method == 'GET':
-        try:
-            motors = MotorDetails.objects.order_by('-created_at')
-            serializer = MotorDetailsSerializer(motors, many=True)
-            return Response({
-                "success": True,
-                "count": motors.count(),
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({
-                "success": False,
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    elif request.method == 'POST':
-        try:
-            serializer = MotorDetailsSerializer(data=request.data)
-            if serializer.is_valid():
-                motor = serializer.save()
-                # Add created_by from request if provided
-                if request.data.get('created_by'):
-                    motor.created_by = request.data.get('created_by')
-                    motor.save()
-                return Response({
-                    "success": True,
-                    "message": "Motor details saved successfully",
-                    "data": MotorDetailsSerializer(motor).data
-                }, status=status.HTTP_201_CREATED)
-            return Response({
-                "success": False,
-                "errors": serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({
-                "success": False,
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-@api_view(['GET', 'PUT', 'DELETE'])
-def motor_details_detail(request, motor_id):
-    """
-    Get, update or delete motor details by ID
-    GET /api/motor-details/<motor_id>/
-    PUT /api/motor-details/<motor_id>/
-    DELETE /api/motor-details/<motor_id>/
-    """
-    try:
-        motor = MotorDetails.objects(id=motor_id).first()
-        if not motor:
-            return Response({
-                "success": False,
-                "error": "Motor details not found"
-            }, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({
-            "success": False,
-            "error": str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    if request.method == 'GET':
-        serializer = MotorDetailsSerializer(motor)
-        return Response({
-            "success": True,
-            "data": serializer.data
-        }, status=status.HTTP_200_OK)
-    
-    elif request.method == 'PUT':
-        try:
-            serializer = MotorDetailsSerializer(motor, data=request.data, partial=True)
-            if serializer.is_valid():
-                motor = serializer.save()
-                return Response({
-                    "success": True,
-                    "message": "Motor details updated successfully",
-                    "data": MotorDetailsSerializer(motor).data
-                }, status=status.HTTP_200_OK)
-            return Response({
-                "success": False,
-                "errors": serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({
-                "success": False,
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    elif request.method == 'DELETE':
-        try:
-            motor.delete()
-            return Response({
-                "success": True,
-                "message": "Motor details deleted successfully"
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({
-                "success": False,
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-@api_view(['GET'])
-def motor_details_search(request):
-    """
-    Search motor details by various fields
-    GET /api/motor-details/search/?serial_no=xxx&company_name=xxx&motor_make=xxx
-    """
-    try:
-        query = {}
-        
-        serial_no = request.GET.get('serial_no')
-        if serial_no:
-            query['serial_no__icontains'] = serial_no
-        
-        company_name = request.GET.get('company_name')
-        if company_name:
-            query['company_name__icontains'] = company_name
-        
-        motor_make = request.GET.get('motor_make')
-        if motor_make:
-            query['motor_make__icontains'] = motor_make
-        
-        winder_name = request.GET.get('winder_name')
-        if winder_name:
-            query['winder_name__icontains'] = winder_name
-        
-        motors = MotorDetails.objects(__raw__=query).order_by('-created_at')
-        serializer = MotorDetailsSerializer(motors, many=True)
-        return Response({
-            "success": True,
-            "count": motors.count(),
-            "data": serializer.data
-        }, status=status.HTTP_200_OK)
-    except Exception as e:
-        return Response({
-            "success": False,
-            "error": str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# ------------------------------
-#   PAYROLL MANAGEMENT APIS
-# ------------------------------
-
 @api_view(['GET'])
 def calculate_payroll(request):
     """
@@ -6694,7 +4954,11 @@ def calculate_payroll(request):
         is_current_month = (month == now.month and year == now.year)
         calculation_limit_day = now.day if is_current_month else 31
         
-        # Delete existing payroll records for this month and year before calculating new ones
+        # Get all existing payroll records for this month and year to preserve bonus/deductions
+        existing_payrolls = StaffPayroll.objects(month=month, year=year)
+        payroll_adjustments = {str(p.staff_id): {'bonus': p.bonus or 0, 'deduction': p.deduction or 0} for p in existing_payrolls}
+        
+        # Now it's safe to delete existing payroll records for this month and year
         StaffPayroll.objects(month=month, year=year).delete()
         
         # Get all active staff
@@ -6741,16 +5005,11 @@ def calculate_payroll(request):
             leave_days = 0
             absent_days = 0
             holiday_days = 0
+            paid_holiday_days = 0
+            unpaid_holiday_days = 0
 
             for day in range(1, days_in_month + 1):
-                # If calculating current month, don't count absent days for future dates
-                if day > calculation_limit_day:
-                    # However, we still want to count globally declared holidays in the future
-                    # for a FULL month projection or if the user wants it.
-                    # BUT for now, to fix "Absent 25", we ONLY count if day <= calculation_limit_day
-                    # unless it's a known holiday.
-                    pass
-
+                # ... same logic for calculation_limit_day
                 current_date = datetime(year, month, day)
                 res = resolve_attendance(staff_id, current_date)
                 
@@ -6759,9 +5018,10 @@ def calculate_payroll(request):
                 work_type = res.get("work_type", "full_day")
                 multiplier = float(res.get("salary_multiplier", 1))
                 source = res.get("source")
+                is_paid = res.get("is_paid", True)
 
                 # Bonus multiplier logic for working on holidays/weekly-offs
-                if source == "manual" and multiplier <= 1.0:
+                if source == "manual" and multiplier <= 1.0 and attn_type != "holiday":
                     holiday_check = HolidayCalendar.objects(
                         date=current_date, 
                         is_active=True, 
@@ -6777,6 +5037,10 @@ def calculate_payroll(request):
                 if status_val == "Present":
                     if attn_type == "holiday":
                         holiday_days += 1
+                        if is_paid:
+                            paid_holiday_days += 1
+                        else:
+                            unpaid_holiday_days += 1
                         total_salary += per_day_salary * multiplier
                     elif attn_type == "leave":
                         leave_days += 1
@@ -6795,7 +5059,7 @@ def calculate_payroll(request):
                         absent_days += 1
 
             # Calculate attendance percentage
-            total_worked_days = present_days + (half_days * 0.5) + holiday_days + leave_days
+            total_worked_days = present_days + (half_days * 0.5) + paid_holiday_days + leave_days
             denominator = min(calculation_limit_day, days_in_month)
             attendance_percentage = (total_worked_days / denominator * 100) if denominator > 0 else 0
             
@@ -6808,6 +5072,8 @@ def calculate_payroll(request):
                 'present_days': present_days,
                 'half_days': half_days,
                 'holiday_days': holiday_days,
+                'paid_holiday_days': paid_holiday_days,
+                'unpaid_holiday_days': unpaid_holiday_days,
                 'leave_days': leave_days,
                 'absent_days': absent_days,
                 'total_multiplier': round(total_multiplier, 2),
@@ -6817,16 +5083,37 @@ def calculate_payroll(request):
                 'attendance_percentage': round(attendance_percentage, 2),
                 'bonus': 0,
                 'deduction': 0,
+                'total_incentives': 0,
                 'final_salary': round(total_salary, 2)
             })
             
-            existing_payroll = StaffPayroll.objects(staff_id=staff_id, month=month, year=year).first()
-            if existing_payroll:
-                bonus = float(existing_payroll.bonus or 0)
-                deduction = float(existing_payroll.deduction or 0)
-                payroll_data[-1]['bonus'] = bonus
-                payroll_data[-1]['deduction'] = deduction
-                payroll_data[-1]['final_salary'] = round(total_salary + bonus - deduction, 2)
+            # Calculate adjustments - preserve from existing records if they were there
+            bonus = 0
+            deduction = 0
+            
+            if staff_id in payroll_adjustments:
+                bonus = float(payroll_adjustments[staff_id].get('bonus', 0))
+                deduction = float(payroll_adjustments[staff_id].get('deduction', 0))
+            
+            payroll_data[-1]['bonus'] = bonus
+            payroll_data[-1]['deduction'] = deduction
+
+            # ✅ NEW: Sum all staff_incentive amounts from completed bookings this month
+            month_start = datetime(year, month, 1)
+            if month == 12:
+                month_end = datetime(year + 1, 1, 1)
+            else:
+                month_end = datetime(year, month + 1, 1)
+
+            completed_bookings = BookServiceComplaint.objects(
+                staff_name__iexact=staff.name,
+                status='completed',
+                assigned_completed_at__gte=month_start,
+                assigned_completed_at__lt=month_end
+            )
+            total_incentives = sum(float(getattr(b, 'staff_incentive', 0) or 0) for b in completed_bookings)
+            payroll_data[-1]['total_incentives'] = round(total_incentives, 2)
+            payroll_data[-1]['final_salary'] = round(total_salary + bonus - deduction + total_incentives, 2)
         
         return Response({
             'success': True,
@@ -6874,6 +5161,8 @@ def save_payroll(request):
                 existing.present_days = item.get('present_days', 0)
                 existing.half_days = item.get('half_days', 0)
                 existing.holiday_days = item.get('holiday_days', 0)
+                existing.paid_holiday_days = item.get('paid_holiday_days', 0)
+                existing.unpaid_holiday_days = item.get('unpaid_holiday_days', 0)
                 existing.leave_days = item.get('leave_days', 0)
                 existing.absent_days = item.get('absent_days', 0)
                 existing.per_day_salary = item.get('per_day_salary', 0)
@@ -6884,7 +5173,8 @@ def save_payroll(request):
                 existing.days_in_month = item.get('days_in_month', 0)
                 existing.bonus = item.get('bonus', 0)
                 existing.deduction = item.get('deduction', 0)
-                existing.final_salary = round(existing.total_salary + (existing.bonus or 0) - (existing.deduction or 0), 2)
+                existing.total_incentives = item.get('total_incentives', 0)
+                existing.final_salary = round(existing.total_salary + (existing.bonus or 0) - (existing.deduction or 0) + (existing.total_incentives or 0), 2)
                 existing.generated_at = get_ist_now()
                 existing.save()
                 saved_records.append(str(existing.id))
@@ -6902,6 +5192,8 @@ def save_payroll(request):
                     present_days=item.get('present_days', 0),
                     half_days=item.get('half_days', 0),
                     holiday_days=item.get('holiday_days', 0),
+                    paid_holiday_days=item.get('paid_holiday_days', 0),
+                    unpaid_holiday_days=item.get('unpaid_holiday_days', 0),
                     leave_days=item.get('leave_days', 0),
                     absent_days=item.get('absent_days', 0),
                     per_day_salary=item.get('per_day_salary', 0),
@@ -6912,7 +5204,8 @@ def save_payroll(request):
                     days_in_month=item.get('days_in_month', 0),
                     bonus=bonus_val,
                     deduction=deduction_val,
-                    final_salary=round(total_salary_val + bonus_val - deduction_val, 2)
+                    total_incentives=item.get('total_incentives', 0),
+                    final_salary=round(total_salary_val + bonus_val - deduction_val + item.get('total_incentives', 0), 2)
                 )
                 payroll.save()
                 saved_records.append(str(payroll.id))
@@ -6954,7 +5247,7 @@ def get_payroll_history(request):
         data = []
         for record in payroll_records:
             # Calculate final_salary correctly: total_salary + bonus - deduction
-            calculated_final_salary = round((record.total_salary or 0) + (record.bonus or 0) - (record.deduction or 0), 2)
+            calculated_final_salary = round((record.total_salary or 0) + (record.bonus or 0) - (record.deduction or 0) + (getattr(record, 'total_incentives', 0) or 0), 2)
             data.append({
                 'id': str(record.id),
                 'staff_id': record.staff_id,
@@ -6964,6 +5257,8 @@ def get_payroll_history(request):
                 'present_days': record.present_days,
                 'half_days': record.half_days,
                 'holiday_days': getattr(record, 'holiday_days', 0) or 0,
+                'paid_holiday_days': getattr(record, 'paid_holiday_days', 0) or 0,
+                'unpaid_holiday_days': getattr(record, 'unpaid_holiday_days', 0) or 0,
                 'leave_days': record.leave_days,
                 'absent_days': record.absent_days,
                 'total_multiplier': getattr(record, 'total_multiplier', 0) or 0,  # Sum of all daily multipliers
@@ -6972,6 +5267,7 @@ def get_payroll_history(request):
                 'total_salary': record.total_salary,
                 'bonus': record.bonus,
                 'deduction': record.deduction,
+                'total_incentives': getattr(record, 'total_incentives', 0) or 0,
                 'final_salary': calculated_final_salary,
                 'days_in_month': getattr(record, 'days_in_month', 0) or 0,
                 'attendance_percentage': getattr(record, 'attendance_percentage', 0) or 0,
@@ -7064,7 +5360,7 @@ def get_payroll_by_staff(request):
         staff = Staff.objects(id=staff_id).first()
         
         # Calculate final_salary correctly: total_salary + bonus - deduction
-        calculated_final_salary = round((payroll.total_salary or 0) + (payroll.bonus or 0) - (payroll.deduction or 0), 2)
+        calculated_final_salary = round((payroll.total_salary or 0) + (payroll.bonus or 0) - (payroll.deduction or 0) + (getattr(payroll, 'total_incentives', 0) or 0), 2)
         
         return Response({
             'success': True,
@@ -7077,6 +5373,8 @@ def get_payroll_by_staff(request):
                 'present_days': payroll.present_days,
                 'half_days': payroll.half_days,
                 'holiday_days': getattr(payroll, 'holiday_days', 0) or 0,
+                'paid_holiday_days': getattr(payroll, 'paid_holiday_days', 0) or 0,
+                'unpaid_holiday_days': getattr(payroll, 'unpaid_holiday_days', 0) or 0,
                 'leave_days': payroll.leave_days,
                 'absent_days': payroll.absent_days,
                 'total_multiplier': getattr(payroll, 'total_multiplier', 0) or 0,  # Sum of all daily multipliers
@@ -7085,6 +5383,7 @@ def get_payroll_by_staff(request):
                 'total_salary': payroll.total_salary,
                 'bonus': payroll.bonus,
                 'deduction': payroll.deduction,
+                'total_incentives': getattr(payroll, 'total_incentives', 0) or 0,
                 'final_salary': calculated_final_salary,
                 'generated_at': payroll.generated_at.strftime('%Y-%m-%d') if payroll.generated_at else None,
                 'special_days': [
@@ -7525,462 +5824,6 @@ def staff_loan_detail(request, loan_id):
 # API to get motor details by complaint_id for popup
 # ------------------------------
 @api_view(['GET'])
-def get_motor_by_complaint(request):
-    """
-    Get motor details by complaint_id for popup display.
-    Supports both Winding (MotorDetails) and Sales/Stock (MotorVariant).
-    GET /api/motor-by-complaint/?complaint_id=xxx
-    """
-    try:
-        import json
-        complaint_id = request.GET.get('complaint_id')
-        if not complaint_id:
-            return Response({
-                "success": False,
-                "error": "complaint_id is required"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        import urllib.parse
-        complaint_id = urllib.parse.unquote(complaint_id)
-        
-        # 1. Fetch the complaint first to understand context
-        complaint = BookServiceComplaint.objects(complaint_no=complaint_id).first()
-        if not complaint:
-            if complaint_id.startswith('#'):
-                complaint = BookServiceComplaint.objects(complaint_no=complaint_id.lstrip('#')).first()
-            else:
-                complaint = BookServiceComplaint.objects(complaint_no=f'#{complaint_id}').first()
-
-        # 2. Try to find Winding Details (MotorDetails)
-        motor_winding = None
-        try:
-            motor_winding = MotorDetails.objects(complaint_id=complaint_id).first()
-            if not motor_winding:
-                if complaint_id.startswith('#'):
-                    motor_winding = MotorDetails.objects(complaint_id=complaint_id.lstrip('#')).first()
-                else:
-                    motor_winding = MotorDetails.objects(complaint_id=f'#{complaint_id}').first()
-        except:
-            pass
-
-        # 3. Check for Motor Brand / Variant (Stock/Sales)
-        motor_variant_data = None
-        if complaint:
-            # 🛠️ JOB TYPE CONDITION: Motor Sale vs Motor Service
-            job_cat = getattr(complaint, 'job_category', None) or getattr(complaint, 'job_type', None)
-            if job_cat == 'motor_sale':
-                # 1. Try to find brand_id in initial product_name JSON
-                brand_id = None
-                try:
-                    # Robust Parsing for product_name
-                    prods = []
-                    if complaint.product_name:
-                        p_val = complaint.product_name.strip()
-                        if p_val.startswith('[') or p_val.startswith('{'):
-                            prods = json.loads(p_val)
-                        else:
-                            # Not JSON, maybe a simple string
-                            prods = [{"productName": p_val}]
-                    
-                    if isinstance(prods, list):
-                        for p in prods:
-                            if 'motor' in (p.get('productName') or '').lower():
-                                brand_id = p.get('brand_id')
-                                motor_brand = p.get('brand_name') or p.get('motor_brand') or p.get('brand')
-                                if brand_id: break
-                    
-                    # 2. Try additional_product if not in initial
-                    if not brand_id and complaint.additional_product:
-                        a_val = complaint.additional_product.strip()
-                        addrs = []
-                        if a_val.startswith('[') or a_val.startswith('{'):
-                            addrs = json.loads(a_val)
-                        else:
-                            addrs = [{"productName": a_val}]
-                            
-                        if isinstance(addrs, list):
-                            for p in addrs:
-                                if 'motor' in (p.get('productName') or '').lower():
-                                    brand_id = p.get('brand_id')
-                                    motor_brand = p.get('brand_name') or p.get('motor_brand') or p.get('brand')
-                                    if brand_id: break
-                except Exception as parse_err:
-                    print(f"[DEBUG] Brand Extraction Error (Sale): {str(parse_err)}")
-                    pass
-
-                if brand_id:
-                    print(f"[DEBUG] Motor Sale - Fetching Spec by Brand ID: {brand_id}")
-                    from .models import StockItem
-                    motor_stock = StockItem.objects(name__iexact="motor").first()
-                    if motor_stock and motor_stock.motor_brands:
-                        selected = next((b for b in motor_stock.motor_brands if str(b.get('id','')) == str(brand_id)), None)
-                        if selected:
-                             # Return structured data with nested specification and pricing
-                             # exactly as the Dashboard modal expects
-                             return Response({
-                                 'success': True,
-                                 'data': {
-                                     'brand_name': selected.get('brand_name') or selected.get('brand'),
-                                     'brand_id': str(brand_id),
-                                     'specification': {
-                                         'hp': selected.get('specification', {}).get('hp') or selected.get('specification', {}).get('horsepower', 'N/A'),
-                                         'horsepower': selected.get('specification', {}).get('horsepower') or selected.get('specification', {}).get('hp', 'N/A'),
-                                         'kw': selected.get('specification', {}).get('kw', 'N/A'),
-                                         'rpm': selected.get('specification', {}).get('rpm', 'N/A'),
-                                         'phase': selected.get('specification', {}).get('phase', 'Single'),
-                                         'voltage': selected.get('specification', {}).get('voltage', 'N/A'),
-                                         'connection': selected.get('specification', {}).get('connection') or 'Delta',
-                                         'motor_make': selected.get('specification', {}).get('motor_make') or selected.get('brand_name') or selected.get('brand') or 'N/A',
-                                         'company_name': selected.get('specification', {}).get('company_name') or selected.get('brand_name') or selected.get('brand') or 'N/A',
-                                         'serial_no': selected.get('specification', {}).get('serial_no') or 'N/A',
-                                         'no_of_slots': selected.get('specification', {}).get('no_of_slots', 'N/A'),
-                                         'core_length': selected.get('specification', {}).get('core_length', 'N/A'),
-                                         'swg': selected.get('specification', {}).get('swg', 'N/A'),
-                                         'load_current': selected.get('specification', {}).get('load_current', 'N/A'),
-                                         'total_set': selected.get('specification', {}).get('total_set', 'N/A'),
-                                         'total_weight': selected.get('specification', {}).get('total_weight', 'N/A'),
-                                         'resistance_value': selected.get('specification', {}).get('resistance_value', 'N/A'),
-                                         'winder_name': selected.get('specification', {}).get('winder_name', 'N/A'),
-                                         'remarks': selected.get('specification', {}).get('remarks', ''),
-                                         'winding_details': selected.get('specification', {}).get('winding_details', [])
-                                     },
-                                     'pricing': {
-                                         'supplier': selected.get('pricing', {}).get('supplier', 'N/A'),
-                                         'purchase_price': selected.get('pricing', {}).get('purchase_price', 0),
-                                         'selling_price': selected.get('pricing', {}).get('selling_price', 0),
-                                         'minimum_price': selected.get('pricing', {}).get('minimum_price', 0),
-                                         'purchase_date': selected.get('pricing', {}).get('purchase_date', 'N/A')
-                                     }
-                                 }
-                             })
-
-            # FALLBACK to Existing Logic (Motor Service or Legacy)
-            motor_brand = None
-            
-            # Extract motor brand from product_name (JSON string)
-            # 🛠️ ROBUST BRAND EXTRACTION
-            try:
-                # 1. Parse products from product_name (initial booking)
-                if complaint.product_name:
-                    p_val = complaint.product_name.strip()
-                    products = []
-                    if p_val.startswith('[') or p_val.startswith('{'):
-                        products = json.loads(p_val)
-                    else:
-                        products = [{"productName": p_val}]
-
-                    if isinstance(products, list):
-                        for p in products:
-                            name = (p.get('productName') or p.get('name') or '').lower()
-                            if 'motor' in name:
-                                # Check every possible brand field
-                                motor_brand = p.get('motor_brand') or p.get('brand') or p.get('motorBrand')
-                                if motor_brand: 
-                                    motor_brand = motor_brand.strip()
-                                    break
-                
-                # 2. Check additional_product (added during completion)
-                if not motor_brand and complaint.additional_product:
-                    a_val = complaint.additional_product.strip()
-                    additional = []
-                    if a_val.startswith('[') or a_val.startswith('{'):
-                        additional = json.loads(a_val)
-                    else:
-                        additional = [{"productName": a_val}]
-
-                    if isinstance(additional, list):
-                        for p in additional:
-                            name = (p.get('productName') or p.get('name') or '').lower()
-                            if 'motor' in name:
-                                motor_brand = p.get('motor_brand') or p.get('brand') or p.get('motorBrand')
-                                if motor_brand: 
-                                    motor_brand = motor_brand.strip()
-                                    break
-            except Exception as e:
-                print(f"[DEBUG] Brand Extraction Error (Fallback): {str(e)}")
-                pass
-
-            # 🛠️ ENHANCED VARIANT LOOKUP
-            if motor_brand:
-                print(f"[DEBUG] Searching specifications for brand: {motor_brand}")
-                # Try exact brand match in MotorVariant collection
-                variant = MotorVariant.objects(brand__iexact=motor_brand).first()
-
-                # Check if MotorVariant has actual specification data (not all null)
-                if variant and isinstance(variant, MotorVariant):
-                    has_specs = any([
-                        variant.hp, variant.kw, variant.rpm, variant.motor_make,
-                        variant.serial_no, variant.no_of_slots, variant.core_length,
-                        variant.connection, variant.voltage, variant.phase
-                    ])
-                    if not has_specs:
-                        print(f"[DEBUG] MotorVariant found for '{motor_brand}' but has no specification data - skipping")
-                        variant = None
-
-                # If no direct variant, try to find a StockItem with that brand
-                if not variant:
-                    from .models import StockItem
-                    stock_item = StockItem.objects(motor_brand__iexact=motor_brand).first()
-                    if not stock_item:
-                        stock_item = StockItem.objects(name__iexact="motor").first()
-                    if stock_item and stock_item.motor_brands:
-                        # Find the specific variant in the list (check both brand_name and brand keys)
-                        for mb in stock_item.motor_brands:
-                            mb_name = (mb.get('brand_name') or mb.get('brand', '')).strip()
-                            if mb_name.lower() == motor_brand.lower():
-                                variant = mb
-                                print(f"[DEBUG] Found motor brand '{motor_brand}' in StockItem motor_brands")
-                                break
-
-                if variant:
-                    if isinstance(variant, MotorVariant):
-                        motor_variant_data = MotorVariantSerializer(variant).data
-                    else:
-                        # It's a dict from stock_item.motor_brands
-                        motor_variant_data = variant.copy() if isinstance(variant, dict) else dict(variant)
-                        # Ensure fields at top level for the frontend mapping
-                        if 'specification' in variant:
-                            motor_variant_data.update(variant['specification'])
-                        if 'pricing' in variant:
-                            motor_variant_data.update(variant['pricing'])
-
-                    # Validate variant data has actual specs (not brand-only)
-                    if motor_variant_data:
-                        spec_fields = ['hp', 'kw', 'rpm', 'motor_make', 'serial_no',
-                                       'no_of_slots', 'core_length', 'connection', 'voltage']
-                        # Check nested specification object
-                        nested_spec = motor_variant_data.get('specification', {}) or {}
-                        has_any_spec = any(
-                            motor_variant_data.get(f) or nested_spec.get(f)
-                            for f in spec_fields
-                        )
-                        if not has_any_spec:
-                            print(f"[DEBUG] Variant data for '{motor_brand}' has no spec fields - falling back to motor history")
-                            motor_variant_data = None
-
-                # Fallback: try to get specs from motor history (MotorDetails) for this complaint
-                if not motor_variant_data and complaint:
-                    history_motor = MotorDetails.objects(complaint_id=complaint.complaint_no).first()
-                    if not history_motor and complaint.complaint_no:
-                        if complaint.complaint_no.startswith('#'):
-                            history_motor = MotorDetails.objects(complaint_id=complaint.complaint_no.lstrip('#')).first()
-                        else:
-                            history_motor = MotorDetails.objects(complaint_id=f'#{complaint.complaint_no}').first()
-                    if history_motor and (history_motor.hp or history_motor.kw or history_motor.rpm or history_motor.motor_make):
-                        print(f"[DEBUG] Using motor history specs for brand: {motor_brand}")
-                        motor_variant_data = MotorDetailsSerializer(history_motor).data
-                        motor_variant_data['source'] = 'motor_history'
-
-        # 4. Prepare response
-        # If winding details exist, prioritized for motor_service jobs
-        if motor_winding and (not complaint or complaint.job_type == 'motor_service'):
-            data = MotorDetailsSerializer(motor_winding).data
-            data['job_type'] = complaint.job_type if complaint else 'motor_service'
-            data['source'] = 'winding'
-            # Attach variant details if available
-            if motor_variant_data:
-                data['variant_specs'] = motor_variant_data
-            
-            return Response({"success": True, "data": data}, status=status.HTTP_200_OK)
-        
-        # If it's a sale or we have variant data but no winding details
-        if motor_variant_data:
-            response_data = {
-                'brand_name': motor_brand or motor_variant_data.get('brand'),
-                'job_type': complaint.job_type if complaint else 'motor_sale',
-                'source': 'stock'
-            }
-            
-            # Nest specifications if not already nested
-            if 'specification' in motor_variant_data:
-                response_data['specification'] = motor_variant_data['specification']
-            else:
-                # Construct specification from flat fields
-                response_data['specification'] = {
-                    'hp': motor_variant_data.get('hp') or motor_variant_data.get('horsepower', 'N/A'),
-                    'kw': motor_variant_data.get('kw', 'N/A'),
-                    'rpm': motor_variant_data.get('rpm', 'N/A'),
-                    'phase': motor_variant_data.get('phase', 'Single'),
-                    'voltage': motor_variant_data.get('voltage', 'N/A'),
-                    'connection': motor_variant_data.get('connection', 'Delta'),
-                    'company_name': motor_variant_data.get('company_name') or motor_brand or motor_variant_data.get('brand', 'N/A'),
-                    'motor_make': motor_variant_data.get('motor_make', 'N/A'),
-                    'serial_no': motor_variant_data.get('serial_no', 'N/A'),
-                    'no_of_slots': motor_variant_data.get('no_of_slots', 'N/A'),
-                    'core_length': motor_variant_data.get('core_length', 'N/A'),
-                    'load_current': motor_variant_data.get('load_current', 'N/A'),
-                    'swg': motor_variant_data.get('swg', 'N/A'),
-                    'total_set': motor_variant_data.get('total_set', 'N/A'),
-                    'total_weight': motor_variant_data.get('total_weight', 'N/A'),
-                    'resistance_value': motor_variant_data.get('resistance_value', 'N/A'),
-                    'winder_name': motor_variant_data.get('winder_name', 'N/A'),
-                    'remarks': motor_variant_data.get('remarks', ''),
-                    'winding_details': motor_variant_data.get('winding_details', [])
-                }
-
-            
-            # Nest pricing if not already nested
-            if 'pricing' in motor_variant_data:
-                response_data['pricing'] = motor_variant_data['pricing']
-            else:
-                response_data['pricing'] = {
-                    'selling_price': motor_variant_data.get('selling_price', 0),
-                    'purchase_price': motor_variant_data.get('purchase_price', 0),
-                    'supplier': motor_variant_data.get('supplier', 'N/A')
-                }
-                
-            return Response({"success": True, "data": response_data}, status=status.HTTP_200_OK)
-
-        # Fallback if nothing found - wrap flat MotorDetails into nested structure
-        if motor_winding:
-            raw = MotorDetailsSerializer(motor_winding).data
-            # Nest flat fields into specification/pricing for frontend consistency
-            data = {
-                'brand_name': raw.get('motor_brand') or raw.get('company_name', 'N/A'),
-                'brand_id': None,
-                'complaint_id': raw.get('complaint_id', ''),
-                'customer_name': raw.get('customer_name', ''),
-                'customer_phone': raw.get('customer_phone', ''),
-                'job_type': raw.get('job_type', 'motor_service'),
-                'source': 'winding',
-                'specification': {
-                    'hp': raw.get('hp', 'N/A'),
-                    'horsepower': raw.get('hp', 'N/A'),
-                    'kw': raw.get('kw', 'N/A'),
-                    'rpm': raw.get('rpm', 'N/A'),
-                    'phase': raw.get('phase', 'Single'),
-                    'voltage': raw.get('voltage', 'N/A'),
-                    'connection': raw.get('connection', 'Delta'),
-                    'company_name': raw.get('company_name', 'N/A'),
-                    'motor_make': raw.get('motor_make', 'N/A'),
-                    'serial_no': raw.get('serial_no', 'N/A'),
-                    'no_of_slots': raw.get('no_of_slots', 'N/A'),
-                    'core_length': raw.get('core_length', 'N/A'),
-                    'load_current': raw.get('load_current', 'N/A'),
-                    'swg': raw.get('swg', 'N/A'),
-                    'total_set': raw.get('total_set', 'N/A'),
-                    'total_weight': raw.get('total_weight', 'N/A'),
-                    'resistance_value': raw.get('resistance_value', 'N/A'),
-                    'winder_name': raw.get('winder_name', 'N/A'),
-                    'remarks': raw.get('remarks', ''),
-                    'winding_details': raw.get('winding_details', [])
-                },
-                'pricing': {
-                    'supplier': 'N/A',
-                    'purchase_price': 0,
-                    'selling_price': raw.get('motor_amount', 0),
-                    'minimum_price': raw.get('minimum_price', 0),
-                    'purchase_date': 'N/A'
-                }
-            }
-            return Response({"success": True, "data": data}, status=status.HTTP_200_OK)
-
-        # Final Fallback: If we have a complaint but NO motor details (winding/variant)
-        # Return basic complaint data so the modal can at least show customer info
-        if complaint:
-            return Response({
-                "success": True,
-                "data": {
-                    "complaint_id": complaint.complaint_no,
-                    "customer_name": complaint.customer_name,
-                    "customer_phone": complaint.phone,
-                    "job_type": complaint.job_type or "motor_service",
-                    "brand_name": motor_brand or "N/A",
-                    "specification": {
-                        "horsepower": "N/A",
-                        "hp": "N/A",
-                        "phase": "Single",
-                        "voltage": "N/A",
-                        "rpm": "N/A",
-                        "motor_type": "N/A",
-                        "warranty": "N/A",
-                        "motor_make": "N/A",
-                        "serial_no": "N/A",
-                        "no_of_slots": "N/A",
-                        "core_length": "N/A",
-                        "connection": "Delta",
-                        "swg": "N/A",
-                        "load_current": "N/A",
-                        "total_set": "N/A",
-                        "total_weight": "N/A",
-                        "resistance_value": "N/A",
-                        "winder_name": "N/A",
-                        "remarks": "No technical details found for this complaint yet.",
-                        "winding_details": []
-                    },
-                    "pricing": {
-                        "supplier": "N/A",
-                        "purchase_price": 0,
-                        "selling_price": 0,
-                        "minimum_price": 0,
-                        "purchase_date": "N/A"
-                    }
-                }
-            }, status=status.HTTP_200_OK)
-
-        return Response({
-            "success": False,
-            "error": "Motor details not found for this complaint"
-        }, status=status.HTTP_404_NOT_FOUND)
-
-
-    except Exception as e:
-        return Response({
-            "success": False,
-            "error": str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# ------------------------------
-# API to delete duplicate motor records (by complaint_id keeping only one)
-# ------------------------------
-@api_view(['DELETE'])
-def cleanup_duplicate_motors(request):
-    """
-    Remove duplicate motor records, keeping only the one with job_type.
-    DELETE /api/cleanup-duplicate-motors/
-    """
-    try:
-        # Find all complaint_ids that have more than one motor record
-        motors = MotorDetails.objects()
-        complaint_ids = {}
-        for motor in motors:
-            if motor.complaint_id:
-                if motor.complaint_id not in complaint_ids:
-                    complaint_ids[motor.complaint_id] = []
-                complaint_ids[motor.complaint_id].append(motor)
-        
-        deleted_count = 0
-        for complaint_id, motor_list in complaint_ids.items():
-            if len(motor_list) > 1:
-                # Keep the one with job_type, delete others
-                keep_motor = None
-                delete_motors = []
-                for m in motor_list:
-                    if m.job_type:
-                        keep_motor = m
-                    else:
-                        delete_motors.append(m)
-                
-                # If no motor has job_type, keep the first one
-                if not keep_motor and motor_list:
-                    keep_motor = motor_list[0]
-                    delete_motors = motor_list[1:]
-                
-                # Delete duplicates
-                for dm in delete_motors:
-                    dm.delete()
-                    deleted_count += 1
-        
-        return Response({
-            "success": True,
-            "message": f"Deleted {deleted_count} duplicate motor records"
-        }, status=status.HTTP_200_OK)
-    except Exception as e:
-        return Response({
-            "success": False,
-            "error": str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # ------------------------------
@@ -8092,21 +5935,67 @@ def holiday_list(request):
             
     elif request.method == 'POST':
         try:
-            serializer = HolidayCalendarSerializer(data=request.data)
-            if serializer.is_valid():
-                holiday = serializer.save()
+            # Check if multiple staff_ids are provided
+            staff_ids = request.data.get('staff_ids', [])
+            if not isinstance(staff_ids, list):
+                # Fallback to single staff_id if staff_ids is not a list
+                staff_ids = [request.data.get('staff_id')] if 'staff_id' in request.data else []
+            
+            # If no staff_ids provided but type is company_holiday, it's a global holiday
+            if not staff_ids and request.data.get('type') == 'company_holiday':
+                staff_ids = [None]
+                
+            if not staff_ids and request.data.get('type') == 'weekly_off':
+                return Response({"success": False, "error": "At least one staff member must be selected for staff-specific off."}, status=400)
+            
+            results = []
+            errors = []
+            
+            # Iterate and create holidays for each staff member
+            for s_id in staff_ids:
+                # Normalize staff_id (convert empty string or "null" to None)
+                norm_s_id = s_id
+                if s_id == "" or s_id == "null":
+                    norm_s_id = None
+                
+                item_data = request.data.copy()
+                item_data['staff_id'] = norm_s_id
+                # Remove staff_ids to keep individual item data clean
+                if 'staff_ids' in item_data:
+                    del item_data['staff_ids']
+                    
+                serializer = HolidayCalendarSerializer(data=item_data)
+                if serializer.is_valid():
+                    try:
+                        serializer.save()
+                        results.append(serializer.data)
+                    except Exception as db_err:
+                        err_msg = str(db_err)
+                        if "duplicate" in err_msg.lower() or "unique" in err_msg.lower():
+                            errors.append({"staff_id": s_id, "error": f"A holiday already exists for this date for staff member {s_id}."})
+                        else:
+                            errors.append({"staff_id": s_id, "error": err_msg})
+                else:
+                    errors.append({"staff_id": s_id, "errors": serializer.errors})
+            
+            if errors and not results:
+                # If all failed, return error response
                 return Response({
-                    "success": True,
-                    "message": "Holiday created successfully",
-                    "data": serializer.data
-                }, status=status.HTTP_201_CREATED)
-            return Response({"success": False, "error": "Validation failed", "errors": serializer.errors}, status=400)
+                    "success": False, 
+                    "error": "Failed to create holidays. All entries failed validation or already exist.",
+                    "errors": errors
+                }, status=400)
+                
+            return Response({
+                "success": True,
+                "message": f"Successfully created {len(results)} holiday records.",
+                "data": results,
+                "errors": errors if errors else None
+            }, status=status.HTTP_201_CREATED)
+            
         except Exception as e:
-            # Catch MongoEngine unique constraint or other database-level errors
-            error_msg = str(e)
-            if "duplicate" in error_msg.lower() or "unique" in error_msg.lower():
-                return Response({"success": False, "error": "A holiday already exists for this date and staff member."}, status=400)
             return Response({"success": False, "error": str(e)}, status=400)
+
 
 @api_view(['GET', 'PUT', 'DELETE'])
 def holiday_detail(request, holiday_id):
@@ -8139,3 +6028,197 @@ def holiday_detail(request, holiday_id):
             
     except Exception as e:
         return Response({"success": False, "error": str(e)}, status=500)
+
+# ------------------------------
+#   Branch Management API
+# ------------------------------
+@api_view(['GET'])
+def get_branches(request):
+    """List all active branches."""
+    try:
+        branches = Branch.objects(is_active=True).order_by('name')
+        serializer = BranchSerializer(branches, many=True)
+        return Response({
+            "success": True,
+            "count": len(serializer.data),
+            "branches": serializer.data
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+from .serializers import BranchSerializer
+
+@api_view(['POST'])
+def create_branch(request):
+    """Create a new branch."""
+    try:
+        serializer = BranchSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "success": True,
+                "message": "Branch created successfully",
+                "branch": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['PUT'])
+def update_branch(request, branch_id):
+    """Update an existing branch."""
+    try:
+        branch = Branch.objects(branch_id=branch_id).first()
+        if not branch:
+            try:
+                branch = Branch.objects(id=ObjectId(branch_id)).first()
+            except Exception:
+                pass
+            
+        if not branch:
+            return Response({"success": False, "error": "Branch not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+        serializer = BranchSerializer(branch, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "success": True,
+                "message": "Branch updated successfully",
+                "branch": serializer.data
+            }, status=status.HTTP_200_OK)
+        return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['DELETE'])
+def delete_branch(request, branch_id):
+    """Soft delete a branch."""
+    try:
+        branch = Branch.objects(branch_id=branch_id).first()
+        if not branch:
+            try:
+                branch = Branch.objects(id=ObjectId(branch_id)).first()
+            except Exception:
+                pass
+            
+        if not branch:
+            return Response({"success": False, "error": "Branch not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+        branch.is_active = False
+        branch.save()
+        return Response({
+            "success": True,
+            "message": "Branch deactivated successfully"
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ==============================================================
+#   Job Types APIs
+# ==============================================================
+@api_view(['GET', 'POST'])
+def job_type_list(request):
+    """
+    GET  /api/job-types/  -> list all active job types
+    POST /api/job-types/  -> create a new job type
+    """
+    if request.method == 'GET':
+        try:
+            job_types = JobType.objects(is_active=True).order_by('name')
+            serializer = JobTypeSerializer(job_types, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    elif request.method == 'POST':
+        try:
+            name = request.data.get('name', '').strip()
+            if not name:
+                return Response({"error": "Name is required"}, status=status.HTTP_400_BAD_REQUEST)
+            if JobType.objects(name=name).first():
+                return Response({"error": "Job type already exists"}, status=status.HTTP_400_BAD_REQUEST)
+            job_type = JobType(name=name)
+            job_type.save()
+            serializer = JobTypeSerializer(job_type)
+            return Response({"success": True, "data": serializer.data}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['DELETE'])
+def job_type_detail(request, job_type_id):
+    """
+    DELETE /api/job-types/<job_type_id>/ -> soft delete a job type
+    """
+    try:
+        try:
+            job_type = JobType.objects(id=ObjectId(job_type_id)).first()
+        except Exception:
+            job_type = None
+        if not job_type:
+            return Response({"error": "Job type not found"}, status=status.HTTP_404_NOT_FOUND)
+        job_type.is_active = False
+        job_type.save()
+        return Response({"success": True, "message": "Job type deleted"}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ==============================================================
+#   Expired / Scrap Items APIs
+# ==============================================================
+@api_view(['GET'])
+def expired_item_list(request):
+    """
+    GET /api/expired-items/  -> list all expired/scrap items
+    """
+    try:
+        branch_name = request.GET.get('branch_name')
+        query = ExpiredItem.objects
+        if branch_name:
+            query = query.filter(branch_name=branch_name)
+            
+        items = query.order_by('-buy_date')
+        serializer = ExpiredItemSerializer(items, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['PUT'])
+def expired_item_detail(request, item_id):
+    """
+    PUT /api/expired-items/<item_id>/  -> update sold_price and sold_date
+    """
+    try:
+        try:
+            item = ExpiredItem.objects(id=ObjectId(item_id)).first()
+        except Exception:
+            item = None
+        if not item:
+            return Response({"error": "Expired item not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        sold_price = request.data.get('sold_price')
+        sold_date = request.data.get('sold_date')
+        name = request.data.get('name')
+        buying_price = request.data.get('buying_price')
+
+        if sold_price is not None:
+            item.sold_price = float(sold_price)
+        if sold_date:
+            try:
+                item.sold_date = datetime.fromisoformat(sold_date)
+            except Exception:
+                pass
+        if name:
+            item.name = name
+        if buying_price is not None:
+            item.buying_price = float(buying_price)
+
+        item.save()
+        serializer = ExpiredItemSerializer(item)
+        return Response({"success": True, "data": serializer.data}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

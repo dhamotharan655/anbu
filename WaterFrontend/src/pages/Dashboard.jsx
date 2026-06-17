@@ -39,17 +39,16 @@ import StockAlerts from "../components/StockAlerts";
 import { openWhatsAppWithDefaultMessage, generateStaffAssignmentMessage } from "../utils/whatsappUtils";
 import { getDisplayStatus } from "../utils/statusUtils";
 import "../utils/whatsappUtils.css";
-import MotorDetailsViewModal from "./StockManagement/MotorDetailsViewModal";
 
 /* ================= CSS STYLES ================= */
 const styles = `
   /* New Dashboard UI Styles - Soft Pastel Background */
   .dashboard-container {
     min-height: 100vh;
-    background: linear-gradient(135deg, #f5e6ff 0%, #e6f0ff 50%, #ffe6f5 100%);
+    background: var(--gradient-bg);
     position: relative;
     overflow-x: hidden;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-family-sans);
   }
 
   .dashboard-blob {
@@ -64,19 +63,20 @@ const styles = `
 
   .dashboard-blob1 { 
     width: 600px; height: 600px; 
-    background: radial-gradient(circle, #e0d4ff, #d4e4ff); 
+    background: radial-gradient(circle, #b3dee6, #e6f7f9); 
     top: -200px; left: -150px; 
   }
   .dashboard-blob2 { 
     width: 500px; height: 500px; 
-    background: radial-gradient(circle, #ffe4ec, #fff4d4); 
+    background: radial-gradient(circle, #f9f0d1, #fcf8e8); 
     bottom: -150px; right: -100px; 
     animation-delay: -4s; 
   }
   .dashboard-blob3 { 
     width: 350px; height: 350px; 
-    background: radial-gradient(circle, #d4ffe8, #d4e8ff); 
+    background: radial-gradient(circle, var(--color-gold, #f1b32a), #f9e6b3); 
     top: 50%; right: 10%; 
+    opacity: 0.15;
     animation-delay: -8s; 
   }
 
@@ -114,16 +114,16 @@ const styles = `
   }
 
   .dashboard-page-title {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-family-heading);
     font-size: 32px;
     font-weight: 600;
-    color: #2d2440;
+    color: var(--color-text);
     letter-spacing: -0.5px;
   }
 
   .dashboard-page-title em {
     font-style: italic;
-    background: linear-gradient(135deg, #9b6fe8, #6baee0);
+    background: var(--gradient-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -141,18 +141,19 @@ const styles = `
     flex-wrap: wrap;
   }
 
-  .dashboard-search-wrap svg {
+  .dashboard-search-wrap .search-icon {
     position: absolute;
     left: 16px;
     top: 50%;
     transform: translateY(-50%);
-    color: #a99ec7;
+    color: var(--color-primary-light);
     pointer-events: none;
     transition: color 0.3s;
+    z-index: 2;
   }
 
   .dashboard-search-wrap:focus-within svg {
-    color: #9b6fe8;
+    color: var(--color-primary);
   }
 
   .dashboard-search-wrap input {
@@ -161,21 +162,60 @@ const styles = `
     border: 2px solid rgba(255,255,255,0.9);
     border-radius: 16px;
     padding: 14px 20px 14px 46px;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-family-sans);
     font-size: 14px;
-    color: #2d2440;
+    color: var(--color-text);
     width: 280px;
     outline: none;
-    box-shadow: 0 4px 20px rgba(124,92,191,0.08);
+    box-shadow: var(--shadow-sm);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .dashboard-search-wrap input::placeholder { color: #a99ec7; }
+  .dashboard-search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .dashboard-search-wrap input::placeholder { color: #9ca3af; }
   .dashboard-search-wrap input:focus {
-    border-color: rgba(155,111,232,0.5);
+    border-color: rgba(11, 102, 120, 0.5);
     background: rgba(255,255,255,0.95);
-    box-shadow: 0 8px 30px rgba(124,92,191,0.15), 0 0 0 4px rgba(124,92,191,0.1);
+    box-shadow: 0 8px 30px rgba(11, 102, 120, 0.15), 0 0 0 4px rgba(11, 102, 120, 0.1);
     width: 320px;
+  }
+
+  .search-btn {
+    background: var(--gradient-primary);
+    color: white;
+    border: none;
+    border-radius: 16px;
+    padding: 14px 28px;
+    font-family: var(--font-family-sans);
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(11, 102, 120, 0.25);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+  }
+
+  .search-btn:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 10px 25px rgba(11, 102, 120, 0.35);
+    filter: brightness(1.1);
+  }
+
+  .search-btn:active {
+    transform: translateY(-1px);
+  }
+
+  .search-btn svg {
+    font-size: 16px;
   }
 
   .dashboard-advanced-search {
@@ -198,15 +238,15 @@ const styles = `
   .search-amount-input {
     background: rgba(255,255,255,0.85);
     backdrop-filter: blur(20px);
-    border: 2px solid rgba(255,255,255,0.9);
+    border: 2px solid var(--color-border);
     border-radius: 12px;
     padding: 10px 14px;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-family-sans);
     font-size: 13px;
-    color: #2d2440;
+    color: var(--color-text);
     width: 130px;
     outline: none;
-    box-shadow: 0 4px 20px rgba(124,92,191,0.08);
+    box-shadow: var(--shadow-sm);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
@@ -216,14 +256,15 @@ const styles = `
 
   .search-date-input:focus,
   .search-amount-input:focus {
-    border-color: rgba(155,111,232,0.5);
+    border-color: rgba(11, 102, 120, 0.5);
     background: rgba(255,255,255,0.95);
-    box-shadow: 0 8px 30px rgba(124,92,191,0.15), 0 0 0 4px rgba(124,92,191,0.1);
+    box-shadow: 0 8px 30px rgba(11, 102, 120, 0.15), 0 0 0 4px rgba(11, 102, 120, 0.1);
   }
 
   .search-date-input::placeholder,
   .search-amount-input::placeholder {
-    color: #a99ec7;
+    color: var(--color-text-secondary);
+    opacity: 0.6;
   }
 
   /* Remove spinner buttons from number inputs */
@@ -238,7 +279,7 @@ const styles = `
   }
 
   .clear-search-btn {
-    background: rgba(155,111,232,0.15);
+    background: rgba(11, 102, 120, 0.15);
     border: none;
     border-radius: 50%;
     width: 32px;
@@ -247,14 +288,14 @@ const styles = `
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #9b6fe8;
+    color: var(--color-primary);
     font-size: 14px;
     transition: all 0.2s;
   }
 
   .clear-search-btn:hover {
-    background: rgba(155,111,232,0.25);
-    color: #7c3bed;
+    background: rgba(11, 102, 120, 0.25);
+    color: #084c5a;
   }
 
   @media (max-width: 768px) {
@@ -314,7 +355,7 @@ const styles = `
     background: rgba(255,255,255,0.85);
     backdrop-filter: blur(20px);
     border: 2px solid rgba(255,255,255,0.95);
-    box-shadow: 0 4px 20px rgba(124,92,191,0.08);
+    box-shadow: var(--shadow-sm);
     cursor: pointer;
     transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     user-select: none;
@@ -322,14 +363,14 @@ const styles = `
 
   .dashboard-tab:hover {
     transform: translateY(-4px) scale(1.02);
-    box-shadow: 0 12px 40px rgba(124,92,191,0.18);
+    box-shadow: var(--shadow-lg);
     background: rgba(255,255,255,0.95);
   }
 
   .dashboard-tab.active-tab {
-    background: linear-gradient(135deg, #9b6fe8 0%, #7c5cbf 100%);
+    background: var(--gradient-primary);
     border-color: transparent;
-    box-shadow: 0 12px 40px rgba(124,92,191,0.35), 0 0 0 3px rgba(155,111,232,0.2);
+    box-shadow: 0 12px 40px rgba(11, 102, 120, 0.3), 0 0 0 3px rgba(11, 102, 120, 0.1);
     transform: translateY(-2px);
   }
 
@@ -348,12 +389,12 @@ const styles = `
     transform: scale(1.1);
   }
 
-  .dashboard-tab:not(.active-tab) .tab-icon-all { background: linear-gradient(135deg, #f0e6ff, #e6d9ff); }
-  .dashboard-tab:not(.active-tab) .tab-icon-pending { background: linear-gradient(135deg, #fff4e6, #ffe8cc); }
-  .dashboard-tab:not(.active-tab) .tab-icon-assigned { background: linear-gradient(135deg, #e6f0ff, #d4e8ff); }
-  .dashboard-tab:not(.active-tab) .tab-icon-completed { background: linear-gradient(135deg, #e6ffed, #d4ffe0); }
+  .dashboard-tab:not(.active-tab) .tab-icon-all { background: linear-gradient(135deg, #e6f7f9, #b3dee6); }
+  .dashboard-tab:not(.active-tab) .tab-icon-pending { background: linear-gradient(135deg, rgba(241, 179, 42, 0.1), rgba(241, 179, 42, 0.2)); color: var(--color-secondary); }
+  .dashboard-tab:not(.active-tab) .tab-icon-assigned { background: linear-gradient(135deg, #eef5f6, #d1e8eb); color: var(--color-primary); }
+  .dashboard-tab:not(.active-tab) .tab-icon-completed { background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.2)); color: var(--color-success); }
   .dashboard-tab:not(.active-tab) .tab-icon-due { background: linear-gradient(135deg, #fff3cd, #ffeeba); color: #856404; }
-  .dashboard-tab:not(.active-tab) .tab-icon-overdue { background: linear-gradient(135deg, #f8d7da, #f5c6cb); color: #721c24; }
+  .dashboard-tab:not(.active-tab) .tab-icon-overdue { background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.2)); color: var(--color-danger); }
   .dashboard-tab.active-tab .dashboard-tab-icon { background: rgba(255,255,255,0.2); }
 
   .dashboard-tab-info {
@@ -362,7 +403,7 @@ const styles = `
   }
 
   .dashboard-tab-count {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-family-heading);
     font-size: 24px;
     font-weight: 700;
     line-height: 1;
@@ -378,8 +419,8 @@ const styles = `
     transition: all 0.3s;
   }
 
-  .dashboard-tab:not(.active-tab) .dashboard-tab-count { color: #2d2440; }
-  .dashboard-tab:not(.active-tab) .dashboard-tab-label { color: #8b85a1; }
+  .dashboard-tab:not(.active-tab) .dashboard-tab-count { color: var(--color-text); }
+  .dashboard-tab:not(.active-tab) .dashboard-tab-label { color: #6a7280; }
   .dashboard-tab.active-tab .dashboard-tab-count,
   .dashboard-tab.active-tab .dashboard-tab-label { color: white; }
 
@@ -395,10 +436,10 @@ const styles = `
     background: rgba(255,255,255,0.9);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255,255,255,0.95);
+    border: 1px solid var(--color-border);
     border-radius: 28px;
     overflow: hidden;
-    box-shadow: 0 8px 32px rgba(124,92,191,0.1), 0 2px 8px rgba(0,0,0,0.04);
+    box-shadow: var(--shadow-md);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
   }
@@ -412,7 +453,7 @@ const styles = `
     bottom: 0;
     border-radius: 28px;
     padding: 2px;
-    background: linear-gradient(135deg, rgba(155,111,232,0.3), rgba(107,174,224,0.3));
+    background: linear-gradient(135deg, rgba(11, 102, 120, 0.3), rgba(241, 179, 42, 0.3));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
@@ -423,7 +464,7 @@ const styles = `
 
   .dashboard-comp-card:hover {
     transform: translateY(-8px) scale(1.01);
-    box-shadow: 0 20px 60px rgba(124,92,191,0.2), 0 8px 20px rgba(0,0,0,0.08);
+    box-shadow: var(--shadow-lg);
   }
 
   .dashboard-comp-card:hover::before {
@@ -441,7 +482,7 @@ const styles = `
   }
 
   .strip-assigned { 
-    background: linear-gradient(90deg, #9b6fe8, #7c5cbf, #6baee0); 
+    background: var(--gradient-primary); 
     background-size: 200% 100%;
     animation: cardShimmer 3s infinite linear;
   }
@@ -461,14 +502,14 @@ const styles = `
     align-items: center;
     justify-content: space-between;
     padding: 22px 26px 18px;
-    border-bottom: 1px solid rgba(124,92,191,0.08);
+    border-bottom: 1px solid rgba(11, 102, 120, 0.08);
   }
 
   .dashboard-comp-id {
-    font-family: 'Fraunces', serif;
+    font-family: var(--font-family-heading);
     font-size: 18px;
     font-weight: 700;
-    color: #2d2440;
+    color: var(--color-text);
     letter-spacing: 0.5px;
   }
 
@@ -486,17 +527,17 @@ const styles = `
   }
 
   .badge-assigned { 
-    background: linear-gradient(135deg, #f0e6ff, #e6d9ff); 
-    color: #7c5cbf; 
-    box-shadow: 0 2px 10px rgba(155,111,232,0.2);
+    background: linear-gradient(135deg, #eef5f6, #d1e8eb); 
+    color: #0b6678; 
+    box-shadow: 0 2px 10px rgba(11, 102, 120, 0.15);
   }
   .badge-completed { 
     background: rgba(255, 255, 255, 0.72);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.8);
-    color: #5a4a8a; 
-    box-shadow: 0 4px 20px rgba(124,92,191,0.12);
+    color: #48c78e; 
+    box-shadow: 0 4px 20px rgba(72, 199, 142, 0.12);
   }
   .badge-pending { 
     background: linear-gradient(135deg, #fff4e6, #ffe8cc); 
@@ -526,9 +567,9 @@ const styles = `
     50% { opacity: 0.6; transform: scale(1.2); }
   }
 
-  .badge-assigned .dashboard-badge-dot { background: #9b6fe8; }
-  .badge-completed .dashboard-badge-dot { background: #6baee0; }
-  .badge-pending .dashboard-badge-dot { background: #ffb347; }
+  .badge-assigned .dashboard-badge-dot { background: #0b6678; }
+  .badge-completed .dashboard-badge-dot { background: #48c78e; }
+  .badge-pending .dashboard-badge-dot { background: #f1b32a; }
   .badge-due .dashboard-badge-dot { background: #ffc107; }
   .badge-overdue .dashboard-badge-dot { background: #dc3545; }
 
@@ -585,7 +626,7 @@ const styles = `
     align-items: flex-start;
     justify-content: space-between;
     padding: 12px 0;
-    border-bottom: 1px solid rgba(124,92,191,0.06);
+    border-bottom: 1px solid rgba(11, 102, 120, 0.05);
     transition: background 0.3s;
     border-radius: 8px;
     margin: 0 -4px;
@@ -596,7 +637,7 @@ const styles = `
   .dashboard-info-row:last-child { border-bottom: none; }
 
   .dashboard-info-row:hover {
-    background: rgba(124,92,191,0.04);
+    background: rgba(11, 102, 120, 0.04);
   }
 
   .dashboard-info-key {
@@ -607,42 +648,42 @@ const styles = `
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: #a99ec7;
+    color: #6a7280;
     min-width: 120px;
     flex-shrink: 0;
   }
 
   .dashboard-info-key svg { 
-    color: #c4b8d8; 
+    color: var(--color-primary-light); 
     flex-shrink: 0;
     transition: transform 0.3s;
   }
 
   .dashboard-info-row:hover .dashboard-info-key svg {
     transform: scale(1.2);
-    color: #9b6fe8;
+    color: var(--color-primary);
   }
 
   .dashboard-info-val {
     font-size: 14px;
     font-weight: 600;
-    color: #2d2440;
+    color: var(--color-text);
     text-align: right;
     line-height: 1.5;
     max-width: 60%;
   }
 
   .dashboard-info-val.mono { 
-    font-family: 'Fraunces', serif; 
+    font-family: var(--font-family-heading); 
     font-size: 15px; 
-    color: #4a4060;
+    color: #374151;
   }
 
   /* Products section */
   .dashboard-products-section {
     margin: 0 26px 20px;
-    background: linear-gradient(135deg, rgba(124,92,191,0.04), rgba(107,174,224,0.04));
-    border: 1px solid rgba(124,92,191,0.1);
+    background: linear-gradient(135deg, rgba(11, 102, 120, 0.04), rgba(241, 179, 42, 0.04));
+    border: 1px solid rgba(11, 102, 120, 0.1);
     border-radius: 18px;
     overflow: hidden;
   }
@@ -652,9 +693,9 @@ const styles = `
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1.2px;
-    color: #7c5cbf;
+    color: var(--color-primary);
     padding: 14px 20px 12px;
-    border-bottom: 1px solid rgba(124,92,191,0.08);
+    border-bottom: 1px solid rgba(11, 102, 120, 0.08);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -665,17 +706,17 @@ const styles = `
     align-items: center;
     justify-content: space-between;
     padding: 12px 20px;
-    border-bottom: 1px solid rgba(124,92,191,0.05);
+    border-bottom: 1px solid rgba(11, 102, 120, 0.05);
     font-size: 14px;
     transition: background 0.3s;
   }
 
   .dashboard-product-item:last-child { border-bottom: none; }
-  .dashboard-product-item:hover { background: rgba(124,92,191,0.04); }
+  .dashboard-product-item:hover { background: rgba(11, 102, 120, 0.04); }
   
   .dashboard-product-name { 
     font-weight: 600; 
-    color: #2d2440; 
+    color: var(--color-text); 
     display: flex; 
     align-items: center; 
     gap: 10px; 
@@ -685,17 +726,17 @@ const styles = `
     width: 8px; 
     height: 8px; 
     border-radius: 50%; 
-    background: linear-gradient(135deg, #9b6fe8, #6baee0); 
+    background: var(--gradient-primary); 
     flex-shrink: 0; 
   }
   .dashboard-product-qty { 
     font-size: 13px; 
     font-weight: 700; 
     color: white; 
-    background: linear-gradient(135deg, #9b6fe8, #7c5cbf); 
+    background: var(--gradient-primary); 
     padding: 4px 12px; 
     border-radius: 100px; 
-    box-shadow: 0 2px 8px rgba(155,111,232,0.3);
+    box-shadow: 0 2px 8px rgba(11, 102, 120, 0.2);
   }
 
   /* WhatsApp button */
@@ -720,6 +761,7 @@ const styles = `
     box-shadow: 0 6px 24px rgba(37,211,102,0.35);
     transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     width: 100%;
+    font-family: var(--font-family-sans);
   }
 
   .dashboard-btn-whatsapp:hover { 
@@ -740,12 +782,12 @@ const styles = `
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.8);
-    color: #5a4a8a;
+    color: var(--color-primary);
     font-weight: 700;
     font-size: 15px;
     padding: 5px 14px;
     border-radius: 10px;
-    box-shadow: 0 4px 20px rgba(124,92,191,0.12);
+    box-shadow: 0 4px 20px rgba(11, 102, 120, 0.12);
   }
 
   /* Responsive */
@@ -856,8 +898,8 @@ const styles = `
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.8);
-    color: #5a4a8a;
-    box-shadow: 0 4px 20px rgba(124,92,191,0.12);
+    color: var(--color-primary);
+    box-shadow: 0 4px 20px rgba(11, 102, 120, 0.12);
   }
 
   .stock-status.error {
@@ -933,8 +975,8 @@ const styles = `
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.8);
-    color: #5a4a8a;
-    box-shadow: 0 4px 20px rgba(124,92,191,0.12);
+    color: var(--color-primary);
+    box-shadow: 0 4px 20px rgba(11, 102, 120, 0.12);
   }
 
   .button-primary.complete-button:hover {
@@ -1100,8 +1142,8 @@ const styles = `
 
   /* Enhanced Products Display Styles - Compact */
   .products-purchased-section {
-    background: linear-gradient(135deg, rgba(124,92,191,0.03), rgba(107,174,224,0.03));
-    border: 1px solid rgba(124,92,191,0.1);
+    background: linear-gradient(135deg, rgba(11, 102, 120, 0.03), rgba(241, 179, 42, 0.03));
+    border: 1px solid rgba(11, 102, 120, 0.1);
     border-radius: 8px;
     overflow: hidden;
     margin-top: 8px;
@@ -1112,9 +1154,9 @@ const styles = `
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #7c5cbf;
+    color: var(--color-primary);
     padding: 8px 10px;
-    border-bottom: 1px solid rgba(124,92,191,0.1);
+    border-bottom: 1px solid rgba(11, 102, 120, 0.1);
     display: flex;
     alignItems: 'center';
     gap: 4px;
@@ -1126,7 +1168,7 @@ const styles = `
     gap: 4px;
     padding: 6px 10px;
     font-size: 10px;
-    border-bottom: 1px solid rgba(124,92,191,0.05);
+    border-bottom: 1px solid rgba(11, 102, 120, 0.05);
     align-items: center;
   }
 
@@ -1135,12 +1177,12 @@ const styles = `
   }
 
   .product-detail-row.header-row {
-    background: rgba(124,92,191,0.05);
+    background: rgba(11, 102, 120, 0.05);
     font-weight: 600;
     font-size: 9px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #6b7280;
+    color: var(--color-text-secondary);
     padding: 5px 10px;
   }
 
@@ -1182,9 +1224,9 @@ const styles = `
   }
 
   .products-total-section {
-    border-top: 1px solid rgba(124,92,191,0.1);
+    border-top: 1px solid rgba(11, 102, 120, 0.1);
     padding: 8px 10px;
-    background: rgba(124,92,191,0.02);
+    background: rgba(11, 102, 120, 0.02);
   }
 
   .total-line {
@@ -1208,12 +1250,12 @@ const styles = `
   }
 
   .total-line.grand-total {
-    border-top: 1px solid rgba(124,92,191,0.1);
+    border-top: 1px solid rgba(11, 102, 120, 0.1);
     margin-top: 8px;
     padding-top: 12px;
     font-size: 13px;
     font-weight: 700;
-    color: #7c5cbf;
+    color: var(--color-primary);
   }
 
   .total-line.grand-total .total-value {
@@ -1274,6 +1316,7 @@ const Dashboard = () => {
   const [paymentMethod, setPaymentMethod] = useState("");
   const [client_amount, setclient_amount] = useState("");
   const [completed_remarks, setCompletedRemarks] = useState("");
+  const [nextServiceDate, setNextServiceDate] = useState("");
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchDate, setSearchDate] = useState("");
@@ -1299,17 +1342,11 @@ const Dashboard = () => {
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState(false);
   const [paymentHistoryData, setPaymentHistoryData] = useState(null);
 
-  // ⭐ NEW: Motor Details Popup State
-  const [showMotorPopup, setShowMotorPopup] = useState(false);
-  const [selectedMotorDetails, setSelectedMotorDetails] = useState(null);
-  const [showMotorVariantModal, setShowMotorVariantModal] = useState(false);
-  const [selectedMotorVariant, setSelectedMotorVariant] = useState(null);
 
   /* --- Scroll Refs for Modals --- */
   const paymentModalRef = useScrollToRef(showPaymentModal);
   const paymentHistoryModalRef = useScrollToRef(showPaymentHistoryModal);
   const addJobModalRef = useScrollToRef(showAddJobModal);
-  const motorVariantModalRef = useScrollToRef(showMotorVariantModal);
 
   const [newJob, setNewJob] = useState({
     complaint_no: "",
@@ -1330,6 +1367,14 @@ const Dashboard = () => {
   const [selectedAdditionalProducts, setSelectedAdditionalProducts] = useState([]);
   const [additionalProductError, setAdditionalProductError] = useState("");
 
+  // ✅ NEW: Staff Incentive state
+  const [staffIncentive, setStaffIncentive] = useState("");
+
+  // ✅ NEW: Expired / Scrap Items collected from customer
+  const [expiredItems, setExpiredItems] = useState([]);
+  const [newExpiredItem, setNewExpiredItem] = useState({ name: "", buying_price: "" });
+  const [jobTypes, setJobTypes] = useState([]);
+
   // Toast notification state
   const [toast, setToast] = useState({ show: false, message: "", isError: false });
 
@@ -1343,9 +1388,10 @@ const Dashboard = () => {
   const [newAdditionalProduct, setNewAdditionalProduct] = useState({
     productName: "",
     quantity: 1,
-    discount_percent: 0,
-    brand_name: "", // ⭐ NEW
-    brand_id: null,  // ⭐ NEW
+    discount_value: 0,
+    discount_type: "percentage",
+    brand_name: "",
+    brand_id: null,
     serial_no: ""
   });
 
@@ -1361,11 +1407,16 @@ const Dashboard = () => {
     return stockItem?.minimum_price || 0;
   };
 
-  const calculateFinalPriceForAdditional = (sellingPrice, buyingPrice, discountPercent, minimumPrice = 0) => {
-    if (!discountPercent || discountPercent <= 0) {
+  const calculateFinalPriceForAdditional = (sellingPrice, buyingPrice, discountValue, discountType = "percentage", minimumPrice = 0) => {
+    if (!discountValue || discountValue <= 0) {
       return sellingPrice;
     }
-    const discountedPrice = sellingPrice - (sellingPrice * discountPercent / 100);
+    let discountedPrice = sellingPrice;
+    if (discountType === "percentage") {
+      discountedPrice = sellingPrice - (sellingPrice * discountValue / 100);
+    } else if (discountType === "amount") {
+      discountedPrice = sellingPrice - discountValue;
+    }
     // Check against minimum price first, then buying price
     if (minimumPrice > 0 && discountedPrice < minimumPrice) {
       return null; // Indicates discount is too high (below minimum price)
@@ -1376,23 +1427,20 @@ const Dashboard = () => {
     return parseFloat(discountedPrice.toFixed(2));
   };
 
-  const getMaxDiscountForAdditional = (sellingPrice, buyingPrice, minimumPrice = 0) => {
+  const getMaxDiscountForAdditional = (sellingPrice, buyingPrice, minimumPrice = 0, type = "percentage") => {
     if (!sellingPrice || sellingPrice <= 0) {
       return 0;
     }
-    // Calculate max discount based on minimum price if set
-    if (minimumPrice > 0 && sellingPrice > minimumPrice) {
-      return Math.floor(((sellingPrice - minimumPrice) / sellingPrice) * 100);
+    const minAllowedPrice = minimumPrice > 0 ? Math.max(minimumPrice, buyingPrice) : buyingPrice;
+    if (sellingPrice <= minAllowedPrice) return 0;
+    
+    if (type === "amount") {
+      return sellingPrice - minAllowedPrice;
     }
-    // Otherwise use buying price
-    if (!buyingPrice || sellingPrice <= buyingPrice) {
-      return 0;
-    }
-    return Math.floor(((sellingPrice - buyingPrice) / sellingPrice) * 100);
+    return Math.floor(((sellingPrice - minAllowedPrice) / sellingPrice) * 100);
   };
 
 
-    const [loadingMotorDetails, setLoadingMotorDetails] = useState(false);
 
 
   /* ================= FETCH COMPLAINTS ================= */
@@ -1411,6 +1459,19 @@ const Dashboard = () => {
   useEffect(() => {
     fetchComplaints();
   }, [fetchComplaints, refreshTriggers.staff, refreshTriggers.customers, refreshTriggers.booking, refreshTriggers.dashboard, refreshTriggers.stock]);
+
+  // Fetch job types for expired/scrap items dropdown
+  useEffect(() => {
+    const fetchJobTypes = async () => {
+      try {
+        const res = await api.get("job-types/");
+        setJobTypes(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error("Fetch job types error:", err);
+      }
+    };
+    fetchJobTypes();
+  }, []);
 
   // Fetch products and stock items for product purchase
   useEffect(() => {
@@ -1440,6 +1501,31 @@ const Dashboard = () => {
     };
 
     fetchProductsAndStock();
+  }, []);
+
+  useEffect(() => {
+    if (refreshTriggers.stock > 0) {
+      const fetchProductsAndStock = async () => {
+        try {
+          const productsRes = await api.get("products/");
+          setProducts(Array.isArray(productsRes.data) ? productsRes.data : []);
+          try {
+            const stockRes = await api.get("stocks/");
+            setStockItems(Array.isArray(stockRes.data) ? stockRes.data : []);
+          } catch (stockErr) {
+            try {
+              const stockRes = await api.get("stock-items/");
+              setStockItems(Array.isArray(stockRes.data) ? stockRes.data : []);
+            } catch (stockItemsErr) {
+              setStockItems([]);
+            }
+          }
+        } catch (err) {
+          console.error("Fetch products/stock error:", err);
+        }
+      };
+      fetchProductsAndStock();
+    }
   }, [refreshTriggers.stock]);
 
   /* ================= SAFE UNIQUE ID ================= */
@@ -1463,53 +1549,6 @@ const Dashboard = () => {
     return item.complaint_no;
   };
 
-  /* ================= MOTOR DETECTION ================= */
-  const isMotorItem = (item) => {
-    if (!item) return false;
-
-    // 1. Check job_type
-    if (item.job_type === 'motor_service' || item.job_type === 'motor_sale') return true;
-
-    // 2. Check product name in product_name (booked products)
-    try {
-      if (item.product_name) {
-        const pName = item.product_name;
-        const products = typeof pName === 'string'
-          ? (pName.startsWith('[') ? JSON.parse(pName) : null)
-          : pName;
-
-        if (Array.isArray(products)) {
-          if (products.some(p =>
-            (p.productName || p.name || '').toLowerCase().includes('motor') ||
-            p.motor_brand || p.isMotor || p.isMotorSale
-          )) return true;
-        } else if (typeof pName === 'string' && pName.toLowerCase().includes('motor')) {
-          return true;
-        }
-      }
-    } catch (e) { }
-
-    // 3. Check additional_product
-    try {
-      if (item.additional_product) {
-        const aProd = item.additional_product;
-        const addProds = typeof aProd === 'string'
-          ? (aProd.startsWith('[') ? JSON.parse(aProd) : null)
-          : aProd;
-
-        if (Array.isArray(addProds)) {
-          if (addProds.some(p =>
-            (p.productName || p.name || '').toLowerCase().includes('motor') ||
-            p.motor_brand || p.isMotor || p.isMotorSale
-          )) return true;
-        } else if (typeof aProd === 'string' && aProd.toLowerCase().includes('motor')) {
-          return true;
-        }
-      }
-    } catch (e) { }
-
-    return false;
-  };
 
   /* ================= ADD JOB ================= */
   const handleAddJob = async () => {
@@ -1578,6 +1617,10 @@ const Dashboard = () => {
         completed_remarks: completed_remarks,
       };
 
+      if (nextServiceDate) {
+        updateData.next_service_date = nextServiceDate;
+      }
+
       // Add booked product data if it exists
       if (hasBookedProduct) {
         updateData.product_name = currentComplaint.product_name;
@@ -1593,56 +1636,33 @@ const Dashboard = () => {
         updateData.additional_product_quantity = totalQty;
       }
 
+      // ✅ NEW: Add staff incentive
+      if (staffIncentive && parseFloat(staffIncentive) > 0) {
+        updateData.staff_incentive = parseFloat(staffIncentive);
+      }
+
+      // ✅ NEW: Add expired/scrap items collected from customer
+      const validExpiredItems = expiredItems.filter(ei => ei.name && ei.name.trim());
+      if (validExpiredItems.length > 0) {
+        updateData.expired_items = validExpiredItems;
+      }
+
       await api.put(`complaints/${id}/`, updateData);
-
-      // ⭐ STOCK REDUCTION LOGIC (ENHANCED)
-      // 1. Gather all products to reduce stock for
-      let productsToReduce = [];
-
-      // Add booked products (if any)
-      if (hasBookedProduct) {
-        const booked = parseBookedProducts(currentComplaint.product_name, currentComplaint.product_quantity);
-        productsToReduce = [...productsToReduce, ...booked];
-      }
-
-      // Add additional products
-      if (selectedAdditionalProducts.length > 0) {
-        productsToReduce = [...productsToReduce, ...selectedAdditionalProducts];
-      }
-
-      // 2. Reduce stock for each product
-      for (const prod of productsToReduce) {
-        const pName = prod.productName || prod.name || prod.product_name;
-        const stockItem = getStockItemForAdditional(pName);
-
-        if (stockItem) {
-          try {
-            // ⭐ Prepare payload with brand details for motor sales
-            const reducePayload = {
-              quantity: prod.quantity,
-              brand_id: prod.brand_id || prod.id || null,
-              brand_name: prod.brand_name || prod.motor_brand || prod.brand || null,
-              source: 'job_completion'
-            };
-
-            // Call stocks reduce API
-            await api.put(`stocks/${stockItem.id}/reduce/`, reducePayload);
-            console.log(`✅ Stock reduced for ${pName}`, reducePayload);
-          } catch (reduceErr) {
-            console.error(`❌ Stock reduction failed for ${pName}:`, reduceErr);
-            // Don't fail the entire completion if stock reduction fails
-          }
-        }
-      }
 
       setExpandedId(null);
       setPaymentMethod("");
       setclient_amount("");
       setCompletedRemarks("");
-      setSelectedAdditionalProducts([]); // Reset additional products
-      setAdditionalProductError(""); // Reset error
+      setNextServiceDate("");
+      setSelectedAdditionalProducts([]);
+      setStaffIncentive("");
+      setExpiredItems([]);
+      setNewExpiredItem({ name: "", buying_price: "" });
+      
+      // Refresh list to show updated status and history
       fetchComplaints();
-      alert("Completed!");
+      alert("✅ Job completed successfully! Stock updated.");
+
     } catch (err) {
       console.error(err);
       alert("Update Failed");
@@ -1668,7 +1688,11 @@ const Dashboard = () => {
   const openPaymentModal = (job) => {
     // Use grand_total from API directly (which is recalculated from product data)
     // This ensures consistency with Payment Due page
-    const calculatedGrandTotal = job.grand_total || 0;
+    
+    // Calculate expired items total
+    const expiredTotal = (job.expired_items || []).reduce((sum, ei) => sum + (parseFloat(ei.buying_price) || 0), 0);
+    
+    const calculatedGrandTotal = (job.grand_total || 0) - expiredTotal;
 
     // FIX: Use STORED DUE VALUE as source of truth
     // Priority: job.due_amount > payment_details.last_due_amount > (grand_total - amount_received)
@@ -1783,81 +1807,84 @@ const Dashboard = () => {
   };
 
   /* ================= FILTER + SEARCH ================= */
-  const filteredData = complaints
-    .filter((item) => {
-      // ⭐ FEATURE 5: Exclude initial records from Dashboard
-      // Initial records are created from Add Customer - they are not real jobs
-      if (item.is_initial === true) {
-        return false;
-      }
+  const filteredData = complaints.filter((item) => {
+    // 1. Exclude initial records
+    if (item.is_initial === true) return false;
 
-      const displayStatus = getDisplayStatus(item).toLowerCase();
+    // 2. Status Filtering
+    const displayStatus = getDisplayStatus(item).toLowerCase();
+    const validStatuses = ["pending", "assigned", "completed", "due", "overdue"];
+    
+    let passesTab = false;
+    if (searchQuery || filter === "all") {
+      passesTab = validStatuses.includes(displayStatus);
+    } else {
+      passesTab = displayStatus === filter;
+    }
 
-      // Only show complaints with these statuses
-      if (filter === "all") {
-        return displayStatus === "pending" || displayStatus === "assigned" || 
-               displayStatus === "completed" || displayStatus === "due" || displayStatus === "overdue";
-      }
+    if (!passesTab) return false;
 
-      return displayStatus === filter;
-    })
-    .filter((item) => {
-      // If no search filters are active, show all items
-      if (!searchQuery && !searchDate && !searchAmountFrom && !searchAmountTo) return true;
+    // 3. Search Filtering (if any search criteria active)
+    if (!searchQuery && !searchDate && !searchAmountFrom && !searchAmountTo) return true;
 
-      const q = searchQuery ? searchQuery.toLowerCase() : '';
+    const q = searchQuery ? searchQuery.toLowerCase().trim() : '';
+    
+    // Normalize phone numbers for search
+    const normalizePhone = (phone) => phone ? phone.toString().replace(/\D/g, '') : '';
+    // Only apply normalized phone matching if the query doesn't contain letters
+    const containsLetters = /[a-z]/i.test(q);
+    const searchNormalized = containsLetters ? '' : normalizePhone(q);
+    const phoneNormalized = normalizePhone(item.customer_phone || '');
+    const altPhoneNormalized = normalizePhone(item.alternate_number || '');
 
-      // Normalize phone numbers for search (remove +91, spaces, dashes)
-      const normalizePhone = (phone) => phone ? phone.replace(/\D/g, '') : '';
-      const searchNormalized = normalizePhone(q);
+    // Normalize IDs for fuzzy matching
+    const normalizeId = (id) => id ? id.toString().toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+    const idNormalized = normalizeId(item.complaint_no);
+    const searchIdNormalized = normalizeId(q);
 
-      const phoneNormalized = normalizePhone(item.customer_phone || '');
-      const altPhoneNormalized = normalizePhone(item.alternate_number || '');
-
-      // Use grand_total from backend API (already pre-computed)
-      const grandTotal = parseFloat(item.grand_total) || 0;
-
-      // Parse date for comparison
-      let itemDate = null;
-      if (item.date_created) {
-        try {
-          itemDate = new Date(item.date_created);
-        } catch (e) {
-          itemDate = null;
-        }
-      }
-
-      // Check date filter
-      let dateMatches = true;
-      if (searchDate && itemDate) {
-        const searchDateObj = new Date(searchDate);
-        const itemDateStr = itemDate.toISOString().split('T')[0];
-        const searchDateStr = searchDateObj.toISOString().split('T')[0];
+    // Date Filter
+    let dateMatches = true;
+    if (searchDate && item.date_created) {
+      try {
+        const itemDateStr = new Date(item.date_created).toISOString().split('T')[0];
+        const searchDateStr = new Date(searchDate).toISOString().split('T')[0];
         dateMatches = itemDateStr === searchDateStr;
+      } catch (e) {
+        dateMatches = false;
       }
+    }
 
-      // Check amount range filter
-      let amountMatches = true;
-      if (searchAmountFrom || searchAmountTo) {
-        const from = searchAmountFrom ? parseFloat(searchAmountFrom) : 0;
-        const to = searchAmountTo ? parseFloat(searchAmountTo) : Infinity;
-        amountMatches = grandTotal >= from && grandTotal <= to;
-      }
+    // Amount Filter
+    let amountMatches = true;
+    const grandTotal = parseFloat(item.grand_total) || 0;
+    if (searchAmountFrom || searchAmountTo) {
+      const from = searchAmountFrom ? parseFloat(searchAmountFrom) : 0;
+      const to = searchAmountTo ? parseFloat(searchAmountTo) : Infinity;
+      amountMatches = grandTotal >= from && grandTotal <= to;
+    }
 
-      // Text search matches
-      const textMatches = !q || (
-        (item.complaint_no?.toLowerCase() || '').includes(q) ||
-        (item.customer_name?.toLowerCase() || '').includes(q) ||
-        phoneNormalized.includes(searchNormalized) ||
-        altPhoneNormalized.includes(searchNormalized) ||
-        (item.product_name?.toLowerCase() || '').includes(q) ||
-        (item.status?.toLowerCase() || '').includes(q) ||
-        (item.address?.toLowerCase() || '').includes(q) ||
-        (item.assigned_staff?.toLowerCase() || '').includes(q)
-      );
+    // Text Search Filter
+    const textMatches = !q || (
+      (item.complaint_no?.toString().toLowerCase() || '').includes(q) ||
+      (searchIdNormalized && idNormalized.includes(searchIdNormalized)) ||
+      (item.customer_name?.toString().toLowerCase() || '').includes(q) ||
+      (searchNormalized && phoneNormalized.includes(searchNormalized)) ||
+      (searchNormalized && altPhoneNormalized.includes(searchNormalized)) ||
+      (item.product_name?.toString().toLowerCase() || '').includes(q) ||
+      (item.status?.toString().toLowerCase() || '').includes(q) ||
+      (item.address?.toString().toLowerCase() || '').includes(q) ||
+      (item.assigned_staff?.toString().toLowerCase() || '').includes(q) ||
+      (item.complaint_details?.toString().toLowerCase() || '').includes(q) ||
+      (item.remarks?.toString().toLowerCase() || '').includes(q) ||
+      (item.completed_remarks?.toString().toLowerCase() || '').includes(q) ||
+      (item.client_amount?.toString() || '').includes(q) ||
+      (item.grand_total?.toString() || '').includes(q) ||
+      (item.additional_product?.toString().toLowerCase() || '').includes(q) ||
+      (item.expired_items && JSON.stringify(item.expired_items).toLowerCase().includes(q))
+    );
 
-      return dateMatches && amountMatches && textMatches;
-    });
+    return dateMatches && amountMatches && textMatches;
+  });
 
   /* ================= COUNTS ================= */
   // ⭐ FEATURE 5: Exclude initial records from Dashboard counts
@@ -1908,21 +1935,6 @@ const Dashboard = () => {
     return null;
   };
 
-  // ⭐ NEW: Helper to identify if a product name refers to a motor
-  const isMotorProductName = (productName) => {
-    return (productName || "").toLowerCase().includes("motor");
-  };
-
-  // ⭐ NEW: Get motor brands for a specific product from stock items
-  const getMotorBrands = (productName) => {
-    const item = getStockItemForAdditional(productName);
-    if (!item || !item.motor_brands) return [];
-
-    return item.motor_brands.map(brandObj => ({
-      name: brandObj.brand_name || brandObj.brand,
-      id: brandObj.id || brandObj.uid || brandObj._id
-    })).filter(b => b.name);
-  };
 
   // Get stock item by product ID for more reliable matching
   const getStockItemByProductId = (productId) => {
@@ -1966,11 +1978,6 @@ const Dashboard = () => {
       return;
     }
 
-    // ⭐ Requirement: If it's a motor, must have a brand selected
-    if (isMotorProductName(newAdditionalProduct.productName) && !newAdditionalProduct.brand_name) {
-      setAdditionalProductError("Please select a brand for the motor");
-      return;
-    }
 
     // Check if product already exists (consider brand for motors)
     const exists = selectedAdditionalProducts.find(
@@ -1994,32 +2001,17 @@ const Dashboard = () => {
       return;
     }
 
-    // Get pricing - if motor, try to get brand-specific price
-    let sellingPrice = stockItem.selling_price || 0;
-    let buyingPrice = stockItem.buying_price || 0;
-    let minimumPrice = stockItem.minimum_price || 0;
 
-    // ⭐ BRAND SPECIFIC PRICING (NEW)
-    if (isMotorProductName(newAdditionalProduct.productName) && newAdditionalProduct.brand_name) {
-      const brandMatch = stockItem.motor_brands?.find(b =>
-        (b.brand_name || b.brand) === newAdditionalProduct.brand_name
-      );
-      if (brandMatch && brandMatch.pricing) {
-        sellingPrice = brandMatch.pricing.selling_price || sellingPrice;
-        buyingPrice = brandMatch.pricing.purchase_price || buyingPrice;
-        minimumPrice = brandMatch.pricing.minimum_price || minimumPrice;
-      }
-    }
-
-    const discountPercent = parseFloat(newAdditionalProduct.discount_percent) || 0;
+    const discountValue = parseFloat(newAdditionalProduct.discount_value) || 0;
 
     // Calculate final price with discount validation
     let finalPrice = sellingPrice;
-    if (discountPercent > 0) {
-      const calculatedPrice = calculateFinalPriceForAdditional(sellingPrice, buyingPrice, discountPercent, minimumPrice);
+    if (discountValue > 0) {
+      const calculatedPrice = calculateFinalPriceForAdditional(sellingPrice, buyingPrice, discountValue, newAdditionalProduct.discount_type || "percentage", minimumPrice);
       if (calculatedPrice === null) {
-        const maxDiscount = getMaxDiscountForAdditional(sellingPrice, buyingPrice, minimumPrice);
-        setAdditionalProductError(`Discount too high! Maximum allowed for this brand is ${maxDiscount}%.`);
+        const maxDiscount = getMaxDiscountForAdditional(sellingPrice, buyingPrice, minimumPrice, newAdditionalProduct.discount_type || "percentage");
+        const typeStr = newAdditionalProduct.discount_type === "amount" ? "₹" : "%";
+        setAdditionalProductError(`Discount too high! Maximum allowed for this brand is ${maxDiscount}${typeStr}.`);
         return;
       }
       finalPrice = calculatedPrice;
@@ -2032,14 +2024,14 @@ const Dashboard = () => {
         quantity: parseInt(newAdditionalProduct.quantity),
         selling_price: sellingPrice,
         buying_price: buyingPrice,
-        discount_percent: discountPercent,
+        discount_value: discountValue,
+        discount_type: newAdditionalProduct.discount_type || "percentage",
         final_price: finalPrice,
-        motor_brand: newAdditionalProduct.brand_name || null, // Map to existing motor_brand key for backward compatibility
         serial_no: newAdditionalProduct.serial_no || ""
       }
     ]);
     // Reset state
-    setNewAdditionalProduct({ productName: "", quantity: 1, discount_percent: 0, brand_name: "", brand_id: null, serial_no: "" });
+    setNewAdditionalProduct({ productName: "", quantity: 1, discount_value: 0, discount_type: "percentage", brand_name: "", brand_id: null, serial_no: "" });
     setAdditionalProductError("");
   };
 
@@ -2063,34 +2055,24 @@ const Dashboard = () => {
           selling_price: p.selling_price || 0,
           buying_price: p.buying_price || 0,
           // Handle both camelCase and snake_case for discount
-          discount_percent: p.discount_percent || p.discountPercent || 0,
+          discount_value: p.discount_value || p.discount_percent || p.discountPercent || 0,
+          discount_type: p.discount_type || "percentage",
           final_price: p.final_price || p.selling_price || 0,
-          // ⭐ NEW: Motor sales specific fields
-          isMotorSale: p.isMotorSale || false,
-          motorAmount: p.motorAmount || p.motor_amount || 0,
-          motor_brand: p.motor_brand || p.brand || null
+          final_price: p.final_price || p.selling_price || 0
         }));
 
-        // ⭐ FILTER: Exclude 'motor service' as it is a service, not a product
-        return products.filter(p => (p.productName || "").toLowerCase().trim() !== "motor service");
+        return products;
       }
       // If it's an object, return as single-item array
       const prodName = parsed.productName || parsed.name || additionalProductField;
-      if (prodName.toLowerCase().trim() === "motor service") {
-        return [];
-      }
 
       return [{
         productName: prodName,
-        quantity: parsed.quantity || 1,
-        motor_brand: parsed.motor_brand || parsed.brand || null
+        quantity: parsed.quantity || 1
       }];
     } catch (e) {
       // If JSON parsing fails, it's a legacy string format
-      if (additionalProductField && additionalProductField.toLowerCase().trim() === "motor service") {
-        return [];
-      }
-      return [{ productName: additionalProductField, quantity: 1, motor_brand: null }];
+      return [{ productName: additionalProductField, quantity: 1 }];
     }
   };
 
@@ -2106,89 +2088,47 @@ const Dashboard = () => {
           quantity: p.quantity || p.qty || 1,
           selling_price: p.selling_price || 0,
           buying_price: p.buying_price || 0,
-          // Handle both camelCase and snake_case for discount
-          discount_percent: p.discount_percent || p.discountPercent || 0,
-          final_price: p.final_price || p.selling_price || 0,
-          // ⭐ NEW: Motor sales specific fields
-          isMotorSale: p.isMotorSale || false,
-          motorAmount: p.motorAmount || p.motor_amount || 0,
-          motor_brand: p.motor_brand || p.brand || null
+          discount_value: p.discount_value || p.discount_percent || p.discountPercent || 0,
+          discount_type: p.discount_type || "percentage",
+          final_price: p.final_price || p.selling_price || 0
         }));
 
-        // ⭐ FILTER: Exclude 'motor service' as it is a service, not a product
-        return products.filter(p => (p.productName || "").toLowerCase().trim() !== "motor service");
+        return products;
       }
       // If it's an object, return as single-item array
       const prodObj = parsed;
       const productName = prodObj.productName || prodObj.name || productNameField;
 
-      // ⭐ FILTER: Exclude 'motor service' as it is a service, not a product
-      if (productName.toLowerCase().trim() === "motor service") {
-        return [];
-      }
 
       return [{
         productName: productName,
-        quantity: prodObj.quantity || productQuantity || 1,
-        motor_brand: prodObj.motor_brand || prodObj.brand || null
+        quantity: prodObj.quantity || productQuantity || 1
       }];
     } catch (e) {
       // If JSON parsing fails, it's a legacy string format
-      // ⭐ FILTER: Exclude 'motor service' as it is a service, not a product
-      if (productNameField && productNameField.toLowerCase().trim() === "motor service") {
-        return [];
-      }
-      return [{ productName: productNameField, quantity: productQuantity || 1, motor_brand: null }];
+      return [{ productName: productNameField, quantity: productQuantity || 1 }];
     }
   };
 
-  // ⭐ NEW: Format motor service data for display
-  const formatMotorServiceDisplay = (productNameField) => {
-    if (!productNameField) return null;
-    try {
-      const parsed = JSON.parse(productNameField);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const firstItem = parsed[0];
-        const productName = firstItem.productName || firstItem.name || firstItem.product_name || 'Motor';
-        const quantity = firstItem.quantity || firstItem.qty || 1;
-        return {
-          productName: productName,
-          quantity: quantity
-        };
-      }
-      return null;
-    } catch (e) {
-      // Not JSON, return as-is
-      return { productName: productNameField, quantity: 1 };
-    }
-  };
 
   // Get price for a product from stock (with discount support)
   const getProductPrice = (productName, productData = {}) => {
-    // ⭐ Handle motor sales - return motorAmount if it's a motor sale
-    // Check both isMotorSale flag and motorAmount field
-    const isMotorSale = productData.isMotorSale || (productData.motorAmount && productName?.toLowerCase().includes('motor'));
-    const motorAmount = productData.motorAmount || productData.motor_amount;
-
-    if (isMotorSale && motorAmount) {
-      let motorPrice = parseFloat(motorAmount);
-      // Apply discount if available for motor sales - handle both camelCase and snake_case
-      const discountPercent = productData.discount_percent || productData.discountPercent || 0;
-      if (discountPercent > 0) {
-        const discountAmount = motorPrice * (discountPercent / 100);
-        motorPrice = motorPrice - discountAmount;
-      }
-      return motorPrice;
-    }
     // Use final_price if available (product already has discount applied)
     if (productData.final_price !== undefined && productData.final_price > 0) {
       return productData.final_price;
     }
     // Handle discount for regular products
-    const discountPercent = productData.discount_percent || productData.discountPercent || 0;
-    if (discountPercent > 0 && productData.selling_price) {
+    const discountValue = productData.discount_value || productData.discount_percent || productData.discountPercent || 0;
+    const discountType = productData.discount_type || "percentage";
+    
+    if (discountValue > 0 && productData.selling_price) {
       const sellingPrice = parseFloat(productData.selling_price);
-      const discountAmount = sellingPrice * (discountPercent / 100);
+      let discountAmount = 0;
+      if (discountType === "percentage") {
+        discountAmount = sellingPrice * (discountValue / 100);
+      } else if (discountType === "amount") {
+        discountAmount = discountValue;
+      }
       return sellingPrice - discountAmount;
     }
     const stockItem = getStockItemForAdditional(productName);
@@ -2495,8 +2435,10 @@ const Dashboard = () => {
             {/* ⭐ Enhanced Payment History List */}
             <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
               {(() => {
-                const grandTotal = (paymentHistoryData || selectedJobForPayment).grand_total || 0;
-                const rawPayments = (paymentHistoryData || selectedJobForPayment).payment_details || [];
+                const jobData = paymentHistoryData || selectedJobForPayment;
+                const expiredTotal = (jobData.expired_items || []).reduce((sum, ei) => sum + (parseFloat(ei.buying_price) || 0), 0);
+                const grandTotal = (jobData.grand_total || 0) - expiredTotal;
+                const rawPayments = jobData.payment_details || [];
 
                 // STEP 1: Sort by date ASCENDING
                 const sortedPayments = [...rawPayments].sort((a, b) => {
@@ -2590,224 +2532,6 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* ⭐ NEW: Motor Details Popup */}
-      {showMotorPopup && selectedMotorDetails && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '20px',
-            width: '90%',
-            maxWidth: '800px',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            padding: '32px'
-          }}>
-            {/* Header */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '24px',
-              paddingBottom: '16px',
-              borderBottom: '1.5px solid #E5E7EB'
-            }}>
-              <h2 style={{
-                fontFamily: "'Syne', sans-serif",
-                fontSize: '22px',
-                fontWeight: 700,
-                color: '#1E1B4B',
-                margin: 0
-              }}>
-                🔧 Motor Details
-              </h2>
-              <button
-                onClick={() => {
-                  setShowMotorPopup(false);
-                  setSelectedMotorDetails(null);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#6B7280'
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {loadingMotorDetails ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>
-                Loading motor details...
-              </div>
-            ) : selectedMotorDetails ? (
-              <>
-                {/* Motor Info Grid */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '16px',
-                  marginBottom: '24px'
-                }}>
-                  <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '10px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: '4px' }}>
-                      Complaint ID
-                    </div>
-                    <div style={{ fontSize: '14px', fontWeight: 500, color: '#F57C00' }}>
-                      {selectedMotorDetails.complaint_id || '-'}
-                    </div>
-                  </div>
-                  <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '10px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: '4px' }}>
-                      Job Type
-                    </div>
-                    <div style={{ fontSize: '14px', fontWeight: 500, color: selectedMotorDetails.job_type === 'motor_sale' ? '#16A34A' : '#2563EB' }}>
-                      {selectedMotorDetails.job_type === 'motor_sale' ? 'Motor Sales' : selectedMotorDetails.job_type === 'motor_service' ? 'Motor Service' : '-'}
-                    </div>
-                  </div>
-                  <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '10px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: '4px' }}>
-                      Company Name
-                    </div>
-                    <div style={{ fontSize: '14px', fontWeight: 500, color: '#1E1B4B' }}>
-                      {selectedMotorDetails.company_name || '-'}
-                    </div>
-                  </div>
-                  <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '10px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: '4px' }}>
-                      Motor Make
-                    </div>
-                    <div style={{ fontSize: '14px', fontWeight: 500, color: '#1E1B4B' }}>
-                      {selectedMotorDetails.motor_make || '-'}
-                    </div>
-                  </div>
-                  <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '10px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: '4px' }}>
-                      Serial Number
-                    </div>
-                    <div style={{ fontSize: '14px', fontWeight: 500, color: '#1E1B4B' }}>
-                      {selectedMotorDetails.serial_no || '-'}
-                    </div>
-                  </div>
-                  <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '10px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: '4px' }}>
-                      KW / HP
-                    </div>
-                    <div style={{ fontSize: '14px', fontWeight: 500, color: '#1E1B4B' }}>
-                      {selectedMotorDetails.kw || '-'} / {selectedMotorDetails.hp || '-'}
-                    </div>
-                  </div>
-                  {selectedMotorDetails.motor_amount && (
-                    <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '10px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: '4px' }}>
-                        Motor Amount
-                      </div>
-                      <div style={{ fontSize: '14px', fontWeight: 500, color: '#16A34A' }}>
-                        ₹{selectedMotorDetails.motor_amount}
-                      </div>
-                    </div>
-                  )}
-                  {selectedMotorDetails.discount_percent && (
-                    <div style={{ padding: '12px', background: '#FEF2F2', borderRadius: '10px', marginTop: '8px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: '4px' }}>
-                        Discount
-                      </div>
-                      <div style={{ fontSize: '14px', fontWeight: 500, color: '#DC2626' }}>
-                        {selectedMotorDetails.discount_percent}% (₹{Math.round(selectedMotorDetails.motor_amount * selectedMotorDetails.discount_percent / 100)})
-                      </div>
-                    </div>
-                  )}
-                  {selectedMotorDetails.discount_percent && (
-                    <div style={{ padding: '12px', background: '#F0FDF4', borderRadius: '10px', marginTop: '8px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: '4px' }}>
-                        Final Amount
-                      </div>
-                      <div style={{ fontSize: '16px', fontWeight: 600, color: '#16A34A' }}>
-                        ₹{Math.round(selectedMotorDetails.motor_amount - (selectedMotorDetails.motor_amount * selectedMotorDetails.discount_percent / 100))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Additional Details */}
-                {selectedMotorDetails.rpm && (
-                  <div style={{ marginBottom: '16px' }}>
-                    <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#1E1B4B', marginBottom: '8px' }}>Additional Details</h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-                      <div style={{ padding: '8px', background: '#F9FAFB', borderRadius: '6px' }}>
-                        <div style={{ fontSize: '10px', color: '#6B7280' }}>RPM</div>
-                        <div style={{ fontSize: '13px', fontWeight: 500 }}>{selectedMotorDetails.rpm}</div>
-                      </div>
-                      <div style={{ padding: '8px', background: '#F9FAFB', borderRadius: '6px' }}>
-                        <div style={{ fontSize: '10px', color: '#6B7280' }}>No. of Slots</div>
-                        <div style={{ fontSize: '13px', fontWeight: 500 }}>{selectedMotorDetails.no_of_slots}</div>
-                      </div>
-                      <div style={{ padding: '8px', background: '#F9FAFB', borderRadius: '6px' }}>
-                        <div style={{ fontSize: '10px', color: '#6B7280' }}>Core Length</div>
-                        <div style={{ fontSize: '13px', fontWeight: 500 }}>{selectedMotorDetails.core_length}</div>
-                      </div>
-                      <div style={{ padding: '8px', background: '#F9FAFB', borderRadius: '6px' }}>
-                        <div style={{ fontSize: '10px', color: '#6B7280' }}>Connection</div>
-                        <div style={{ fontSize: '13px', fontWeight: 500 }}>{selectedMotorDetails.connection}</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Remarks */}
-                {selectedMotorDetails.remarks && (
-                  <div style={{ padding: '16px', background: '#F9FAFB', borderRadius: '10px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', marginBottom: '8px' }}>
-                      Remarks
-                    </div>
-                    <div style={{ fontSize: '14px', color: '#1E1B4B', whiteSpace: 'pre-wrap' }}>
-                      {selectedMotorDetails.remarks}
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-                No motor details found for this job.
-              </div>
-            )}
-
-            {/* Close Button */}
-            <div style={{ marginTop: '24px', textAlign: 'center' }}>
-              <button
-                onClick={() => {
-                  setShowMotorPopup(false);
-                  setSelectedMotorDetails(null);
-                }}
-                style={{
-                  padding: '12px 32px',
-                  background: '#5B4FE9',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ADD JOB MODAL */}
       {showAddJobModal && (
@@ -2826,13 +2550,19 @@ const Dashboard = () => {
           <h1 className="dashboard-page-title">Service <em>Dashboard</em></h1>
           <div className="dashboard-search-container">
             <div className="dashboard-search-wrap">
-              <FiSearch />
-              <input
-                type="text"
-                placeholder="Search complaints…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              <div style={{ position: 'relative' }}>
+                <FiSearch className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search complaints…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <button className="search-btn">
+                <FiSearch />
+                <span>Search</span>
+              </button>
             </div>
             <div className="dashboard-advanced-search">
               <div className="advanced-search-row">
@@ -2919,10 +2649,6 @@ const Dashboard = () => {
                   >
                     <span className="card-title">
                       {item.complaint_no}
-                      {/* ⭐ NEW: Motor indicator */}
-                      {isMotorItem(item) && (
-                        <span title="Motor Job" style={{ marginLeft: '6px', fontSize: '14px' }}>🔧</span>
-                      )}
                     </span>
 
                     <div
@@ -2986,20 +2712,6 @@ const Dashboard = () => {
                       />
                     )}
 
-                    {/* ⭐ NEW: Motor Service Label - for motor_service jobs */}
-                    {(item.job_type === 'motor_service') && (() => {
-                      // Use motor_details from API if available, otherwise fallback to product_name
-                      const motorCompany = item.motor_details?.company_name;
-                      const serviceType = motorCompany || 'Service';
-                      return (
-                        <InfoRow
-                          icon={<FiSmartphone />}
-                          label="Motor Service"
-                          value={`Company: ${serviceType}`}
-                          valueStyle={{ color: '#2563EB', fontWeight: 600 }}
-                        />
-                      );
-                    })()}
 
                     {item.remarks && (
                       <InfoRow
@@ -3158,198 +2870,10 @@ const Dashboard = () => {
                           <span>History</span>
                         </button>
 
-                        {/* View Motor Button - Unified Check for Completed Jobs */}
-                        {isMotorItem(item) ? (
-                          <button
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              const complaintId = item.complaint_no || item.complaintId || item.complaint_id;
-                              if (!complaintId || complaintId.trim() === '') {
-                                alert('Complaint ID not found for this job');
-                                return;
-                              }
-                              setLoadingMotorDetails(true);
-
-                              try {
-                                const response = await api.get(`motor-by-complaint/?complaint_id=${encodeURIComponent(complaintId)}`);
-                                if (response.data.success) {
-                                  const data = response.data.data;
-                                  if (data) {
-                                    const motorData = data;
-                                    const brandFound = motorData.brand_name || motorData.brand || motorData.motor_brand || 'N/A';
-
-                                    console.log(`[LOOP-CLOSURE] Render Modal for: ${brandFound}`, motorData);
-
-                                    // Map data to the unified Specification State (Supporting Nested & Flat Fallback)
-                                    const spec = motorData.specification || {};
-                                    const pricing = motorData.pricing || {};
-
-                                    setSelectedMotorVariant({
-                                      brand: brandFound,
-                                      specification: {
-                                        horsepower: spec.hp || spec.horsepower || motorData.hp || motorData.horsepower || 'N/A',
-                                        hp: spec.hp || spec.horsepower || motorData.hp || motorData.horsepower || 'N/A',
-                                        phase: spec.phase || motorData.phase || 'Single',
-                                        voltage: spec.voltage || motorData.voltage || 'N/A',
-                                        rpm: spec.rpm || motorData.rpm || 'N/A',
-                                        motor_type: spec.motor_type || motorData.motor_type || 'N/A',
-                                        warranty: spec.warranty || motorData.warranty || 'N/A',
-                                        motor_make: spec.motor_make || motorData.motor_make || brandFound,
-                                        company_name: spec.company_name || motorData.company_name || brandFound,
-                                        serial_no: spec.serial_no || motorData.serial_no || 'N/A',
-                                        kw: spec.kw || motorData.kw || 'N/A',
-                                        no_of_slots: spec.no_of_slots || motorData.no_of_slots || 'N/A',
-                                        core_length: spec.core_length || motorData.core_length || 'N/A',
-                                        connection: spec.connection || motorData.connection || 'Delta',
-                                        swg: spec.swg || motorData.swg || 'N/A',
-                                        load_current: spec.load_current || motorData.load_current || 'N/A',
-                                        total_set: spec.total_set || motorData.total_set || 'N/A',
-                                        total_weight: spec.total_weight || motorData.total_weight || 'N/A',
-                                        resistance_value: spec.resistance_value || motorData.resistance_value || 'N/A',
-                                        winder_name: spec.winder_name || motorData.winder_name || 'N/A',
-                                        remarks: spec.remarks || motorData.remarks || '',
-                                        winding_details: Array.isArray(spec.winding_details) ? spec.winding_details : (Array.isArray(motorData.winding_details) ? motorData.winding_details : [])
-                                      },
-                                      pricing: {
-                                        supplier: pricing.supplier || motorData.supplier || 'N/A',
-                                        purchase_date: pricing.purchase_date || motorData.purchase_date || 'N/A',
-                                        purchase_price: pricing.purchase_price || motorData.purchase_price || 0,
-                                        selling_price: pricing.selling_price || motorData.selling_price || motorData.motor_amount || 0,
-                                        minimum_price: pricing.minimum_price || motorData.minimum_price || 0
-                                      }
-                                    });
-                                    setShowMotorVariantModal(true);
-                                  }
-                                } else {
-                                  alert('Motor details not found: ' + (response.data.message || 'Unknown error'));
-                                }
-                              } catch (error) {
-                                console.error('Error fetching motor details:', error);
-                                alert('Error fetching motor details: ' + error.message);
-                              } finally {
-                                setLoadingMotorDetails(false);
-                              }
-                            }}
-                            style={{
-                              background: '#F57C00',
-                              color: 'white',
-                              border: 'none',
-                              padding: '6px 8px',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '4px',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              width: '100%'
-                            }}
-                            title="View Motor Details"
-                          >
-                            🔧
-                            <span>Motor</span>
-                          </button>
-                        ) : null}
 
                       </div>
                     )}
 
-                    {/* Motor Button for pending jobs - Unified Check */}
-                    {isPending && isMotorItem(item) && (
-                      <div style={{ marginTop: '8px' }}>
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            const complaintId = item.complaint_no || item.complaintId || item.complaint_id;
-                            if (!complaintId || complaintId.trim() === '') {
-                              alert('Complaint ID not found for this job');
-                              return;
-                            }
-                            setLoadingMotorDetails(true);
-
-                            try {
-                              const response = await api.get(`motor-by-complaint/?complaint_id=${encodeURIComponent(complaintId)}`);
-                              if (response.data.success) {
-                                const data = response.data.data;
-                                console.log('Motor Data (Pending) Received:', data);
-
-                                if (data) {
-                                  const motorData = data;
-                                  const brandFound = motorData.brand_name || motorData.brand || motorData.motor_brand || 'N/A';
-                                  console.log(`[LOOP-CLOSURE] Render Pending Modal for: ${brandFound}`, motorData);
-
-                                  // Map data to the unified Specification State (Supporting Nested & Flat Fallback)
-                                  const spec = motorData.specification || {};
-                                  const pricing = motorData.pricing || {};
-
-                                  setSelectedMotorVariant({
-                                    brand: brandFound,
-                                    specification: {
-                                      horsepower: spec.hp || spec.horsepower || motorData.hp || motorData.horsepower || 'N/A',
-                                      hp: spec.hp || spec.horsepower || motorData.hp || motorData.horsepower || 'N/A',
-                                      phase: spec.phase || motorData.phase || 'Single',
-                                      voltage: spec.voltage || motorData.voltage || 'N/A',
-                                      rpm: spec.rpm || motorData.rpm || 'N/A',
-                                      motor_type: spec.motor_type || motorData.motor_type || 'N/A',
-                                      warranty: spec.warranty || motorData.warranty || 'N/A',
-                                      motor_make: spec.motor_make || motorData.motor_make || brandFound,
-                                      serial_no: spec.serial_no || motorData.serial_no || 'N/A',
-                                      kw: spec.kw || motorData.kw || 'N/A',
-                                      no_of_slots: spec.no_of_slots || motorData.no_of_slots || 'N/A',
-                                      core_length: spec.core_length || motorData.core_length || 'N/A',
-                                      connection: spec.connection || motorData.connection || 'Delta',
-                                      swg: spec.swg || motorData.swg || 'N/A',
-                                      load_current: spec.load_current || motorData.load_current || 'N/A',
-                                      total_set: spec.total_set || motorData.total_set || 'N/A',
-                                      total_weight: spec.total_weight || motorData.total_weight || 'N/A',
-                                      resistance_value: spec.resistance_value || motorData.resistance_value || 'N/A',
-                                      winder_name: spec.winder_name || motorData.winder_name || 'N/A',
-                                      remarks: spec.remarks || motorData.remarks || '',
-                                      winding_details: Array.isArray(spec.winding_details) ? spec.winding_details : (Array.isArray(motorData.winding_details) ? motorData.winding_details : [])
-                                    },
-                                    pricing: {
-                                      supplier: pricing.supplier || motorData.supplier || 'N/A',
-                                      purchase_date: pricing.purchase_date || motorData.purchase_date || 'N/A',
-                                      purchase_price: pricing.purchase_price || motorData.purchase_price || 0,
-                                      selling_price: pricing.selling_price || motorData.selling_price || motorData.motor_amount || 0,
-                                      minimum_price: pricing.minimum_price || motorData.minimum_price || 0
-                                    }
-                                  });
-                                  setShowMotorVariantModal(true);
-                                }
-                              } else {
-                                alert('Motor details not found: ' + (response.data.message || 'Unknown error'));
-                              }
-                            } catch (error) {
-                              console.error('Error fetching motor details:', error);
-                              alert('Error fetching motor details: ' + error.message);
-                            } finally {
-                              setLoadingMotorDetails(false);
-                            }
-                          }}
-                          style={{
-                            background: '#F57C00',
-                            color: 'white',
-                            border: 'none',
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px',
-                            fontWeight: '600',
-                            fontSize: '10px',
-                            width: '100%'
-                          }}
-                          title="View Motor Details"
-                        >
-                          🔧
-                          <span>View Motor</span>
-                        </button>
-                      </div>
-                    )}
 
                     {/* Total Products Purchased - Only for completed jobs */}
                     {!isPending && (
@@ -3370,23 +2894,19 @@ const Dashboard = () => {
                         {item.product_name && (() => {
                           let bookedProds = parseBookedProducts(item.product_name, item.product_quantity);
 
-                          // Hide the serviced motor from purchased products since it's already shown in the Motor Details modal
-                          if (item.job_type === 'motor_service' || item.job_category === 'motor_service') {
-                            bookedProds = bookedProds.filter(prod => !prod.productName.toLowerCase().includes('motor:'));
-                          }
 
                           if (bookedProds.length === 0) return null;
 
                           return bookedProds.map((prod, idx) => {
                             const price = getProductPrice(prod.productName, prod);
                             const subtotal = price * prod.quantity;
-                            const hasDiscount = prod.discount_percent && prod.discount_percent > 0;
+                            const hasDiscount = (prod.discount_value && prod.discount_value > 0) || (prod.discount_percent && prod.discount_percent > 0);
                             return (
                               <div key={`booked-${idx}`} className="product-detail-row booked">
                                 <span className="product-detail-name">
                                   {prod.productName}
                                   {prod.motor_brand && <span style={{ color: '#6366f1', fontSize: '11px', fontWeight: '700', marginLeft: '5px' }}>({prod.motor_brand})</span>}
-                                  {hasDiscount && <span style={{ color: '#f59e0b', fontSize: '10px', marginLeft: '4px' }}>(-{prod.discount_percent}%)</span>}
+                                  {hasDiscount && <span style={{ color: '#f59e0b', fontSize: '10px', marginLeft: '4px' }}>(-{prod.discount_value || prod.discount_percent}{prod.discount_type === 'amount' ? '₹' : '%'})</span>}
                                 </span>
                                 <span className="product-detail-qty">{prod.quantity}</span>
                                 <span className="product-detail-price">
@@ -3406,13 +2926,13 @@ const Dashboard = () => {
                           return additionalProds.map((prod, idx) => {
                             const price = getProductPrice(prod.productName, prod);
                             const subtotal = price * prod.quantity;
-                            const hasDiscount = prod.discount_percent && prod.discount_percent > 0;
+                            const hasDiscount = (prod.discount_value && prod.discount_value > 0) || (prod.discount_percent && prod.discount_percent > 0);
                             return (
                               <div key={`additional-${idx}`} className="product-detail-row additional">
                                 <span className="product-detail-name">
                                   {prod.productName}
                                   {prod.motor_brand && <span style={{ color: '#6366f1', fontSize: '11px', fontWeight: '700', marginLeft: '5px' }}>({prod.motor_brand})</span>}
-                                  {hasDiscount && <span style={{ color: '#f59e0b', fontSize: '10px', marginLeft: '4px' }}>(-{prod.discount_percent}%)</span>}
+                                  {hasDiscount && <span style={{ color: '#f59e0b', fontSize: '10px', marginLeft: '4px' }}>(-{prod.discount_value || prod.discount_percent}{prod.discount_type === 'amount' ? '₹' : '%'})</span>}
                                 </span>
                                 <span className="product-detail-qty">{prod.quantity}</span>
                                 <span className="product-detail-price">
@@ -3425,6 +2945,26 @@ const Dashboard = () => {
                             );
                           });
                         })()}
+
+                        {/* Expired Items Collected */}
+                        {item.expired_items && item.expired_items.length > 0 && (
+                          <>
+                            <div className="product-detail-row" style={{ background: 'rgba(220, 38, 38, 0.05)', fontWeight: '700', color: '#dc2626', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              <span>Expired Items Collected (-)</span>
+                              <span></span>
+                              <span></span>
+                              <span style={{ textAlign: 'right' }}>Value</span>
+                            </div>
+                            {item.expired_items.map((ei, idx) => (
+                              <div key={`expired-${idx}`} className="product-detail-row" style={{ background: 'rgba(220, 38, 38, 0.02)', color: '#991b1b' }}>
+                                <span className="product-detail-name">{ei.name}</span>
+                                <span className="product-detail-qty">-</span>
+                                <span className="product-detail-price">-</span>
+                                <span className="product-detail-subtotal" style={{ color: '#dc2626' }}>-₹{parseFloat(ei.buying_price || 0).toFixed(2)}</span>
+                              </div>
+                            ))}
+                          </>
+                        )}
 
                         {/* Totals Section - show when products exist OR client_amount exists */}
                         {(() => {
@@ -3452,16 +2992,15 @@ const Dashboard = () => {
                             // Get client amount (service charge)
                             const clientAmount = item.client_amount ? parseFloat(item.client_amount) : 0;
 
-                            // ⭐ NEW: Extract motor_total from API response for motor sales
-                            // This accounts for the motor amount that might not be in the product list
-                            const motorTotal = parseFloat(item.motor_total) || 0;
+                            // Calculate expired items total
+                            const expiredTotal = (item.expired_items || []).reduce((sum, ei) => sum + (parseFloat(ei.buying_price) || 0), 0);
 
                             // ✅ FIX: Use grand_total from API (includes motor_total for motor sales)
                             // This ensures consistency with Payment Modal, Payment History, and Payment Due page
                             // Fallback to local calculation if API value is not available
-                            const grandTotal = parseFloat(item.grand_total) || (bookingTotal + additionalTotal + clientAmount + motorTotal);
+                            const grandTotal = (item.grand_total !== undefined && item.grand_total !== null && item.grand_total !== 0) ? parseFloat(item.grand_total) : (bookingTotal + additionalTotal + clientAmount - expiredTotal);
 
-                            return grandTotal > 0 ? (
+                            return (grandTotal > 0 || expiredTotal > 0) ? (
                               <div className="products-total-section">
                                 {bookingTotal > 0 && (
                                   <div className="total-line booking-total">
@@ -3481,10 +3020,10 @@ const Dashboard = () => {
                                     <span className="total-value">₹{clientAmount.toFixed(2)}</span>
                                   </div>
                                 )}
-                                {motorTotal > 0 && (
-                                  <div className="total-line motor-total">
-                                    <span>Motor Amount:</span>
-                                    <span className="total-value">₹{motorTotal.toFixed(2)}</span>
+                                {expiredTotal > 0 && (
+                                  <div className="total-line" style={{ color: '#dc2626', fontWeight: '600' }}>
+                                    <span>Expired Items Deduction:</span>
+                                    <span className="total-value">-₹{expiredTotal.toFixed(2)}</span>
                                   </div>
                                 )}
                                 <div className="total-line grand-total">
@@ -3641,8 +3180,8 @@ const Dashboard = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                   <span style={{ fontSize: '12px', fontWeight: 500 }}>{prod.productName}</span>
                                   <span style={{ fontSize: '11px', color: '#64748b' }}>x{prod.quantity}</span>
-                                  {prod.discount_percent > 0 && (
-                                    <span style={{ color: '#f59e0b', fontSize: '10px', background: '#fef3c7', padding: '1px 4px', borderRadius: '3px' }}>-{prod.discount_percent}%</span>
+                                  {(prod.discount_value > 0 || prod.discount_percent > 0) && (
+                                    <span style={{ color: '#f59e0b', fontSize: '10px', background: '#fef3c7', padding: '1px 4px', borderRadius: '3px' }}>-{prod.discount_value || prod.discount_percent}{prod.discount_type === 'amount' ? '₹' : '%'}</span>
                                   )}
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -3688,46 +3227,7 @@ const Dashboard = () => {
                             </select>
                           </div>
 
-                          {/* ⭐ NEW: Motor Brand Selection for Additional Products */}
-                          {isMotorProductName(newAdditionalProduct.productName) && (
-                            <div className="form-group" style={{ flex: 3, marginBottom: 0, minWidth: '150px' }}>
-                              <select
-                                className="form-select"
-                                style={{ fontSize: '12px', padding: '6px 8px', borderColor: '#7c5cbf', borderLeft: '4px solid #7c5cbf' }}
-                                value={newAdditionalProduct.brand_name}
-                                onChange={(e) => {
-                                  const bName = e.target.value;
-                                  const brands = getMotorBrands(newAdditionalProduct.productName);
-                                  const bObj = brands.find(b => b.name === bName);
-                                  setNewAdditionalProduct({
-                                    ...newAdditionalProduct,
-                                    brand_name: bName,
-                                    brand_id: bObj ? bObj.id : null
-                                  });
-                                }}
-                              >
-                                <option value="">Select Brand</option>
-                                {getMotorBrands(newAdditionalProduct.productName).map((brand, idx) => (
-                                  <option key={idx} value={brand.name}>{brand.name}</option>
-                                ))}
-                              </select>
-                            </div>
-                          )}
 
-                          {/* Serial No Input - Only for motor products with brand selected */}
-                          {isMotorProductName(newAdditionalProduct.productName) && newAdditionalProduct.brand_name && (
-                            <div className="form-group" style={{ flex: 2, marginBottom: 0, minWidth: '120px' }}>
-                              <label style={{ fontSize: '9px', display: 'block', marginBottom: '2px', color: '#B45309' }}>Serial No</label>
-                              <input
-                                type="text"
-                                className="form-input"
-                                placeholder="Enter serial no"
-                                style={{ fontSize: '12px', padding: '6px 8px', borderColor: '#F59E0B', backgroundColor: '#FFFBEB' }}
-                                value={newAdditionalProduct.serial_no || ""}
-                                onChange={(e) => setNewAdditionalProduct({ ...newAdditionalProduct, serial_no: e.target.value })}
-                              />
-                            </div>
-                          )}
 
                           <div className="form-group" style={{ flex: 1, marginBottom: 0, minWidth: '60px' }}>
                             <label style={{ fontSize: '9px', display: 'block', marginBottom: '2px', color: '#666' }}>Qty</label>
@@ -3749,47 +3249,60 @@ const Dashboard = () => {
                             />
                           </div>
 
-                          <div className="form-group" style={{ flex: 1, marginBottom: 0, minWidth: '60px' }}>
-                            <label style={{ fontSize: '9px', display: 'block', marginBottom: '2px', color: '#666' }}>Disc%</label>
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              className="form-input"
-                              style={{ fontSize: '12px', padding: '6px 8px', textAlign: 'center' }}
-                              value={newAdditionalProduct.discount_percent}
-                              onChange={(e) => {
-                                const discount = parseFloat(e.target.value) || 0;
+                          <div className="form-group" style={{ flex: 1.5, marginBottom: 0, minWidth: '80px', display: 'flex', flexDirection: 'column' }}>
+                            <label style={{ fontSize: '9px', display: 'block', marginBottom: '2px', color: '#666' }}>Disc</label>
+                            <div style={{ display: 'flex', gap: '2px' }}>
+                              <input
+                                type="number"
+                                min="0"
+                                className="form-input"
+                                style={{ fontSize: '12px', padding: '6px 4px', textAlign: 'center', flex: 2, minWidth: '40px' }}
+                                value={newAdditionalProduct.discount_value || ''}
+                                onChange={(e) => {
+                                  const discount = parseFloat(e.target.value) || 0;
 
-                                // Get prices based on brand if selected
-                                let sellingPrice = getSellingPrice(newAdditionalProduct.productName);
-                                let buyingPrice = getBuyingPriceForAdditional(newAdditionalProduct.productName);
-                                let minimumPrice = getMinimumPriceForAdditional(newAdditionalProduct.productName);
+                                  // Get prices based on brand if selected
+                                  let sellingPrice = getSellingPrice(newAdditionalProduct.productName);
+                                  let buyingPrice = getBuyingPriceForAdditional(newAdditionalProduct.productName);
+                                  let minimumPrice = getMinimumPriceForAdditional(newAdditionalProduct.productName);
 
-                                // Brand Specific overrides for validation
-                                if (isMotorProductName(newAdditionalProduct.productName) && newAdditionalProduct.brand_name) {
-                                  const stockItem = getStockItemForAdditional(newAdditionalProduct.productName);
-                                  const bMatch = stockItem?.motor_brands?.find(b => (b.brand_name || b.brand) === newAdditionalProduct.brand_name);
-                                  if (bMatch && bMatch.pricing) {
-                                    sellingPrice = bMatch.pricing.selling_price || sellingPrice;
-                                    buyingPrice = bMatch.pricing.purchase_price || buyingPrice;
-                                    minimumPrice = bMatch.pricing.minimum_price || minimumPrice;
+                                  const maxDiscount = getMaxDiscountForAdditional(sellingPrice, buyingPrice, minimumPrice, newAdditionalProduct.discount_type || "percentage");
+
+                                  // Validation check
+                                  if (discount > maxDiscount && maxDiscount > 0) {
+                                    const typeStr = newAdditionalProduct.discount_type === "amount" ? "₹" : "%";
+                                    showToast(`⚠️ Max discount for this variant is ${maxDiscount}${typeStr}.`, true);
+                                    setNewAdditionalProduct({ ...newAdditionalProduct, discount_value: maxDiscount });
+                                  } else {
+                                    setNewAdditionalProduct({ ...newAdditionalProduct, discount_value: discount });
                                   }
-                                }
-
-                                const maxDiscount = getMaxDiscountForAdditional(sellingPrice, buyingPrice, minimumPrice);
-
-                                // Validation check
-                                if (discount > maxDiscount && maxDiscount > 0) {
-                                  showToast(`⚠️ Max discount for this variant is ${maxDiscount}%.`, true);
-                                  setNewAdditionalProduct({ ...newAdditionalProduct, discount_percent: maxDiscount });
-                                } else {
-                                  setNewAdditionalProduct({ ...newAdditionalProduct, discount_percent: discount });
-                                }
-                              }}
-                              disabled={!newAdditionalProduct.productName}
-                              placeholder="0%"
-                            />
+                                }}
+                                disabled={!newAdditionalProduct.productName}
+                                placeholder="0"
+                              />
+                              <select
+                                className="form-input"
+                                style={{ fontSize: '11px', padding: '6px 2px', flex: 1, minWidth: '40px' }}
+                                value={newAdditionalProduct.discount_type || 'percentage'}
+                                onChange={(e) => {
+                                  const type = e.target.value;
+                                  let sellingPrice = getSellingPrice(newAdditionalProduct.productName);
+                                  let buyingPrice = getBuyingPriceForAdditional(newAdditionalProduct.productName);
+                                  let minimumPrice = getMinimumPriceForAdditional(newAdditionalProduct.productName);
+                                  const maxDiscount = getMaxDiscountForAdditional(sellingPrice, buyingPrice, minimumPrice, type);
+                                  
+                                  setNewAdditionalProduct({ 
+                                    ...newAdditionalProduct, 
+                                    discount_type: type,
+                                    discount_value: Math.min(newAdditionalProduct.discount_value || 0, maxDiscount > 0 ? maxDiscount : Infinity)
+                                  });
+                                }}
+                                disabled={!newAdditionalProduct.productName}
+                              >
+                                <option value="percentage">%</option>
+                                <option value="amount">₹</option>
+                              </select>
+                            </div>
                           </div>
 
                           <button
@@ -3819,15 +3332,6 @@ const Dashboard = () => {
                               let buyingPrice = stockItem.buying_price || 0;
                               let minimumPrice = stockItem.minimum_price || 0;
 
-                              // Brand Specific display
-                              if (isMotorProductName(newAdditionalProduct.productName) && newAdditionalProduct.brand_name) {
-                                const bMatch = stockItem.motor_brands?.find(b => (b.brand_name || b.brand) === newAdditionalProduct.brand_name);
-                                if (bMatch && bMatch.pricing) {
-                                  price = bMatch.pricing.selling_price || price;
-                                  buyingPrice = bMatch.pricing.purchase_price || buyingPrice;
-                                  minimumPrice = bMatch.pricing.minimum_price || minimumPrice;
-                                }
-                              }
 
                               const maxDiscount = getMaxDiscountForAdditional(price, buyingPrice, minimumPrice);
                               return (
@@ -3868,6 +3372,81 @@ const Dashboard = () => {
                         />
                       </div> */}
 
+                      {/* ✅ NEW: Staff Incentive Section */}
+                      <div style={{ marginTop: '10px', padding: '10px', background: '#fffbeb', borderRadius: '8px', border: '1px solid #fde68a' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#92400e', marginBottom: '6px' }}>💰 Staff Incentive / Commission</div>
+                        <input
+                          type="number"
+                          className="form-input"
+                          style={{ fontSize: '12px', padding: '6px 10px' }}
+                          placeholder="Enter incentive amount (₹)"
+                          value={staffIncentive}
+                          onChange={(e) => setStaffIncentive(e.target.value)}
+                          min="0"
+                        />
+                      </div>
+
+                      {/* ✅ NEW: Collected Expired / Scrap Items */}
+                      <div style={{ marginTop: '10px', padding: '10px', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#991b1b', marginBottom: '8px' }}>🔧 Expired/Scrap Items Collected from Customer</div>
+                        <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                          <select
+                            className="form-select"
+                            style={{ flex: 2, fontSize: '12px', padding: '6px 8px' }}
+                            value={newExpiredItem.name}
+                            onChange={(e) => setNewExpiredItem({ ...newExpiredItem, name: e.target.value })}
+                          >
+                            <option value="">Select Expired Item Type</option>
+                            {jobTypes.map((job) => (
+                              <option key={job.id} value={job.name}>
+                                {job.name}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ flex: 1, fontSize: '12px', padding: '6px 8px' }}
+                            placeholder="Buy price ₹"
+                            value={newExpiredItem.buying_price}
+                            onChange={(e) => setNewExpiredItem({ ...newExpiredItem, buying_price: e.target.value })}
+                            min="0"
+                          />
+                          <button
+                            type="button"
+                            style={{ padding: '6px 12px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap' }}
+                            onClick={() => {
+                              if (!newExpiredItem.name.trim()) return;
+                              setExpiredItems([...expiredItems, { ...newExpiredItem }]);
+                              setNewExpiredItem({ name: '', buying_price: '' });
+                            }}
+                          >+ Add</button>
+                        </div>
+                        {expiredItems.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {expiredItems.map((ei, idx) => (
+                              <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', padding: '5px 8px', borderRadius: '6px', border: '1px solid #fca5a5', fontSize: '11px' }}>
+                                <span style={{ fontWeight: 500 }}>{ei.name}</span>
+                                <span style={{ color: '#6b7280' }}>₹{ei.buying_price || 0}</span>
+                                <button type="button" onClick={() => setExpiredItems(expiredItems.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontWeight: 700 }}>✕</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ✅ NEW: Next Service Date for Reminders */}
+                      <div style={{ marginTop: '10px', padding: '10px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe', marginBottom: '16px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#1d4ed8', marginBottom: '6px' }}>📅 Next Service Date (For Reminder)</div>
+                        <input
+                          type="date"
+                          className="form-input"
+                          style={{ fontSize: '12px', padding: '6px 10px', width: '100%', boxSizing: 'border-box' }}
+                          value={nextServiceDate}
+                          onChange={(e) => setNextServiceDate(e.target.value)}
+                        />
+                      </div>
+
                       <button
                         className="button-primary complete-button"
                         onClick={() => handleComplete(getId(item), item.assigned_staff)}
@@ -3875,6 +3454,7 @@ const Dashboard = () => {
                         <FiCheckSquare />
                         <span>Mark Completed</span>
                       </button>
+
                     </div>
                   )}
                 </div>
@@ -3888,12 +3468,6 @@ const Dashboard = () => {
           )}
         </div>
       </div>
-      <MotorDetailsViewModal
-        ref={motorVariantModalRef}
-        isOpen={showMotorVariantModal}
-        onClose={() => setShowMotorVariantModal(false)}
-        motorData={selectedMotorVariant}
-      />
     </div>
   );
 };

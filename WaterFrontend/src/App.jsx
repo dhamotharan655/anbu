@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import Booking from './pages/Booking';
 import Staff from './pages/Staff';
+import AddStaff from './pages/AddStaff';
 import History from './pages/History';
 import Selectstaff from './pages/Selectstaff';
 import StaffPerformance from './pages/StaffPerformance';
@@ -21,11 +22,12 @@ import StockManagement from './pages/StockManagement/StockManagement';
 import { GlobalRefreshProvider } from './context/GlobalRefreshContext';
 import Invoice from './pages/Invoice';
 import InvoicesList from './pages/InvoicesList';
-import MotorDetails from './pages/MotorDetails/MotorDetails';
-import MotorHistory from './pages/MotorDetails/MotorHistory';
 import PaymentDue from './pages/PaymentDue';
 import Payroll from './pages/Payroll';
 import PendingMessages from './pages/PendingMessages';
+import BranchManagement from './pages/BranchManagement/BranchManagement';
+import ServiceReminders from './pages/ServiceReminders';
+
 
 function App() {
   return (
@@ -60,11 +62,22 @@ function App() {
                   <Staff />
                 </ProtectedRoute>
               } />
+              <Route path="/add-staff" element={
+                <ProtectedRoute page="staff">
+                  <AddStaff />
+                </ProtectedRoute>
+              } />
+              <Route path="/edit-staff/:id" element={
+                <ProtectedRoute page="staff">
+                  <AddStaff />
+                </ProtectedRoute>
+              } />
               <Route path="/history" element={
                 <ProtectedRoute page="history">
                   <History />
                 </ProtectedRoute>
               } />
+
               <Route path="/select-staff" element={<Selectstaff />} />
 
               <Route path="/add-customer" element={
@@ -103,19 +116,14 @@ function App() {
                   <InvoicesList />
                 </ProtectedRoute>
               } />
-              <Route path="/motor-details" element={
-                <ProtectedRoute page="motor-details">
-                  <MotorDetails />
-                </ProtectedRoute>
-              } />
-              <Route path="/motor-history" element={
-                <ProtectedRoute page="motor-history">
-                  <MotorHistory />
-                </ProtectedRoute>
-              } />
               <Route path="/payment-due" element={
                 <ProtectedRoute page="dashboard">
                   <PaymentDue />
+                </ProtectedRoute>
+              } />
+              <Route path="/service-reminders" element={
+                <ProtectedRoute page="dashboard">
+                  <ServiceReminders />
                 </ProtectedRoute>
               } />
               <Route path="/payroll" element={
@@ -124,6 +132,11 @@ function App() {
                 </ProtectedRoute>
               } />
               <Route path="/whatsapp-pending" element={<PendingMessages />} />
+              <Route path="/branch-management" element={
+                <ProtectedRoute page="admin">
+                  <BranchManagement />
+                </ProtectedRoute>
+              } />
             </Route>
           </Route>
 

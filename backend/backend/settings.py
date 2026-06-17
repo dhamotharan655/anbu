@@ -112,15 +112,15 @@ TEMPLATES = [
 from mongoengine import connect
 
 # connect(
-#     db="Ruban_electricals",  # your database name
+#     db="Ruban",  # your database name
 #     username="root",    # your MongoDB username
 #     password="Vien*$2000",  # your MongoDB password
-#     host="mongodb://root:Vien*$2000@vienstereoptic.com:27017/Ruban_electricals?authSource=admin",
+#     host="mongodb://root:Vien*$2000@vienstereoptic.com:27017/Ruban?authSource=admin",
 # )
 
 connect(
-    db="Ru",
-    host="mongodb://localhost:27017/Ru"
+    db="ruban_electricals",
+    host="mongodb://localhost:27017/ruban_electricals"
 )
 
 
@@ -142,12 +142,12 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # EMAIL_HOST_PASSWORD = 'Vien*$2025'         # App password, not your Gmail password
 # DEFAULT_FROM_EMAIL = 'noreply-vs@vienstereoptic.com'
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'ssanthanasariga@gmail.com'
-EMAIL_HOST_PASSWORD = 'tafm wuml rvde ruxi'
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = 'ssanthanasariga@gmail.com'
+# EMAIL_HOST_PASSWORD = 'tafm wuml rvde ruxi'
 
 
 # Database

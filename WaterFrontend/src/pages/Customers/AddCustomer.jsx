@@ -137,7 +137,7 @@ const AddCustomer = () => {
       for (const serviceUrl of services) {
         try {
           const response = await fetch(serviceUrl, {
-            headers: { 'User-Agent': 'RubanElectricals/1.0' }
+            headers: { 'User-Agent': 'AnbuEnterprises/1.0' }
           });
           
           if (!response.ok) continue;
@@ -355,7 +355,7 @@ const AddCustomer = () => {
               <FiUserPlus />
             </div>
             <div>
-              <h2 style={{ fontSize: '1.25rem', color: '#1e1b2e', margin: 0 }}>Customer Information</h2>
+              <h2 style={{ fontSize: '1.25rem', color: 'var(--color-primary)', margin: 0 }}>Customer Information</h2>
               <p className="modal-subtitle">Fill in all required fields marked with *</p>
             </div>
           </div>
@@ -492,10 +492,10 @@ const AddCustomer = () => {
                   max="100"
                 />
                 {selectedProduct.selling_price > 0 && (
-                  <div style={{ marginTop: '5px', fontSize: '12px', color: '#666' }}>
+                  <div style={{ marginTop: '5px', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                     <span>Selling Price: ₹{selectedProduct.selling_price}</span>
                     {formData.product_discount_percent > 0 && (
-                      <span style={{ marginLeft: '10px', color: '#f59e0b' }}>
+                      <span style={{ marginLeft: '10px', color: 'var(--color-gold-dark)' }}>
                         - {formData.product_discount_percent}% = ₹{(selectedProduct.selling_price * (1 - formData.product_discount_percent / 100)).toFixed(2)}
                       </span>
                     )}
@@ -582,7 +582,7 @@ const AddCustomer = () => {
               </span>
             )}
             {gpsLocation && !locationError && (
-              <span style={{ color: '#28a745', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+              <span style={{ color: '#15803d', fontSize: '12px', marginTop: '5px', display: 'block' }}>
                 ✓ GPS Location captured: {gpsLocation.latitude.toFixed(4)}, {gpsLocation.longitude.toFixed(4)}
               </span>
             )}
