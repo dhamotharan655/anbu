@@ -5,8 +5,8 @@
 // The API_BASE_URL should be the IP address of the computer running Django
 
 // Option 1: Use localhost (works only on same machine)
-export const API_BASE_URL = "http://localhost:8000/api/";
-// export const API_BASE_URL = "https://api-dhamotharan.naziyahcreed.com/api/";
+// export const API_BASE_URL = "http://localhost:8000/api/";
+export const API_BASE_URL = "https://api-dhamotharan.naziyahcreed.com/api/";
 
 // Option 2: Uncomment below and replace with your computer's IP for mobile testing
 // export const API_BASE_URL = "http://YOUR_IP_ADDRESS:8000/api/";
