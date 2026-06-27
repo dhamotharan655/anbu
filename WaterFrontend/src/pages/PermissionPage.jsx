@@ -261,7 +261,7 @@ const PermissionPage = () => {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ display: "flex", margin: "0 auto", background: "rgba(255,255,255,0.72)", backdropFilter: "blur(20px)", borderRadius: "100px", padding: "5px", border: "1px solid var(--color-border)", boxShadow: "0 4px 20px rgba(11, 102, 120, 0.1)", maxWidth: "360px" }}
+        style={{ display: "flex", margin: "0 auto", background: "rgba(255,255,255,0.72)", backdropFilter: "blur(20px)", borderRadius: "100px", padding: "5px", border: "1px solid var(--color-border)", boxShadow: "0 4px 20px rgba(11, 102, 120, 0.1)", maxWidth: "600px", width: "100%" }}
       >
         {tabs.map((tab) => (
           <button

@@ -128,6 +128,11 @@ connect(
     host="mongodb://13.204.145.55:27017/anbu-enterprises"
 )
 
+# connect(
+#     db="anbu-enterprises",
+#     host="mongodb://13.204.145.55:27017/anbu-enterprises"
+# )
+
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
