@@ -3,6 +3,7 @@ import api from "../api";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import logoImage from "../assets/main_logo.jpg";
+import anbuLogo from "../assets/anbu_text_logo.png";
 import { FiLogIn, FiUser, FiLock, FiEye, FiEyeOff, FiShield, FiZap, FiUsers, FiTrendingUp } from "react-icons/fi";
 
 const AdminLogin = () => {
@@ -288,26 +289,13 @@ const AdminLogin = () => {
                 }} />
               </div>
 
-              <h1 style={{
-                fontFamily: "'Fraunces', serif",
-                fontSize: "36px",
-                fontWeight: 600,
-                lineHeight: 1.15,
-                color: "white",
-                marginBottom: "8px",
-                letterSpacing: "-0.5px",
-              }}>
-                Anbu{" "}
-                <span style={{
-                  fontStyle: "italic",
-                  background: "linear-gradient(135deg, #f1b32a, #fad97a)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                }}>Enterprises</span>
-              </h1>
+              <div className="sidebar-title-styled" style={{ marginBottom: "24px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px" }}>
+                <img src={anbuLogo} alt="ANBU" style={{ height: "4.5rem", width: "auto", objectFit: "contain" }} />
+                <span className="styled-enterprises" style={{ fontSize: "1.6rem", marginTop: "-10px" }}>ENTERPRISES</span>
+                <span className="styled-sales-service" style={{ fontSize: "0.85rem", padding: "4px 10px", marginTop: "2px" }}>Sales & Service</span>
+              </div>
               <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "15px", marginBottom: "48px" }}>
-                Admin Control Portal — Sales &amp; Service
+                Admin Control Portal
               </p>
 
               {/* Feature list */}
@@ -370,6 +358,42 @@ const AdminLogin = () => {
             flexDirection: "column",
             justifyContent: "center",
           }}>
+
+            {/* Back to Home button */}
+            <div style={{ marginBottom: "28px" }}>
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "7px",
+                  fontSize: "13px",
+                  fontWeight: "700",
+                  color: "rgba(255,255,255,0.75)",
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  borderRadius: "100px",
+                  padding: "8px 18px",
+                  cursor: "pointer",
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  transition: "all 0.22s ease",
+                  letterSpacing: "0.01em",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.14)";
+                  e.currentTarget.style.color = "#fff";
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+                  e.currentTarget.style.color = "rgba(255,255,255,0.75)";
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)";
+                }}
+              >
+                ← Back to Home
+              </button>
+            </div>
 
             {/* Header */}
             <div style={{ marginBottom: "36px" }}>

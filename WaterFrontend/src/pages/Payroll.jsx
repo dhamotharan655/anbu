@@ -631,6 +631,15 @@ const styles = `
 const Payroll = () => {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
+  const [filterMode, setFilterMode] = useState('monthly'); // 'monthly' or 'custom'
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const d = new Date();
+    return d.toISOString().split('T')[0];
+  });
   const [payrollData, setPayrollData] = useState([]);
   const [payrollHistory, setPayrollHistory] = useState([]);
   const [rankingData, setRankingData] = useState([]);
@@ -670,7 +679,10 @@ const Payroll = () => {
 
   const fetchPayrollHistory = async () => {
     try {
-      const response = await api.get(`/payroll/history/?month=${month}&year=${year}`);
+      const url = filterMode === 'custom'
+        ? `/payroll/history/?start_date=${startDate}&end_date=${endDate}`
+        : `/payroll/history/?month=${month}&year=${year}`;
+      const response = await api.get(url);
       if (response.data.success) {
         setPayrollHistory(response.data.data);
       }
@@ -681,7 +693,10 @@ const Payroll = () => {
 
   const fetchRanking = async () => {
     try {
-      const response = await api.get(`/payroll/ranking/?month=${month}&year=${year}`);
+      const url = filterMode === 'custom'
+        ? `/payroll/ranking/?start_date=${startDate}&end_date=${endDate}`
+        : `/payroll/ranking/?month=${month}&year=${year}`;
+      const response = await api.get(url);
       if (response.data.success) {
         setRankingData(response.data.rankings);
       }
@@ -694,7 +709,10 @@ const Payroll = () => {
     setLoading(true);
     setMessage({ type: '', text: '' });
     try {
-      const response = await api.get(`/payroll/calculate/?month=${month}&year=${year}`);
+      const url = filterMode === 'custom'
+        ? `/payroll/calculate/?start_date=${startDate}&end_date=${endDate}`
+        : `/payroll/calculate/?month=${month}&year=${year}`;
+      const response = await api.get(url);
       console.log('Payroll API response:', response.data);
       if (response.data.success) {
         if (response.data.payroll && response.data.payroll.length > 0) {
@@ -861,11 +879,16 @@ const Payroll = () => {
         };
       });
 
-      const response = await api.post('/payroll/save/', {
+      const payload = {
         month,
         year,
         payroll: updatedPayrollData,
-      });
+      };
+      if (filterMode === 'custom') {
+        payload.start_date = startDate;
+        payload.end_date = endDate;
+      }
+      const response = await api.post('/payroll/save/', payload);
       if (response.data.success) {
         setMessage({ type: 'success', text: response.data.message });
         fetchPayrollHistory();
@@ -908,10 +931,30 @@ const Payroll = () => {
     setEditingId(null);
   };
 
+  const updatePayrollStatus = async (payrollId, newStatus) => {
+    try {
+      const response = await api.put('/payroll/update-status/', {
+        payroll_id: payrollId,
+        status: newStatus
+      });
+      if (response.data.success) {
+        setMessage({ type: 'success', text: 'Payroll status updated successfully' });
+        fetchPayrollHistory();
+      } else {
+        setMessage({ type: 'error', text: response.data.error || 'Failed to update status' });
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      setMessage({ type: 'error', text: 'Error updating payroll status' });
+    }
+  };
+
   const downloadPayslip = async (staff) => {
     try {
-      // Get full payroll details
-      const response = await api.get(`/payroll/by-staff/?staff_id=${staff.staff_id}&month=${month}&year=${year}`);
+      const url = (staff.start_date && staff.end_date)
+        ? `/payroll/by-staff/?staff_id=${staff.staff_id}&start_date=${staff.start_date}&end_date=${staff.end_date}`
+        : `/payroll/by-staff/?staff_id=${staff.staff_id}&month=${staff.month || month}&year=${staff.year || year}`;
+      const response = await api.get(url);
       if (response.data.success) {
         const data = response.data.data;
 
@@ -1961,7 +2004,7 @@ const Payroll = () => {
     } else if (activeTab === 'ranking') {
       fetchRanking();
     }
-  }, [activeTab, month, year]);
+  }, [activeTab, month, year, filterMode, startDate, endDate]);
 
   return (
     <div className="payroll-page">
@@ -2103,24 +2146,61 @@ const Payroll = () => {
 
           <div className="payroll-controls">
             <select
-              value={month}
-              onChange={(e) => setMonth(parseInt(e.target.value))}
+              value={filterMode}
+              onChange={(e) => setFilterMode(e.target.value)}
               className="payroll-select"
+              style={{ fontWeight: 'bold' }}
             >
-              {months.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
+              <option value="monthly">📅 Monthly Filter</option>
+              <option value="custom">📆 Custom Range</option>
             </select>
 
-            <select
-              value={year}
-              onChange={(e) => setYear(parseInt(e.target.value))}
-              className="payroll-select"
-            >
-              {years.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+            {filterMode === 'monthly' ? (
+              <>
+                <select
+                  value={month}
+                  onChange={(e) => setMonth(parseInt(e.target.value))}
+                  className="payroll-select"
+                >
+                  {months.map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={year}
+                  onChange={(e) => setYear(parseInt(e.target.value))}
+                  className="payroll-select"
+                >
+                  {years.map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--color-text)' }}>Start:</span>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="payroll-select"
+                    style={{ padding: '8px 12px' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--color-text)' }}>End:</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="payroll-select"
+                    style={{ padding: '8px 12px' }}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -2310,38 +2390,22 @@ const Payroll = () => {
         {/* Payroll History Tab */}
         {activeTab === 'history' && (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', flexWrap: 'wrap', justifyContent: 'space-between', width: '100%' }}>
               <h2 className="payroll-section-title" style={{ margin: 0 }}>Payroll History</h2>
-              <select
-                value={month}
-                onChange={(e) => setMonth(e.target.value)}
-                className="payroll-select"
-                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd' }}
-              >
-                {months.map(m => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
-              <select
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                className="payroll-select"
-                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd' }}
-              >
-                {years.map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
               <button
                 onClick={() => fetchPayrollHistory()}
                 className="btn-primary"
                 style={{ padding: '8px 16px', borderRadius: '6px' }}
               >
-                Search
+                🔄 Refresh History
               </button>
             </div>
             <p style={{ marginTop: '-10px', marginBottom: '20px', color: '#666', fontSize: '14px' }}>
-              Showing payroll history for: <strong>{months.find(m => m.value === parseInt(month))?.label} {year}</strong>
+              Showing payroll history for: <strong>
+                {filterMode === 'custom' 
+                  ? `${startDate} to ${endDate}`
+                  : `${months.find(m => m.value === parseInt(month))?.label} ${year}`}
+              </strong>
             </p>
             {payrollHistory.length > 0 ? (
               <div className="payroll-table-container">
@@ -2361,6 +2425,7 @@ const Payroll = () => {
                         <th>Incentive</th>
                         <th>Final Salary</th>
                         <th>Generated</th>
+                        <th>Status</th>
                         <th>Action</th>
                       </tr>
                     </thead>
@@ -2379,6 +2444,26 @@ const Payroll = () => {
                           <td style={{ color: '#16a34a', fontWeight: '600' }}>₹{record.total_incentives || 0}</td>
                           <td className="amount">₹{((record.total_salary || 0) + (record.bonus || 0) - (record.deduction || 0) + (record.total_incentives || 0)).toLocaleString()}</td>
                           <td style={{ fontSize: '12px' }}>{record.generated_at}</td>
+                          <td>
+                            <select
+                              value={record.status || 'paid'}
+                              onChange={(e) => updatePayrollStatus(record.id, e.target.value)}
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                border: '1px solid #ddd',
+                                fontSize: '13px',
+                                background: record.status === 'paid' ? '#e2f0d9' : record.status === 'stopped' ? '#fce4d6' : '#fff2cc',
+                                color: record.status === 'paid' ? '#385723' : record.status === 'stopped' ? '#c65911' : '#7f6000',
+                                fontWeight: 'bold',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <option value="paid">Paid</option>
+                              <option value="pending">Pending</option>
+                              <option value="stopped">Stop</option>
+                            </select>
+                          </td>
                           <td>
                             <button
                               onClick={() => downloadPayslip(record)}

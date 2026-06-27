@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import api from "../api";
 import { useNavigate } from "react-router-dom";
 import { useGlobalRefresh } from "../context/GlobalRefreshContext";
@@ -33,7 +34,10 @@ import {
   FiAlertCircle as FiAlert,
   FiFileText,
   FiPlus,
-  FiMinus
+  FiMinus,
+  FiCreditCard,
+  FiCheckCircle,
+  FiMapPin
 } from "react-icons/fi";
 import StockAlerts from "../components/StockAlerts";
 import { openWhatsAppWithDefaultMessage, generateStaffAssignmentMessage } from "../utils/whatsappUtils";
@@ -1142,11 +1146,11 @@ const styles = `
 
   /* Enhanced Products Display Styles - Compact */
   .products-purchased-section {
-    background: linear-gradient(135deg, rgba(11, 102, 120, 0.03), rgba(241, 179, 42, 0.03));
-    border: 1px solid rgba(11, 102, 120, 0.1);
-    border-radius: 8px;
-    overflow: hidden;
-    margin-top: 8px;
+    background: linear-gradient(135deg, rgba(11,102,120,0.02), rgba(241,179,42,0.02));
+    border: 1px solid rgba(11, 102, 120, 0.08);
+    border-radius: 14px;
+    margin-top: 12px;
+    padding: 16px 20px;
   }
 
   .products-purchased-header {
@@ -1286,6 +1290,616 @@ const styles = `
     background: rgba(245,158,11,0.08);
     color: #d97706;
   }
+
+  /* ============================================================
+     PAYMENT MODAL REDESIGN STYLES
+     ============================================================ */
+  .payment-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1.5px solid #f1f5f9;
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+  }
+  
+  .payment-modal-title {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .payment-modal-close {
+    background: #f1f5f9;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #64748b;
+    transition: all 0.2s ease;
+  }
+
+  .payment-modal-close:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    transform: rotate(90deg);
+  }
+
+  .payment-job-card {
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
+  }
+
+  .payment-job-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px 12px;
+  }
+
+  .payment-job-card-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .payment-job-card-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 3px;
+    font-weight: 700;
+  }
+
+  .payment-job-card-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .payment-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .payment-metric-box {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  }
+
+  .payment-metric-box.total {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1e40af;
+  }
+
+  .payment-metric-box.due {
+    background: #fff5f5;
+    border-color: #feb2b2;
+    color: #c53030;
+  }
+
+  .payment-metric-box.settled {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #065f46;
+  }
+
+  .payment-metric-label {
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0.8;
+    margin-bottom: 3px;
+  }
+
+  .payment-metric-value {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .payment-input-group {
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .payment-input-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .payment-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .payment-input-icon {
+    position: absolute;
+    left: 12px;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+    font-weight: 600;
+  }
+
+  .payment-input-field {
+    width: 100%;
+    padding: 8px 12px 8px 30px;
+    border-radius: 8px;
+    border: 1.5px solid #cbd5e1;
+    font-size: 14px;
+    color: #0f172a;
+    transition: all 0.2s ease;
+    background: #ffffff;
+    box-sizing: border-box;
+  }
+
+  .payment-input-field:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+
+  .payment-input-field:disabled {
+    background: #f1f5f9;
+    color: #64748b;
+    cursor: not-allowed;
+    border-color: #e2e8f0;
+  }
+
+  .payment-select-field {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1.5px solid #cbd5e1;
+    font-size: 14px;
+    color: #0f172a;
+    transition: all 0.2s ease;
+    background: #ffffff;
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+
+  .payment-select-field:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+
+  .payment-due-preview {
+    margin-top: 18px;
+    margin-bottom: 18px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+  }
+
+  .payment-due-preview-bar {
+    padding: 12px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+  }
+
+  .payment-due-preview-bar.due {
+    background: linear-gradient(135deg, #fff5f5, #ffebeb);
+    border: 1px solid #fecaca;
+    color: #991b1b;
+  }
+
+  .payment-due-preview-bar.settled {
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+  }
+
+  .payment-status-pill {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    display: inline-block;
+  }
+
+  .payment-status-pill.due {
+    background: #ef4444;
+    color: white;
+  }
+
+  .payment-status-pill.settled {
+    background: #10b981;
+    color: white;
+  }
+
+  .payment-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .payment-btn {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+
+  .payment-btn.cancel {
+    background: white;
+    border: 1.5px solid #cbd5e1;
+    color: #475569;
+  }
+
+  .payment-btn.cancel:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+    color: #1e293b;
+  }
+
+  .payment-btn.save {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    color: white;
+  }
+
+  .payment-btn.save:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.2);
+  }
+
+  .payment-btn.save:disabled {
+    background: #cbd5e1;
+    color: #94a3b8;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* Payment History Ledger Redesign */
+  .ledger-history-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.01);
+  }
+
+  .ledger-history-table th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 10px 14px;
+    border-bottom: 1.5px solid #e2e8f0;
+  }
+
+  .ledger-history-table td {
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .ledger-history-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .ledger-history-table tr.settled-row {
+    background: #f0fdf4;
+  }
+
+  .payment-badge {
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+  }
+
+  .payment-badge.cash {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .payment-badge.upi {
+    background: #e0f2fe;
+    color: #0369a1;
+  }
+
+  .payment-badge.card {
+    background: #f3e8ff;
+    color: #6b21a8;
+  }
+
+  .payment-badge.other {
+    background: #f1f5f9;
+    color: #475569;
+  }
+
+  .empty-ledger-box {
+    text-align: center;
+    padding: 35px 20px;
+    color: #64748b;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: #f8fafc;
+    border: 1.5px dashed #cbd5e1;
+    border-radius: 10px;
+  }
+
+  /* Override global complaint card styles for Dashboard */
+  .dashboard-complaints-grid .complaint-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(11, 102, 120, 0.1);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dashboard-complaints-grid .complaint-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.1);
+    border-color: rgba(11, 102, 120, 0.2);
+  }
+
+  .dashboard-complaints-grid .card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(11, 102, 120, 0.06);
+    background: rgba(255, 255, 255, 0.4);
+  }
+
+  .dashboard-complaints-grid .card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-primary);
+  }
+
+  .dashboard-complaints-grid .card-content {
+    padding: 16px 20px;
+    gap: 12px;
+  }
+
+  /* 2-Column Grid for Metadata */
+  .card-metadata-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px 16px;
+    border-bottom: 1px solid rgba(11, 102, 120, 0.06);
+    padding-bottom: 12px;
+    margin-bottom: 4px;
+  }
+
+  .card-metadata-grid .info-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .card-metadata-grid .info-row-icon {
+    color: var(--color-primary-light);
+    margin-top: 2px;
+    width: 14px;
+    height: 14px;
+  }
+
+  .card-metadata-grid .info-row-label {
+    color: #64748b;
+    font-weight: 600;
+    min-width: unset;
+    width: auto;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .card-metadata-grid .info-row-value {
+    color: #1e293b;
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  /* Full width fields style */
+  .dashboard-complaints-grid .card-content > .info-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    padding: 2px 0;
+  }
+
+  .dashboard-complaints-grid .card-content > .info-row .info-row-label {
+    color: #64748b;
+    font-weight: 600;
+    min-width: 70px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .dashboard-complaints-grid .card-content > .info-row .info-row-value {
+    color: #1e293b;
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  /* Financial KPI Cards styling */
+  .dashboard-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 24px;
+    animation: rise 0.5s ease-out both;
+  }
+
+  .kpi-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(11, 102, 120, 0.1);
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .kpi-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    border-color: var(--color-primary-light);
+  }
+
+  .kpi-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .kpi-icon-box.billed {
+    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+    color: #0369a1;
+  }
+
+  .kpi-icon-box.due {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #b45309;
+  }
+
+  .kpi-icon-box.overdue {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #b91c1c;
+  }
+
+  .kpi-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .kpi-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .kpi-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: #1e293b;
+  }
+
+  @media (max-width: 1200px) {
+    .dashboard-kpi-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .dashboard-kpi-grid {
+      grid-template-columns: 1fr !important;
+      gap: 12px;
+    }
+    .kpi-card {
+      padding: 16px;
+    }
+    .kpi-value {
+      font-size: 20px;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .card-metadata-grid {
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+    }
+    .dashboard-complaints-grid .card-content {
+      padding: 14px 16px !important;
+    }
+    .dashboard-complaints-grid .card-header {
+      padding: 12px 16px !important;
+    }
+    .products-purchased-section {
+      padding: 12px 14px !important;
+      border-radius: 10px !important;
+    }
+    .dashboard-page {
+      padding: 16px 12px 60px !important;
+    }
+  }
+
+  /* Centering modals override */
+  body .modal-backdrop .modal-content,
+  body .modal-overlay .modal-content {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    -webkit-transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+  }
 `;
 
 /* ================= FILTER OPTIONS ================= */
@@ -1311,13 +1925,46 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { refreshTriggers } = useGlobalRefresh();
 
+  // 🔐 Role & Tab Permissions checks
+  const userRole = sessionStorage.getItem("role") || "";
+  const userPermissions = React.useMemo(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem("permissions") || "[]");
+    } catch (e) {
+      return [];
+    }
+  }, []);
+
+  const hasSpecificDashboardPermissions = React.useMemo(() => {
+    return userPermissions.some(p => p.startsWith("dashboard-"));
+  }, [userPermissions]);
+
+  const isTabAllowed = React.useCallback((tabValue) => {
+    if (userRole === "bigadmin") return true;
+    if (!hasSpecificDashboardPermissions) return true; // Backward compatibility
+    return userPermissions.includes(`dashboard-${tabValue}`);
+  }, [userRole, hasSpecificDashboardPermissions, userPermissions]);
+
+  const allowedTabs = React.useMemo(() => {
+    return FILTER_OPTIONS.filter(op => isTabAllowed(op.value));
+  }, [isTabAllowed]);
+
+  const defaultTab = allowedTabs.length > 0 ? allowedTabs[0].value : "all";
+
   const [complaints, setComplaints] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [client_amount, setclient_amount] = useState("");
   const [completed_remarks, setCompletedRemarks] = useState("");
   const [nextServiceDate, setNextServiceDate] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState(defaultTab);
+
+  // Sync filter with allowed tabs on mount or update
+  useEffect(() => {
+    if (allowedTabs.length > 0 && !allowedTabs.some(t => t.value === filter)) {
+      setFilter(allowedTabs[0].value);
+    }
+  }, [allowedTabs, filter]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchDate, setSearchDate] = useState("");
   const [searchAmountFrom, setSearchAmountFrom] = useState("");
@@ -1597,7 +2244,7 @@ const Dashboard = () => {
     try {
       // Validate additional products stock before proceeding
       for (const prod of selectedAdditionalProducts) {
-        const stockItem = getStockItem(prod.productName);
+        const stockItem = getStockItemForAdditional(prod.productName);
         if (!stockItem) {
           setAdditionalProductError(`Product "${prod.productName}" not found in stock`);
           return;
@@ -1660,8 +2307,18 @@ const Dashboard = () => {
       setNewExpiredItem({ name: "", buying_price: "" });
       
       // Refresh list to show updated status and history
-      fetchComplaints();
+      await fetchComplaints();
       alert("✅ Job completed successfully! Stock updated.");
+
+      // Automatically open payment modal for the completed job
+      try {
+        const detailRes = await api.get(`complaints/${id}/`);
+        if (detailRes.data) {
+          openPaymentModal(detailRes.data);
+        }
+      } catch (detailErr) {
+        console.error("Failed to fetch complaint details for payment:", detailErr);
+      }
 
     } catch (err) {
       console.error(err);
@@ -1675,7 +2332,7 @@ const Dashboard = () => {
       // URL-encode the complaint number to handle special characters like '#'
       const encodedComplaintNo = encodeURIComponent(item.complaint_no);
       navigate(`/select-staff?complaintNo=${encodedComplaintNo}`);
-    } else if (isPending) {
+    } else {
       setExpandedId(isExpand ? null : getId(item));
     }
   };
@@ -1692,7 +2349,7 @@ const Dashboard = () => {
     // Calculate expired items total
     const expiredTotal = (job.expired_items || []).reduce((sum, ei) => sum + (parseFloat(ei.buying_price) || 0), 0);
     
-    const calculatedGrandTotal = (job.grand_total || 0) - expiredTotal;
+    const calculatedGrandTotal = parseFloat(job.grand_total) || 0;
 
     // FIX: Use STORED DUE VALUE as source of truth
     // Priority: job.due_amount > payment_details.last_due_amount > (grand_total - amount_received)
@@ -1890,6 +2547,21 @@ const Dashboard = () => {
   // ⭐ FEATURE 5: Exclude initial records from Dashboard counts
   const nonInitialComplaints = complaints.filter((c) => c.is_initial !== true);
 
+  // Financial calculations
+  const totalBilledAmount = nonInitialComplaints
+    .filter(c => ["Completed", "Due", "Overdue"].includes(getDisplayStatus(c)))
+    .reduce((sum, c) => sum + (parseFloat(c.grand_total) || 0), 0);
+
+  const totalDueAmount = nonInitialComplaints
+    .reduce((sum, c) => sum + (parseFloat(c.due_amount) || 0), 0);
+
+  const totalOverdueAmount = nonInitialComplaints
+    .filter(c => getDisplayStatus(c) === "Overdue")
+    .reduce((sum, c) => sum + (parseFloat(c.due_amount) || 0), 0);
+
+  const totalReceivedAmount = nonInitialComplaints
+    .reduce((sum, c) => sum + (parseFloat(c.amount_received) || 0), 0);
+
   const bookingCount = nonInitialComplaints.filter((c) => getDisplayStatus(c) === "Pending").length;
   const assignedCount = nonInitialComplaints.filter((c) => getDisplayStatus(c) === "Assigned").length;
   const completedCount = nonInitialComplaints.filter((c) => getDisplayStatus(c) === "Completed").length;
@@ -2003,6 +2675,9 @@ const Dashboard = () => {
 
 
     const discountValue = parseFloat(newAdditionalProduct.discount_value) || 0;
+    const sellingPrice = getSellingPrice(newAdditionalProduct.productName);
+    const buyingPrice = getBuyingPriceForAdditional(newAdditionalProduct.productName);
+    const minimumPrice = getMinimumPriceForAdditional(newAdditionalProduct.productName);
 
     // Calculate final price with discount validation
     let finalPrice = sellingPrice;
@@ -2175,279 +2850,407 @@ const Dashboard = () => {
       <StockAlerts />
 
       {/* PAYMENT MODAL */}
-      {showPaymentModal && (
+      {showPaymentModal && createPortal(
         <div className="modal-backdrop">
-          <div className="modal-content" ref={paymentModalRef}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '20px'
-            }}>
-              <h3 style={{ margin: 0, color: '#333' }}>Payment Details</h3>
+          <div 
+            className="modal-content"
+            style={{ 
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 100100,
+              maxWidth: '550px',
+              width: '90%',
+              maxHeight: '90vh',
+              overflowY: 'auto'
+            }}
+          >
+            <div className="payment-modal-header">
+              <h3 className="payment-modal-title">
+                <FiDollarSign size={20} style={{ color: '#6366f1' }} />
+                Record Payment
+              </h3>
               <button
+                type="button"
+                className="payment-modal-close"
                 onClick={closePaymentModal}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#666'
-                }}
+                aria-label="Close"
               >
-                ×
+                <FiX size={18} />
               </button>
             </div>
 
-            {/* Job Info */}
-            <div style={{ marginBottom: '20px', padding: '12px', background: '#f5f5f5', borderRadius: '8px' }}>
-              <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Job ID:</strong> {selectedJobForPayment.complaint_no}</p>
-              <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Customer:</strong> {selectedJobForPayment.customer_name}</p>
-              <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Phone:</strong> {selectedJobForPayment.customer_phone}</p>
+            {/* Job & Customer Summary Card */}
+            <div className="payment-job-card">
+              <div className="payment-job-card-grid">
+                <div className="payment-job-card-item">
+                  <span className="payment-job-card-label">Job ID</span>
+                  <span className="payment-job-card-value">
+                    <FiHash size={14} style={{ color: '#94a3b8' }} />
+                    {selectedJobForPayment.complaint_no}
+                  </span>
+                </div>
+                <div className="payment-job-card-item">
+                  <span className="payment-job-card-label">Customer</span>
+                  <span className="payment-job-card-value">
+                    <FiUser size={14} style={{ color: '#94a3b8' }} />
+                    {selectedJobForPayment.customer_name}
+                  </span>
+                </div>
+                <div className="payment-job-card-item" style={{ gridColumn: 'span 2', marginTop: '4px' }}>
+                  <span className="payment-job-card-label">Contact Phone</span>
+                  <span className="payment-job-card-value">
+                    <FiPhone size={14} style={{ color: '#94a3b8' }} />
+                    {selectedJobForPayment.customer_phone}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* Total Amount - Read Only */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#333' }}>
-                Total Amount (Grand Total)
-              </label>
-              <input
-                type="text"
-                value={`₹${(selectedJobForPayment.grand_total || 0).toFixed(2)}`}
-                readOnly
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '6px',
-                  border: '1px solid #ddd',
-                  backgroundColor: '#f5f5f5',
-                  fontSize: '16px',
-                  fontWeight: '600'
-                }}
-              />
+            {(() => {
+              const job = selectedJobForPayment;
+              const bookedProds = job.product_name ? parseBookedProducts(job.product_name, job.product_quantity) : [];
+              const additionalProds = job.additional_product ? parseAdditionalProducts(job.additional_product) : [];
+              
+              const bookingTotal = bookedProds.reduce((sum, prod) => {
+                const price = prod.final_price || prod.selling_price || getProductPrice(prod.productName, prod);
+                return sum + (price * prod.quantity);
+              }, 0);
+              
+              const additionalTotal = additionalProds.reduce((sum, prod) => {
+                const price = prod.final_price || prod.selling_price || getProductPrice(prod.productName, prod);
+                return sum + (price * prod.quantity);
+              }, 0);
+              
+              const clientAmount = job.client_amount ? parseFloat(job.client_amount) : 0;
+              const expiredTotal = (job.expired_items || []).reduce((sum, ei) => sum + (parseFloat(ei.buying_price) || 0), 0);
+
+              return (
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '14px 16px',
+                  marginBottom: '18px',
+                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
+                }}>
+                  <div style={{
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    color: '#475569',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: '10px',
+                    borderBottom: '1px solid #e2e8f0',
+                    paddingBottom: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <FiFileText size={14} style={{ color: '#0b6678' }} />
+                    <span>Bill Amount Breakdown</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <span style={{ color: '#64748b', fontWeight: '500' }}>Service Amount:</span>
+                      <span style={{ fontWeight: '600', color: '#1e293b' }}>₹{clientAmount.toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <span style={{ color: '#64748b', fontWeight: '500' }}>Booking Product Amount:</span>
+                      <span style={{ fontWeight: '600', color: '#1e293b' }}>₹{bookingTotal.toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <span style={{ color: '#64748b', fontWeight: '500' }}>Additional Product Amount:</span>
+                      <span style={{ fontWeight: '600', color: '#1e293b' }}>₹{additionalTotal.toFixed(2)}</span>
+                    </div>
+                    {expiredTotal > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                        <span style={{ color: '#dc2626', fontWeight: '500' }}>Expired Items Deduction:</span>
+                        <span style={{ fontWeight: '600', color: '#dc2626' }}>-₹{expiredTotal.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Financial Overview Metrics Grid */}
+            <div className="payment-metrics-grid">
+              <div className="payment-metric-box total">
+                <span className="payment-metric-label">Grand Total</span>
+                <span className="payment-metric-value">₹{(selectedJobForPayment.grand_total || 0).toFixed(2)}</span>
+              </div>
+              <div className={`payment-metric-box ${previousDueAmount <= 0 ? 'settled' : 'due'}`}>
+                <span className="payment-metric-label">Outstanding Due</span>
+                <span className="payment-metric-value">₹{previousDueAmount.toFixed(2)}</span>
+              </div>
             </div>
 
             {/* Amount Received - Input */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#333' }}>
+            <div className="payment-input-group">
+              <label className="payment-input-label">
+                <FiDollarSign size={14} />
                 Amount Received
               </label>
               {previousDueAmount <= 0 ? (
                 <div style={{
-                  padding: '12px',
-                  borderRadius: '6px',
-                  background: '#d1fae5',
-                  border: '1px solid #10b981',
+                  padding: '14px',
+                  borderRadius: '8px',
+                  background: '#ecfdf5',
+                  border: '1.5px solid #10b981',
                   color: '#065f46',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  textAlign: 'center'
+                  fontSize: '15px',
+                  fontWeight: '700',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
                 }}>
-                  ✓ Payment is completed
+                  <FiCheckCircle size={18} /> Account Fully Settled
                 </div>
               ) : (
-                <input
-                  type="number"
-                  value={paymentFormData.amountReceived}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setPaymentFormData({ ...paymentFormData, amountReceived: e.target.value });
-                    // Calculate dynamic due: previousDueAmount - entered amount
-                    const newDue = previousDueAmount - value;
-                    setCalculatedDue(newDue > 0 ? newDue : 0);
-                  }}
-                  placeholder="Enter amount received"
-                  min="0"
-                  step="0.01"
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    borderRadius: '6px',
-                    border: '1px solid #ddd',
-                    fontSize: '16px'
-                  }}
-                />
+                <div className="payment-input-wrapper">
+                  <span className="payment-input-icon">₹</span>
+                  <input
+                    type="number"
+                    className="payment-input-field"
+                    value={paymentFormData.amountReceived}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      setPaymentFormData({ ...paymentFormData, amountReceived: e.target.value });
+                      // Calculate dynamic due: previousDueAmount - entered amount
+                      const newDue = previousDueAmount - value;
+                      setCalculatedDue(newDue > 0 ? newDue : 0);
+                    }}
+                    placeholder="Enter amount received"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
               )}
             </div>
 
             {/* Payment Mode - Select */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#333' }}>
-                Payment Mode <span style={{ color: 'red' }}>*</span>
+            <div className="payment-input-group">
+              <label className="payment-input-label">
+                <FiCreditCard size={14} />
+                Payment Mode <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <select
+                className="payment-select-field"
                 value={paymentFormData.paymentMode}
                 onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentMode: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '6px',
-                  border: '1px solid #ddd',
-                  fontSize: '16px',
-                  backgroundColor: 'white'
-                }}
               >
                 <option value="">Select Payment Mode</option>
-                <option value="Cash">Cash</option>
-                <option value="UPI">UPI</option>
-                <option value="Card">Card</option>
+                <option value="Cash">💵 Cash</option>
+                <option value="UPI">📱 UPI / QR Scan</option>
+                <option value="Card">💳 Card Payment</option>
               </select>
             </div>
 
             {/* Payment Due Date - Date Picker */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#333' }}>
+            <div className="payment-input-group">
+              <label className="payment-input-label">
+                <FiCalendar size={14} />
                 Payment Due Date
               </label>
               <input
                 type="date"
+                className="payment-select-field"
                 value={paymentFormData.paymentDueDate}
                 onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentDueDate: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '6px',
-                  border: '1px solid #ddd',
-                  fontSize: '16px'
-                }}
               />
             </div>
 
-            {/* Due Amount Display - Below Amount Received with enhanced UI */}
-            <div style={{ marginBottom: '24px' }}>
-              <div style={{
-                padding: '12px 16px',
-                borderRadius: '8px',
-                background: calculatedDue <= 0 ? '#e8f5e9' : '#fff3f3',
-                border: calculatedDue <= 0 ? '1px solid #4CAF50' : '1px solid #f44336',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <span style={{
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  color: calculatedDue <= 0 ? '#2e7d32' : '#c62828'
-                }}>
-                  Remaining Due:
-                </span>
-                <span style={{
-                  fontSize: '18px',
-                  fontWeight: '700',
-                  color: calculatedDue <= 0 ? '#2e7d32' : '#c62828'
-                }}>
-                  ₹{calculatedDue.toFixed(2)}
-                </span>
+            {/* New Balance Preview Banner */}
+            {previousDueAmount > 0 && (
+              <div className="payment-due-preview">
+                <div className={`payment-due-preview-bar ${calculatedDue <= 0 ? 'settled' : 'due'}`}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, opacity: 0.9 }}>New Balance After Payment:</span>
+                    <span style={{ fontSize: '18px', fontWeight: 800 }}>₹{calculatedDue.toFixed(2)}</span>
+                  </div>
+                  <span className={`payment-status-pill ${calculatedDue <= 0 ? 'settled' : 'due'}`}>
+                    {calculatedDue <= 0 ? 'Fully Paid' : 'Partial Due'}
+                  </span>
+                </div>
               </div>
-              {/* Payment Status Label - Based on calculatedDue (dynamic value) */}
-              <div style={{
-                marginTop: '8px',
-                padding: '8px',
-                borderRadius: '6px',
-                textAlign: 'center',
-                fontSize: '14px',
-                fontWeight: '600',
-                background: calculatedDue <= 0 ? '#4CAF50' : '#f44336',
-                color: 'white'
-              }}>
-                {calculatedDue <= 0 ? '✓ Payment Completed' : 'Payment Due'}
-              </div>
-
-            </div>
+            )}
 
             {/* Buttons */}
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div className="payment-actions">
               <button
+                type="button"
+                className="payment-btn cancel"
                 onClick={closePaymentModal}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '6px',
-                  border: '1px solid #ddd',
-                  background: 'white',
-                  color: '#333',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
               >
-                Cancel
+                <FiX size={16} /> Cancel
               </button>
               <button
+                type="button"
+                className="payment-btn save"
                 onClick={handleSavePayment}
                 disabled={isSavingPayment || !paymentFormData.amountReceived || parseFloat(paymentFormData.amountReceived) <= 0 || previousDueAmount <= 0}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: isSavingPayment || !paymentFormData.amountReceived || parseFloat(paymentFormData.amountReceived) <= 0 || previousDueAmount <= 0 ? '#ccc' : '#4CAF50',
-                  color: 'white',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: isSavingPayment || !paymentFormData.amountReceived || parseFloat(paymentFormData.amountReceived) <= 0 || previousDueAmount <= 0 ? 'not-allowed' : 'pointer'
-                }}
               >
-                {isSavingPayment ? 'Saving...' : 'Save Payment'}
+                {isSavingPayment ? (
+                  <>Saving...</>
+                ) : (
+                  <>
+                    <FiCheck size={16} /> Save Payment
+                  </>
+                )}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* PAYMENT HISTORY MODAL */}
-      {showPaymentHistoryModal && (
+      {showPaymentHistoryModal && createPortal(
         <div className="modal-backdrop">
-          <div className="modal-content" style={{ maxWidth: '800px' }} ref={paymentHistoryModalRef}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '20px'
-            }}>
-              <h3 style={{ margin: 0, color: '#333' }}>Payment History</h3>
+          <div 
+            className="modal-content"
+            style={{ 
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 100100,
+              maxWidth: '650px',
+              width: '90%',
+              maxHeight: '90vh',
+              overflowY: 'auto'
+            }}
+          >
+            <div className="payment-modal-header">
+              <h3 className="payment-modal-title">
+                <FiFileText size={20} style={{ color: '#10b981' }} />
+                Payment History Ledger
+              </h3>
               <button
+                type="button"
+                className="payment-modal-close"
                 onClick={() => {
                   setShowPaymentHistoryModal(false);
                   setPaymentHistoryData(null);
                 }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#666'
-                }}
+                aria-label="Close"
               >
-                ×
+                <FiX size={18} />
               </button>
             </div>
 
             {/* Job Info with Grand Total */}
-            <div style={{ marginBottom: '16px', padding: '12px', background: '#f5f5f5', borderRadius: '8px' }}>
-              <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Job ID:</strong> {(paymentHistoryData || selectedJobForPayment).complaint_no}</p>
-              <p style={{ margin: '4px 0', fontSize: '14px' }}><strong>Customer:</strong> {(paymentHistoryData || selectedJobForPayment).customer_name}</p>
-              <p style={{ margin: '4px 0', fontSize: '16px', fontWeight: '700', color: '#1e40af' }}>
-                <strong>GRAND TOTAL:</strong> ₹{((paymentHistoryData || selectedJobForPayment).grand_total || 0).toFixed(2)}
-              </p>
+            <div className="payment-job-card" style={{ borderLeft: '4px solid #10b981' }}>
+              <div className="payment-job-card-grid">
+                <div className="payment-job-card-item">
+                  <span className="payment-job-card-label">Job ID</span>
+                  <span className="payment-job-card-value">
+                    <FiHash size={14} style={{ color: '#94a3b8' }} />
+                    {(paymentHistoryData || selectedJobForPayment).complaint_no}
+                  </span>
+                </div>
+                <div className="payment-job-card-item">
+                  <span className="payment-job-card-label">Customer</span>
+                  <span className="payment-job-card-value">
+                    <FiUser size={14} style={{ color: '#94a3b8' }} />
+                    {(paymentHistoryData || selectedJobForPayment).customer_name}
+                  </span>
+                </div>
+                <div className="payment-job-card-item" style={{ gridColumn: 'span 2', marginTop: '6px', borderTop: '1px dashed #cbd5e1', paddingTop: '8px', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="payment-job-card-label" style={{ margin: 0 }}>Total Billing Amount:</span>
+                  <span style={{ fontSize: '18px', fontWeight: '800', color: '#10b981' }}>
+                    ₹{((paymentHistoryData || selectedJobForPayment).grand_total || 0).toFixed(2)}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* ⭐ Enhanced Payment History List */}
-            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+            {(() => {
+              const job = paymentHistoryData || selectedJobForPayment;
+              const bookedProds = job.product_name ? parseBookedProducts(job.product_name, job.product_quantity) : [];
+              const additionalProds = job.additional_product ? parseAdditionalProducts(job.additional_product) : [];
+              
+              const bookingTotal = bookedProds.reduce((sum, prod) => {
+                const price = prod.final_price || prod.selling_price || getProductPrice(prod.productName, prod);
+                return sum + (price * prod.quantity);
+              }, 0);
+              
+              const additionalTotal = additionalProds.reduce((sum, prod) => {
+                const price = prod.final_price || prod.selling_price || getProductPrice(prod.productName, prod);
+                return sum + (price * prod.quantity);
+              }, 0);
+              
+              const clientAmount = job.client_amount ? parseFloat(job.client_amount) : 0;
+              const expiredTotal = (job.expired_items || []).reduce((sum, ei) => sum + (parseFloat(ei.buying_price) || 0), 0);
+
+              return (
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '14px 16px',
+                  marginBottom: '18px',
+                  boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
+                }}>
+                  <div style={{
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    color: '#475569',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: '10px',
+                    borderBottom: '1px solid #e2e8f0',
+                    paddingBottom: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <FiFileText size={14} style={{ color: '#10b981' }} />
+                    <span>Bill Amount Breakdown</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <span style={{ color: '#64748b', fontWeight: '500' }}>Service Amount:</span>
+                      <span style={{ fontWeight: '600', color: '#1e293b' }}>₹{clientAmount.toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <span style={{ color: '#64748b', fontWeight: '500' }}>Booking Product Amount:</span>
+                      <span style={{ fontWeight: '600', color: '#1e293b' }}>₹{bookingTotal.toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <span style={{ color: '#64748b', fontWeight: '500' }}>Additional Product Amount:</span>
+                      <span style={{ fontWeight: '600', color: '#1e293b' }}>₹{additionalTotal.toFixed(2)}</span>
+                    </div>
+                    {expiredTotal > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                        <span style={{ color: '#dc2626', fontWeight: '500' }}>Expired Items Deduction:</span>
+                        <span style={{ fontWeight: '600', color: '#dc2626' }}>-₹{expiredTotal.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Enhanced Payment History Table */}
+            <div style={{ maxHeight: '350px', overflowY: 'auto', marginBottom: '16px' }}>
               {(() => {
                 const jobData = paymentHistoryData || selectedJobForPayment;
-                const expiredTotal = (jobData.expired_items || []).reduce((sum, ei) => sum + (parseFloat(ei.buying_price) || 0), 0);
-                const grandTotal = (jobData.grand_total || 0) - expiredTotal;
+                const grandTotal = parseFloat(jobData.grand_total) || 0;
                 const rawPayments = jobData.payment_details || [];
 
-                // STEP 1: Sort by date ASCENDING
+                // Sort by date ASCENDING
                 const sortedPayments = [...rawPayments].sort((a, b) => {
                   const dateA = a.payment_date ? new Date(a.payment_date) : new Date(0);
                   const dateB = b.payment_date ? new Date(b.payment_date) : new Date(0);
                   return dateA - dateB;
                 });
 
-                // STEP 2: Calculate running remaining
+                // Calculate running remaining
                 let remaining = grandTotal;
                 const processedPayments = sortedPayments.map(payment => {
                   const paidAmount = payment.amount_paid || 0;
@@ -2460,43 +3263,66 @@ const Dashboard = () => {
                 });
 
                 if (processedPayments.length === 0) {
-                  return <p style={{ textAlign: 'center', color: '#6b7280', padding: '20px' }}>No payment history available</p>;
+                  return (
+                    <div className="empty-ledger-box">
+                      <FiInbox size={48} style={{ color: '#cbd5e1' }} />
+                      <p style={{ margin: 0, fontWeight: 500 }}>No payments recorded for this job yet.</p>
+                    </div>
+                  );
                 }
 
                 return (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e5e7eb' }}>
+                  <table className="ledger-history-table">
                     <thead>
-                      <tr style={{ background: '#1e40af' }}>
-                        <th style={{ padding: '10px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#fff' }}>Date</th>
-                        <th style={{ padding: '10px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#fff' }}>Mode</th>
-                        <th style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: '600', color: '#fff' }}>Amount Paid</th>
-                        <th style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: '600', color: '#fff' }}>Remaining</th>
+                      <tr>
+                        <th style={{ textAlign: 'left' }}>Date</th>
+                        <th style={{ textAlign: 'left' }}>Mode</th>
+                        <th style={{ textAlign: 'right' }}>Amount Paid</th>
+                        <th style={{ textAlign: 'right' }}>Remaining Balance</th>
                       </tr>
                     </thead>
                     <tbody>
                       {processedPayments.map((payment, index) => {
-                        const isLastPayment = index === processedPayments.length - 1;
                         const isCompleted = payment.remaining === 0;
+                        const pMode = (payment.payment_mode || '').toLowerCase();
+                        let badgeClass = 'other';
+                        let modeLabel = payment.payment_mode || 'Not Specified';
+                        if (pMode === 'cash') {
+                          badgeClass = 'cash';
+                          modeLabel = '💵 Cash';
+                        } else if (pMode === 'upi') {
+                          badgeClass = 'upi';
+                          modeLabel = '📱 UPI';
+                        } else if (pMode === 'card') {
+                          badgeClass = 'card';
+                          modeLabel = '💳 Card';
+                        }
+
                         return (
-                          <tr key={index} style={{ borderBottom: '1px solid #e5e7eb', background: isCompleted ? '#f0fdf4' : 'transparent' }}>
-                            <td style={{ padding: '10px', fontSize: '14px' }}>
-                              {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-IN') : '-'}
+                          <tr key={index} className={isCompleted ? 'settled-row' : ''}>
+                            <td style={{ fontWeight: 500 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <FiCalendar size={13} style={{ color: '#94a3b8' }} />
+                                {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-IN') : '-'}
+                              </div>
                             </td>
-                            <td style={{ padding: '10px', fontSize: '14px', textTransform: 'capitalize' }}>
-                              {payment.payment_mode || 'Not Specified'}
+                            <td>
+                              <span className={`payment-badge ${badgeClass}`}>{modeLabel}</span>
                             </td>
-                            <td style={{ padding: '10px', textAlign: 'right', fontSize: '14px', fontWeight: '700', color: '#059669' }}>
+                            <td style={{ textAlign: 'right', fontWeight: '700', color: '#059669' }}>
                               ₹{payment.paidAmount.toFixed(2)}
                             </td>
                             <td style={{
-                              padding: '10px',
                               textAlign: 'right',
-                              fontSize: '14px',
-                              fontWeight: '600',
+                              fontWeight: '700',
                               color: isCompleted ? '#059669' : '#dc2626'
                             }}>
                               ₹{payment.remaining.toFixed(2)}
-                              {isCompleted && ' - Completed'}
+                              {isCompleted && (
+                                <span style={{ marginLeft: '6px', fontSize: '10px', verticalAlign: 'middle' }} className="payment-status-pill settled">
+                                  Settled
+                                </span>
+                              )}
                             </td>
                           </tr>
                         );
@@ -2508,38 +3334,46 @@ const Dashboard = () => {
             </div>
 
             {/* Close Button */}
-            <div style={{ marginTop: '16px', textAlign: 'center' }}>
+            <div className="payment-actions" style={{ justifyContent: 'center' }}>
               <button
+                type="button"
+                className="payment-btn cancel"
+                style={{ maxWidth: '200px' }}
                 onClick={() => {
                   setShowPaymentHistoryModal(false);
                   setPaymentHistoryData(null);
                 }}
-                style={{
-                  padding: '10px 24px',
-                  background: '#6b7280',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
               >
-                Close
+                Close Ledger
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
 
       {/* ADD JOB MODAL */}
-      {showAddJobModal && (
+      {showAddJobModal && createPortal(
         <div className="modal-backdrop">
-          <div className="modal-content" ref={addJobModalRef}>
+          <div 
+            className="modal-content"
+            style={{ 
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 100100,
+              maxWidth: '550px',
+              width: '90%',
+              maxHeight: '90vh',
+              overflowY: 'auto'
+            }}
+          >
             {/* ... Add Job Modal Content ... */}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Inject CSS styles */}
@@ -2613,8 +3447,73 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Financial KPI Summary Cards */}
+        {userRole === "bigadmin" && (
+          <div className="dashboard-kpi-grid">
+            <div 
+              className="kpi-card" 
+              onClick={() => isTabAllowed("completed") && setFilter("completed")} 
+              title={isTabAllowed("completed") ? "Click to view Completed Bills" : "Permission Denied"}
+              style={{ cursor: isTabAllowed("completed") ? "pointer" : "not-allowed", opacity: isTabAllowed("completed") ? 1 : 0.6 }}
+            >
+              <div className="kpi-icon-box billed">
+                <FiDollarSign />
+              </div>
+              <div className="kpi-content">
+                <span className="kpi-label">Total Billed</span>
+                <span className="kpi-value">₹{totalBilledAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+
+            <div 
+              className="kpi-card" 
+              onClick={() => isTabAllowed("all") && setFilter("all")} 
+              title={isTabAllowed("all") ? "Click to view Total Received" : "Permission Denied"}
+              style={{ cursor: isTabAllowed("all") ? "pointer" : "not-allowed", opacity: isTabAllowed("all") ? 1 : 0.6 }}
+            >
+              <div className="kpi-icon-box" style={{ background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', color: '#166534' }}>
+                <FiCheckCircle />
+              </div>
+              <div className="kpi-content">
+                <span className="kpi-label">Received Amount</span>
+                <span className="kpi-value">₹{totalReceivedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+
+            <div 
+              className="kpi-card" 
+              onClick={() => isTabAllowed("due") && setFilter("due")} 
+              title={isTabAllowed("due") ? "Click to view Due Bills" : "Permission Denied"}
+              style={{ cursor: isTabAllowed("due") ? "pointer" : "not-allowed", opacity: isTabAllowed("due") ? 1 : 0.6 }}
+            >
+              <div className="kpi-icon-box due">
+                <FiClock />
+              </div>
+              <div className="kpi-content">
+                <span className="kpi-label">Outstanding Due</span>
+                <span className="kpi-value">₹{totalDueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+
+            <div 
+              className="kpi-card" 
+              onClick={() => isTabAllowed("overdue") && setFilter("overdue")} 
+              title={isTabAllowed("overdue") ? "Click to view Overdue Bills" : "Permission Denied"}
+              style={{ cursor: isTabAllowed("overdue") ? "pointer" : "not-allowed", opacity: isTabAllowed("overdue") ? 1 : 0.6 }}
+            >
+              <div className="kpi-icon-box overdue">
+                <FiAlertTriangle />
+              </div>
+              <div className="kpi-content">
+                <span className="kpi-label">Overdue Amount</span>
+                <span className="kpi-value">₹{totalOverdueAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="dashboard-status-tabs">
-          {FILTER_OPTIONS.map((op) => (
+          {FILTER_OPTIONS.filter(op => isTabAllowed(op.value)).map((op) => (
             <div
               key={op.value}
               className={`dashboard-tab ${filter === op.value ? "active-tab" : ""}`}
@@ -2669,49 +3568,100 @@ const Dashboard = () => {
                     </div>
                   </div>
 
-                  <div className="card-content">
-                    <InfoRow icon={<FiUser />} label="Customer" value={item.customer_name} />
-                    <InfoRow icon={<FiPhone />} label="Phone" value={item.customer_phone} />
-                    <InfoRow icon={<FiCalendar />} label="Address" value={item.address} />
+                  <div 
+                    className="card-content"
+                    onClick={() => handleCardClick(item, isPending, isExpand)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="card-metadata-grid">
+                      <InfoRow icon={<FiUser />} label="Customer" value={item.customer_name} />
+                      <InfoRow icon={<FiPhone />} label="Phone" value={item.customer_phone} />
+                      <InfoRow icon={<FiUserCheck />} label="Assigned" value={item.assigned_staff} />
+
+                      {item.client_amount && (
+                        <InfoRow
+                          icon={<FiDollarSign />}
+                          label="Amount"
+                          value={`₹${item.client_amount}`}
+                        />
+                      )}
+
+                      {item.date_created && (
+                        <InfoRow
+                          icon={<FiCalendar />}
+                          label="Booking"
+                          value={(() => {
+                            try {
+                              return new Date(item.date_created).toLocaleDateString();
+                            } catch (e) {
+                              return item.date_created;
+                            }
+                          })()}
+                        />
+                      )}
+
+                      {item.assigned_at && (
+                        <InfoRow
+                          icon={<FiUserCheck />}
+                          label="Assigned"
+                          value={(() => {
+                            try {
+                              return new Date(item.assigned_at).toLocaleDateString();
+                            } catch (e) {
+                              return item.assigned_at;
+                            }
+                          })()}
+                        />
+                      )}
+
+                      {!isPending && (
+                        <InfoRow
+                          icon={<FiCheck />}
+                          label="Completed"
+                          value={(() => {
+                            if (item.assigned_completed_at) {
+                              try {
+                                return new Date(item.assigned_completed_at).toLocaleDateString();
+                              } catch (e) {
+                                return item.assigned_completed_at;
+                              }
+                            }
+                            return "N/A";
+                          })()}
+                        />
+                      )}
+
+                      {userRole === "bigadmin" && !isPending && item.grand_total !== undefined && item.grand_total !== null && (
+                        <InfoRow
+                          icon={<FiDollarSign />}
+                          label="Total Price"
+                          value={`₹${parseFloat(item.grand_total).toFixed(2)}`}
+                        />
+                      )}
+
+                      {userRole === "bigadmin" && !isPending && item.due_amount !== undefined && item.due_amount !== null && (
+                        <InfoRow
+                          icon={<FiClock />}
+                          label="Due Amount"
+                          value={`₹${parseFloat(item.due_amount).toFixed(2)}`}
+                        />
+                      )}
+
+                      {userRole === "bigadmin" && !isPending && item.payment_indicator && (
+                        <InfoRow
+                          icon={<FiCheckCircle />}
+                          label="Payment"
+                          value={
+                            <span className={`payment-badge-${item.payment_indicator}`} style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                              {item.payment_indicator}
+                            </span>
+                          }
+                        />
+                      )}
+                    </div>
+
+                    <InfoRow icon={<FiMapPin />} label="Address" value={item.address} />
                     <InfoRow icon={<FiAlertCircle />} label="Issue" value={item.complaint_details} />
-                    <InfoRow icon={<FiUserCheck />} label="Assigned" value={item.assigned_staff} />
-
-                    {item.date_created && (
-                      <InfoRow
-                        icon={<FiCalendar />}
-                        label="Booking Date"
-                        value={(() => {
-                          try {
-                            return new Date(item.date_created).toLocaleDateString();
-                          } catch (e) {
-                            return item.date_created;
-                          }
-                        })()}
-                      />
-                    )}
-
-                    {item.assigned_at && (
-                      <InfoRow
-                        icon={<FiUserCheck />}
-                        label="Assigned Date"
-                        value={(() => {
-                          try {
-                            return new Date(item.assigned_at).toLocaleDateString();
-                          } catch (e) {
-                            return item.assigned_at;
-                          }
-                        })()}
-                      />
-                    )}
-
-                    {item.client_amount && (
-                      <InfoRow
-                        icon={<FiDollarSign />}
-                        label="Service Amount"
-                        value={`₹${item.client_amount}`}
-                      />
-                    )}
-
 
                     {item.remarks && (
                       <InfoRow
@@ -2721,31 +3671,17 @@ const Dashboard = () => {
                       />
                     )}
 
-                    {!isPending && (
-                      <InfoRow
-                        icon={<FiCheck />}
-                        label="Completed Date"
-                        value={(() => {
-                          if (item.assigned_completed_at) {
-                            try {
-                              return new Date(item.assigned_completed_at).toLocaleDateString();
-                            } catch (e) {
-                              return item.assigned_completed_at;
-                            }
-                          }
-                          return "N/A";
-                        })()}
-                      />
-                    )}
-
                     {/* Action Buttons Grid - 2x2 Layout */}
                     {!isPending && (
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
-                        gap: '6px',
-                        marginTop: '8px'
-                      }}>
+                      <div 
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr',
+                          gap: '6px',
+                          marginTop: '8px'
+                        }}
+                      >
                         {/* WhatsApp Button */}
                         {(() => {
                           const isSent = item.whatsapp_sent_to_customer === true;
@@ -2815,60 +3751,64 @@ const Dashboard = () => {
                         </a>
 
                         {/* Payment Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openPaymentModal(item);
-                          }}
-                          style={{
-                            background: '#FF9800',
-                            color: 'white',
-                            border: 'none',
-                            padding: '6px 8px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px',
-                            fontWeight: '600',
-                            fontSize: '10px',
-                            width: '100%'
-                          }}
-                          title="Payment Details"
-                        >
-                          <FiDollarSign size={12} />
-                          <span>Payment</span>
-                        </button>
+                        {userRole === "bigadmin" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openPaymentModal(item);
+                            }}
+                            style={{
+                              background: '#FF9800',
+                              color: 'white',
+                              border: 'none',
+                              padding: '6px 8px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              fontWeight: '600',
+                              fontSize: '10px',
+                              width: '100%'
+                            }}
+                            title="Payment Details"
+                          >
+                            <FiDollarSign size={12} />
+                            <span>Payment</span>
+                          </button>
+                        )}
 
                         {/* ⭐ NEW: History Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Always use item for history - it contains payment_details
-                            setPaymentHistoryData(item);
-                            setShowPaymentHistoryModal(true);
-                          }}
-                          style={{
-                            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                            color: 'white',
-                            border: 'none',
-                            padding: '6px 8px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px',
-                            fontWeight: '600',
-                            fontSize: '10px',
-                            width: '100%'
-                          }}
-                          title="View Payment History"
-                        >
-                          <FiDatabase size={12} />
-                          <span>History</span>
-                        </button>
+                        {userRole === "bigadmin" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Always use item for history - it contains payment_details
+                              setPaymentHistoryData(item);
+                              setShowPaymentHistoryModal(true);
+                            }}
+                            style={{
+                              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                              color: 'white',
+                              border: 'none',
+                              padding: '6px 8px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              fontWeight: '600',
+                              fontSize: '10px',
+                              width: '100%'
+                            }}
+                            title="View Payment History"
+                          >
+                            <FiDatabase size={12} />
+                            <span>History</span>
+                          </button>
+                        )}
 
 
                       </div>
@@ -2876,240 +3816,133 @@ const Dashboard = () => {
 
 
                     {/* Total Products Purchased - Only for completed jobs */}
-                    {!isPending && (
-                      <div className="products-purchased-section">
-                        <div className="products-purchased-header">
-                          <FiShoppingBag size={16} />
-                          Products Purchased
-                        </div>
+                    {!isPending && (isExpand || filter === "completed" || filter === "due" || filter === "overdue") && (() => {
+                      const bookedProds = item.product_name ? parseBookedProducts(item.product_name, item.product_quantity) : [];
+                      const additionalProds = item.additional_product ? parseAdditionalProducts(item.additional_product) : [];
+                      const hasProducts = bookedProds.length > 0 || additionalProds.length > 0;
+                      const hasClientAmount = item.client_amount && parseFloat(item.client_amount) > 0;
 
-                        {/* Header Row */}
-                        <div className="product-detail-row header-row">
-                          <span>Product Name</span>
-                          <span style={{ textAlign: 'center' }}>Qty</span>
-                          <span style={{ textAlign: 'right' }}>Price</span>
-                          <span style={{ textAlign: 'right' }}>Subtotal</span>
-                        </div>
+                      // Generate clean products summary text
+                      const allProdsList = [
+                        ...bookedProds.map(p => `${p.quantity}x ${p.productName}`),
+                        ...additionalProds.map(p => `${p.quantity}x ${p.productName}`)
+                      ];
+                      const productsString = allProdsList.length > 0 ? allProdsList.join(', ') : "No products purchased";
 
-                        {item.product_name && (() => {
-                          let bookedProds = parseBookedProducts(item.product_name, item.product_quantity);
+                      // Calculate booking total (for breakdown display only)
+                      const bookingTotal = bookedProds.reduce((sum, prod) => {
+                        const price = prod.final_price || prod.selling_price || getProductPrice(prod.productName, prod);
+                        return sum + (price * prod.quantity);
+                      }, 0);
 
+                      // Calculate additional total (using final_price with discount)
+                      const additionalTotal = additionalProds.reduce((sum, prod) => {
+                        const price = prod.final_price || prod.selling_price || getProductPrice(prod.productName, prod);
+                        return sum + (price * prod.quantity);
+                      }, 0);
 
-                          if (bookedProds.length === 0) return null;
+                      // Get client amount (service charge)
+                      const clientAmount = item.client_amount ? parseFloat(item.client_amount) : 0;
 
-                          return bookedProds.map((prod, idx) => {
-                            const price = getProductPrice(prod.productName, prod);
-                            const subtotal = price * prod.quantity;
-                            const hasDiscount = (prod.discount_value && prod.discount_value > 0) || (prod.discount_percent && prod.discount_percent > 0);
-                            return (
-                              <div key={`booked-${idx}`} className="product-detail-row booked">
-                                <span className="product-detail-name">
-                                  {prod.productName}
-                                  {prod.motor_brand && <span style={{ color: '#6366f1', fontSize: '11px', fontWeight: '700', marginLeft: '5px' }}>({prod.motor_brand})</span>}
-                                  {hasDiscount && <span style={{ color: '#f59e0b', fontSize: '10px', marginLeft: '4px' }}>(-{prod.discount_value || prod.discount_percent}{prod.discount_type === 'amount' ? '₹' : '%'})</span>}
-                                </span>
-                                <span className="product-detail-qty">{prod.quantity}</span>
-                                <span className="product-detail-price">
-                                  {price > 0 ? `₹${price.toFixed(2)}` : '-'}
-                                </span>
-                                <span className="product-detail-subtotal">
-                                  {subtotal > 0 ? `₹${subtotal.toFixed(2)}` : '-'}
-                                </span>
-                              </div>
-                            );
-                          });
-                        })()}
+                      // Calculate expired items total
+                      const expiredTotal = (item.expired_items || []).reduce((sum, ei) => sum + (parseFloat(ei.buying_price) || 0), 0);
 
-                        {/* Additional Products */}
-                        {item.additional_product && (() => {
-                          const additionalProds = parseAdditionalProducts(item.additional_product);
-                          return additionalProds.map((prod, idx) => {
-                            const price = getProductPrice(prod.productName, prod);
-                            const subtotal = price * prod.quantity;
-                            const hasDiscount = (prod.discount_value && prod.discount_value > 0) || (prod.discount_percent && prod.discount_percent > 0);
-                            return (
-                              <div key={`additional-${idx}`} className="product-detail-row additional">
-                                <span className="product-detail-name">
-                                  {prod.productName}
-                                  {prod.motor_brand && <span style={{ color: '#6366f1', fontSize: '11px', fontWeight: '700', marginLeft: '5px' }}>({prod.motor_brand})</span>}
-                                  {hasDiscount && <span style={{ color: '#f59e0b', fontSize: '10px', marginLeft: '4px' }}>(-{prod.discount_value || prod.discount_percent}{prod.discount_type === 'amount' ? '₹' : '%'})</span>}
-                                </span>
-                                <span className="product-detail-qty">{prod.quantity}</span>
-                                <span className="product-detail-price">
-                                  {price > 0 ? `₹${price.toFixed(2)}` : '-'}
-                                </span>
-                                <span className="product-detail-subtotal">
-                                  {subtotal > 0 ? `₹${subtotal.toFixed(2)}` : '-'}
-                                </span>
-                              </div>
-                            );
-                          });
-                        })()}
+                      // Use grand_total from API (includes motor_total for motor sales) or locally computed fallback
+                      const grandTotal = (item.grand_total !== undefined && item.grand_total !== null && item.grand_total !== 0) ? parseFloat(item.grand_total) : (bookingTotal + additionalTotal + clientAmount - expiredTotal);
 
-                        {/* Expired Items Collected */}
-                        {item.expired_items && item.expired_items.length > 0 && (
-                          <>
-                            <div className="product-detail-row" style={{ background: 'rgba(220, 38, 38, 0.05)', fontWeight: '700', color: '#dc2626', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              <span>Expired Items Collected (-)</span>
-                              <span></span>
-                              <span></span>
-                              <span style={{ textAlign: 'right' }}>Value</span>
-                            </div>
-                            {item.expired_items.map((ei, idx) => (
-                              <div key={`expired-${idx}`} className="product-detail-row" style={{ background: 'rgba(220, 38, 38, 0.02)', color: '#991b1b' }}>
-                                <span className="product-detail-name">{ei.name}</span>
-                                <span className="product-detail-qty">-</span>
-                                <span className="product-detail-price">-</span>
-                                <span className="product-detail-subtotal" style={{ color: '#dc2626' }}>-₹{parseFloat(ei.buying_price || 0).toFixed(2)}</span>
-                              </div>
-                            ))}
-                          </>
-                        )}
+                      return (
+                        <div className="products-purchased-section" onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', fontWeight: '700', color: 'var(--color-primary)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                            <FiShoppingBag size={14} />
+                            <span>Products Purchased</span>
+                          </div>
+                          
+                          <div style={{ fontSize: '13px', color: '#1e293b', fontWeight: '600', lineHeight: '1.4', marginBottom: '14px', background: 'white', padding: '10px 14px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.03)' }}>
+                            {hasProducts ? productsString : "No products purchased"}
+                          </div>
 
-                        {/* Totals Section - show when products exist OR client_amount exists */}
-                        {(() => {
-                          const bookedProds = item.product_name ? parseBookedProducts(item.product_name, item.product_quantity) : [];
-                          const additionalProds = item.additional_product ? parseAdditionalProducts(item.additional_product) : [];
-                          const hasProducts = bookedProds.length > 0 || additionalProds.length > 0;
-                          const hasClientAmount = item.client_amount && parseFloat(item.client_amount) > 0;
-
-                          if (!hasProducts && !hasClientAmount) return null;
-
-                          return (() => {
-
-                            // Calculate booking total (for breakdown display only)
-                            const bookingTotal = bookedProds.reduce((sum, prod) => {
-                              const price = prod.final_price || prod.selling_price || getProductPrice(prod.productName, prod);
-                              return sum + (price * prod.quantity);
-                            }, 0);
-
-                            // Calculate additional total (using final_price with discount)
-                            const additionalTotal = additionalProds.reduce((sum, prod) => {
-                              const price = prod.final_price || prod.selling_price || getProductPrice(prod.productName, prod);
-                              return sum + (price * prod.quantity);
-                            }, 0);
-
-                            // Get client amount (service charge)
-                            const clientAmount = item.client_amount ? parseFloat(item.client_amount) : 0;
-
-                            // Calculate expired items total
-                            const expiredTotal = (item.expired_items || []).reduce((sum, ei) => sum + (parseFloat(ei.buying_price) || 0), 0);
-
-                            // ✅ FIX: Use grand_total from API (includes motor_total for motor sales)
-                            // This ensures consistency with Payment Modal, Payment History, and Payment Due page
-                            // Fallback to local calculation if API value is not available
-                            const grandTotal = (item.grand_total !== undefined && item.grand_total !== null && item.grand_total !== 0) ? parseFloat(item.grand_total) : (bookingTotal + additionalTotal + clientAmount - expiredTotal);
-
-                            return (grandTotal > 0 || expiredTotal > 0) ? (
-                              <div className="products-total-section">
-                                {bookingTotal > 0 && (
-                                  <div className="total-line booking-total">
-                                    <span>Booking Products Total:</span>
-                                    <span className="total-value">₹{bookingTotal.toFixed(2)}</span>
-                                  </div>
-                                )}
-                                {additionalTotal > 0 && (
-                                  <div className="total-line additional-total">
-                                    <span>Additional Products Total:</span>
-                                    <span className="total-value">₹{additionalTotal.toFixed(2)}</span>
-                                  </div>
-                                )}
-                                {clientAmount > 0 && (
-                                  <div className="total-line client-amount">
-                                    <span>Service Amount:</span>
-                                    <span className="total-value">₹{clientAmount.toFixed(2)}</span>
-                                  </div>
-                                )}
-                                {expiredTotal > 0 && (
-                                  <div className="total-line" style={{ color: '#dc2626', fontWeight: '600' }}>
-                                    <span>Expired Items Deduction:</span>
-                                    <span className="total-value">-₹{expiredTotal.toFixed(2)}</span>
-                                  </div>
-                                )}
-                                <div className="total-line grand-total">
-                                  <span>Grand Total:</span>
-                                  <span className="total-value">₹{grandTotal.toFixed(2)}</span>
+                          {/* Totals Section */}
+                          {userRole === "bigadmin" && (grandTotal > 0 || expiredTotal > 0) && (
+                            <div className="products-total-section" style={{ borderTop: '1px dashed rgba(11, 102, 120, 0.15)', paddingTop: '12px' }}>
+                              {clientAmount > 0 && (
+                                <div className="total-line client-amount" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', margin: '4px 0' }}>
+                                  <span style={{ color: '#64748b', fontWeight: '500' }}>Service Amount:</span>
+                                  <span style={{ fontWeight: '600', color: '#1e293b' }}>₹{clientAmount.toFixed(2)}</span>
                                 </div>
-
-                                {/* Payment Status Badge - Moved to END of card (below Grand Total) */}
-                                {item.payment_indicator && item.payment_indicator !== 'unknown' ? (
-                                  <div className={`dashboard-payment-badge payment-badge-${item.payment_indicator}`} style={{ marginTop: '10px' }}>
-                                    <span className="payment-badge-dot"></span>
-                                    {item.payment_indicator === 'paid' && 'Paid'}
-                                    {item.payment_indicator === 'due' && 'Due'}
-                                    {item.payment_indicator === 'overdue' && 'Overdue'}
-                                  </div>
-                                ) : item.payment_status ? (
-                                  <div style={{
-                                    marginTop: '10px',
-                                    padding: '8px 16px',
-                                    borderRadius: '100px',
-                                    background: item.payment_status === 'Completed' ? '#4CAF50' : '#f44336',
-                                    color: 'white',
-                                    fontSize: '13px',
-                                    fontWeight: '700',
-                                    textAlign: 'center',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    textTransform: 'uppercase'
-                                  }}>
-                                    {item.payment_status}
-                                  </div>
-                                ) : null}
-
-                                {/* Due Amount - Moved to END of card (below Grand Total) */}
-                                {item.due_amount > 0 && (
-                                  <div style={{
-                                    marginTop: '10px',
-                                    padding: '10px 14px',
-                                    background: 'rgba(255, 152, 0, 0.1)',
-                                    borderRadius: '8px',
-                                    border: '1px solid rgba(255, 152, 0, 0.3)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between'
-                                  }}>
-                                    <span style={{ fontSize: '15px', fontWeight: '700', color: '#e65100' }}>
-                                      Due Amount:
-                                    </span>
-                                    <span style={{ fontSize: '18px', fontWeight: '800', color: '#e65100' }}>
-                                      ₹{item.due_amount}
-                                    </span>
-                                  </div>
-                                )}
+                              )}
+                              {bookingTotal > 0 && (
+                                <div className="total-line booking-total" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', margin: '4px 0' }}>
+                                  <span style={{ color: '#64748b', fontWeight: '500' }}>Booking Product Amount:</span>
+                                  <span style={{ fontWeight: '600', color: '#1e293b' }}>₹{bookingTotal.toFixed(2)}</span>
+                                </div>
+                              )}
+                              {additionalTotal > 0 && (
+                                <div className="total-line additional-total" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', margin: '4px 0' }}>
+                                  <span style={{ color: '#64748b', fontWeight: '500' }}>Additional Product Amount:</span>
+                                  <span style={{ fontWeight: '600', color: '#1e293b' }}>₹{additionalTotal.toFixed(2)}</span>
+                                </div>
+                              )}
+                              {expiredTotal > 0 && (
+                                <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', margin: '4px 0', color: '#dc2626' }}>
+                                  <span style={{ fontWeight: '500' }}>Expired Items Deduction:</span>
+                                  <span style={{ fontWeight: '600' }}>-₹{expiredTotal.toFixed(2)}</span>
+                                </div>
+                              )}
+                              <div className="total-line grand-total" style={{ borderTop: '1.5px solid var(--color-primary-light)', paddingTop: '8px', marginTop: '8px' }}>
+                                <span style={{ fontSize: '14px', fontWeight: '800' }}>Grand Total:</span>
+                                <span className="total-value" style={{ fontSize: '16px', fontWeight: '800' }}>₹{grandTotal.toFixed(2)}</span>
                               </div>
-                            ) : null
-                          })()
-                        })()}
 
-                        {/* No products message - only show when both products and client_amount are empty */}
-                        {(() => {
-                          const bookedProds = item.product_name ? parseBookedProducts(item.product_name, item.product_quantity) : [];
-                          const additionalProds = item.additional_product ? parseAdditionalProducts(item.additional_product) : [];
-                          const hasProducts = bookedProds.length > 0 || additionalProds.length > 0;
-                          const hasClientAmount = item.client_amount && parseFloat(item.client_amount) > 0;
+                              {item.payment_indicator && item.payment_indicator !== 'unknown' ? (
+                                <div className={`dashboard-payment-badge payment-badge-${item.payment_indicator}`} style={{ marginTop: '10px' }}>
+                                  <span className="payment-badge-dot"></span>
+                                  {item.payment_indicator === 'paid' && 'Paid'}
+                                  {item.payment_indicator === 'due' && 'Due'}
+                                  {item.payment_indicator === 'overdue' && 'Overdue'}
+                                </div>
+                              ) : item.payment_status ? (
+                                <div style={{
+                                  marginTop: '10px',
+                                  padding: '8px 16px',
+                                  borderRadius: '100px',
+                                  background: item.payment_status === 'Completed' ? '#4CAF50' : '#f44336',
+                                  color: 'white',
+                                  fontSize: '13px',
+                                  fontWeight: '700',
+                                  textAlign: 'center',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  textTransform: 'uppercase'
+                                }}>
+                                  {item.payment_status}
+                                </div>
+                              ) : null}
 
-                          if (!hasProducts && !hasClientAmount) {
-                            return (
-                              <div className="no-products">
-                                <span>No products purchased</span>
-                              </div>
-                            );
-                          }
-
-                          if (!hasProducts && hasClientAmount) {
-                            return (
-                              <div className="no-products" style={{ color: '#059669' }}>
-                                <span>Service Charge: ₹{parseFloat(item.client_amount).toFixed(2)}</span>
-                              </div>
-                            );
-                          }
-
-                          return null;
-                        })()}
-                      </div>
-                    )}
+                              {item.due_amount > 0 && (
+                                <div style={{
+                                  marginTop: '10px',
+                                  padding: '10px 14px',
+                                  background: 'rgba(255, 152, 0, 0.08)',
+                                  borderRadius: '8px',
+                                  border: '1px solid rgba(255, 152, 0, 0.25)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between'
+                                }}>
+                                  <span style={{ fontSize: '13px', fontWeight: '700', color: '#e65100' }}>
+                                    Due Amount:
+                                  </span>
+                                  <span style={{ fontSize: '15px', fontWeight: '800', color: '#e65100' }}>
+                                    ₹{item.due_amount}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {isPending && isExpand && filter !== "pending" && (

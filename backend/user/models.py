@@ -525,6 +525,8 @@ class StaffPayroll(Document):
     present_days = IntField(default=0)
     half_days = IntField(default=0)
     holiday_days = IntField(default=0)
+    paid_holiday_days = IntField(default=0)
+    unpaid_holiday_days = IntField(default=0)
     leave_days = IntField(default=0)
     absent_days = IntField(default=0)
     
@@ -545,6 +547,10 @@ class StaffPayroll(Document):
     deduction = FloatField(default=0)
     total_incentives = FloatField(default=0)
     final_salary = FloatField(default=0)
+    # Custom date range and status management
+    start_date = DateTimeField(null=True, blank=True)
+    end_date = DateTimeField(null=True, blank=True)
+    status = StringField(choices=["paid", "pending", "stopped"], default="paid")
     
     # Branch assignment
     branch_name = StringField(max_length=100, null=True, blank=True)
@@ -1275,6 +1281,8 @@ class Branch(Document):
     branch_id = StringField(required=True, unique=True)
     name = StringField(required=True, max_length=100)
     location = StringField(max_length=200, null=True, blank=True)
+    whatsapp_number = StringField(max_length=20, null=True, blank=True)
+    contact_number = StringField(max_length=20, null=True, blank=True)
     is_active = BooleanField(default=True)
     created_at = DateTimeField(default=get_ist_now)
 
@@ -1327,3 +1335,63 @@ class ExpiredItem(Document):
 
     def __str__(self):
         return f"{self.name} - {self.customer_name}"
+
+
+# ------------------------------
+#   Promotions Model
+# ------------------------------
+class Promotion(Document):
+    """
+    Model for tracking active promotions.
+    """
+    name = StringField(required=True, max_length=200)
+    description = StringField(required=True)
+    price = StringField(required=False, null=True)
+    photo_url = StringField(required=False, null=True)
+    created_at = DateTimeField(default=get_ist_now)
+
+    meta = {'collection': 'promotions', 'strict': False}
+
+    def __str__(self):
+        return self.name
+
+
+# ------------------------------
+#   Site Settings Model
+# ------------------------------
+class SiteSettings(Document):
+    """
+    Global site settings - only one document stored (singleton pattern).
+    """
+    whatsapp_number = StringField(default="", null=True)
+    contact_phone = StringField(default="", null=True)
+    updated_at = DateTimeField(default=get_ist_now)
+
+    meta = {'collection': 'site_settings', 'strict': False}
+
+    def __str__(self):
+        return f"SiteSettings (WhatsApp: {self.whatsapp_number})"
+
+
+# ------------------------------
+#   Inventory Transaction Model (Expenses & Income)
+# ------------------------------
+class InventoryTransaction(Document):
+    """
+    Inventory and Cash Flow model to track income and expenses by category, branch, and payment status.
+    """
+    transaction_id = StringField(required=True, unique=True)
+    branch_name = StringField(max_length=100, required=True)
+    type = StringField(choices=["income", "expense"], required=True)
+    category = StringField(required=True) # e.g. product_purchasing, staff_salary, shop_rent, petrol, product_sale, service_amount, etc.
+    amount = FloatField(default=0.0)
+    status = StringField(choices=["received", "due", "paid", "pending"], default="received")
+    description = StringField(null=True, blank=True)
+    date = DateTimeField(default=get_ist_now)
+    created_at = DateTimeField(default=get_ist_now)
+
+    meta = {'collection': 'inventory_transactions', 'strict': False}
+
+    def __str__(self):
+        return f"{self.type.upper()} - {self.category} - ₹{self.amount} ({self.status})"
+

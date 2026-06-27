@@ -11,7 +11,8 @@ const BranchManagement = () => {
     const [formData, setFormData] = useState({
         name: '',
         location: '',
-        contact_number: ''
+        contact_number: '',
+        whatsapp_number: ''
     });
     const [editingId, setEditingId] = useState(null);
 
@@ -29,7 +30,7 @@ const BranchManagement = () => {
             } else {
                 await axios.post(`${API_BASE_URL}branches/create/`, formData);
             }
-            setFormData({ name: '', location: '', contact_number: '' });
+            setFormData({ name: '', location: '', contact_number: '', whatsapp_number: '' });
             setEditingId(null);
             fetchBranches();
         } catch (error) {
@@ -45,7 +46,8 @@ const BranchManagement = () => {
         setFormData({
             name: branch.name || '',
             location: branch.location || '',
-            contact_number: branch.contact_number || ''
+            contact_number: branch.contact_number || '',
+            whatsapp_number: branch.whatsapp_number || ''
         });
         // Scroll to form
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -65,7 +67,7 @@ const BranchManagement = () => {
 
     const handleCancelEdit = () => {
         setEditingId(null);
-        setFormData({ name: '', location: '', contact_number: '' });
+        setFormData({ name: '', location: '', contact_number: '', whatsapp_number: '' });
     };
 
     return (
@@ -122,7 +124,7 @@ const BranchManagement = () => {
                         </div>
                         
                         <div className="form-group">
-                            <label>Official Contact</label>
+                            <label>Official Contact (Call)</label>
                             <div className="input-wrapper">
                                 <FiPhone className="input-icon" />
                                 <input 
@@ -131,6 +133,20 @@ const BranchManagement = () => {
                                     value={formData.contact_number} 
                                     onChange={handleInputChange} 
                                     placeholder="e.g. +91 98765 43210"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label>WhatsApp Number for Booking</label>
+                            <div className="input-wrapper">
+                                <span className="input-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>💬</span>
+                                <input 
+                                    type="text" 
+                                    name="whatsapp_number" 
+                                    value={formData.whatsapp_number} 
+                                    onChange={handleInputChange} 
+                                    placeholder="e.g. 919876543210 (with country code)"
                                 />
                             </div>
                         </div>
@@ -187,7 +203,10 @@ const BranchManagement = () => {
                                                     <FiMapPin size={12} /> {branch.location || 'Not Specified'}
                                                 </div>
                                                 <div className="location-chip" style={{ opacity: 0.8 }}>
-                                                    <FiPhone size={12} /> {branch.contact_number || 'No Contact'}
+                                                    <FiPhone size={12} /> Call: {branch.contact_number || 'No Contact'}
+                                                </div>
+                                                <div className="location-chip" style={{ opacity: 0.8 }}>
+                                                    <span style={{ fontSize: '11px', marginRight: '4px' }}>💬</span> WA: {branch.whatsapp_number || 'No WhatsApp'}
                                                 </div>
                                             </div>
                                         </td>

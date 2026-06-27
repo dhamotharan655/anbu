@@ -1,0 +1,194 @@
+# ============================================================
+#  ANBU Enterprises — Project .gitignore
+#  Covers: Django (backend) + Vite/React (WaterFrontend)
+# ============================================================
+
+
+# ─── PYTHON / DJANGO ────────────────────────────────────────
+
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+ENV/
+env.bak/
+venv.bak/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Django media (user-uploaded files — manage separately)
+backend/media/
+
+# Django static collected files
+staticfiles/
+static_root/
+
+# Django migrations (keep if you want version-controlled migrations)
+# Uncomment lines below only if you intentionally exclude migrations:
+# */migrations/*.py
+# !*/migrations/__init__.py
+
+# Django secret key / credentials
+.env
+.env.local
+.env.production
+*.env
+
+# Coverage / testing
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.pytest_cache/
+nosetests.xml
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+MANIFEST
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+.cache
+
+# MyPy / type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+
+# ─── NODE / REACT / VITE ────────────────────────────────────
+
+# Dependencies
+node_modules/
+WaterFrontend/node_modules/
+backend/node_modules/
+
+# Build output
+WaterFrontend/dist/
+WaterFrontend/build/
+dist/
+build/
+
+# Vite cache
+WaterFrontend/.vite/
+.vite/
+
+# Environment files
+WaterFrontend/.env
+WaterFrontend/.env.local
+WaterFrontend/.env.development.local
+WaterFrontend/.env.test.local
+WaterFrontend/.env.production.local
+
+# ESLint / Prettier cache
+.eslintcache
+.prettiercache
+
+# Lock files (choose one — keep package-lock.json OR yarn.lock, not both)
+# yarn.lock  ← uncomment to ignore if using npm
+# package-lock.json  ← uncomment to ignore if using yarn
+
+# TypeScript
+*.tsbuildinfo
+
+
+# ─── IDE / EDITORS ──────────────────────────────────────────
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# JetBrains (PyCharm, WebStorm, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Kilo editor
+.kilo/
+
+
+# ─── OS FILES ───────────────────────────────────────────────
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+
+
+# ─── PROJECT-SPECIFIC ───────────────────────────────────────
+
+# Temporary / scratch directories
+scratch/
+tmp/
+temp/
+
+# Test scripts at root level
+test_motors.py
+patch.py
+
+# Compiled assets that should be regenerated
+*.min.js
+*.min.css
+
+# SSL / Keys / Secrets
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets.json
+credentials.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

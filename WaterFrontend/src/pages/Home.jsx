@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../api";
 import '../App.css';
 import '../index.css';
+import { useGlobalRefresh } from '../context/GlobalRefreshContext';
 import {
   FiTrendingUp,
   FiPackage,
@@ -71,6 +72,7 @@ const menuItems = [
 
 const Home = () => {
   const navigate = useNavigate();
+  const { branches } = useGlobalRefresh();
 
   // 🔐 Role & permissions
   const role = sessionStorage.getItem("role");
@@ -554,6 +556,12 @@ const Home = () => {
           color: var(--color-primary);
           transform: translateX(4px);
         }
+        .branch-card-home:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 10px 25px rgba(11, 102, 120, 0.14);
+          border-color: var(--color-primary-light) !important;
+          background: rgba(255, 255, 255, 0.88) !important;
+        }
         .view-all:hover {
           gap: 8px;
         }
@@ -564,7 +572,7 @@ const Home = () => {
         @media (max-width: 900px) {
           .stat-grid { grid-template-columns: repeat(2, 1fr); }
           .services-grid { grid-template-columns: 1fr; }
-          .hero-stats { flex-wrap: flex; }
+          .hero-stats { flex-wrap: wrap; }
           .main { padding: 24px 20px 48px; }
         }
       `}</style>
@@ -602,6 +610,10 @@ const Home = () => {
                 <div style={styles.heroStat}>
                   <div style={styles.heroStatNum}>{stats.team}</div>
                   <div style={styles.heroStatLabel}>Team Members</div>
+                </div>
+                <div style={styles.heroStat}>
+                  <div style={styles.heroStatNum}>{branches ? branches.length : 0}</div>
+                  <div style={styles.heroStatLabel}>Branches</div>
                 </div>
               </div>
             </div>
@@ -684,6 +696,87 @@ const Home = () => {
                   </div>
                 </div>
               ))}
+          </div>
+
+          {/* OUR LOCATIONS / BRANCHES */}
+          <div style={styles.sectionHeader} style={{ marginTop: "32px", marginBottom: "16px" }}>
+            <div style={styles.sectionTitle}>Our Active Branches</div>
+          </div>
+          
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            gap: "20px",
+            marginBottom: "24px",
+            animation: "rise 0.6s cubic-bezier(0.16,1,0.3,1) 0.3s both"
+          }}>
+            {branches && branches.length > 0 ? (
+              branches.map((b) => (
+                <div
+                  key={b.branch_id}
+                  style={{
+                    background: "rgba(255,255,255,0.72)",
+                    backdropFilter: "blur(20px)",
+                    WebkitBackdropFilter: "blur(20px)",
+                    border: "1px solid rgba(255,255,255,0.8)",
+                    borderRadius: "20px",
+                    padding: "20px",
+                    boxShadow: "0 4px 20px rgba(11, 102, 120, 0.08)",
+                    transition: "all 0.25s ease",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "10px",
+                    position: "relative"
+                  }}
+                  className="branch-card-home"
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "12px",
+                      background: "linear-gradient(135deg, rgba(11, 102, 120, 0.1), rgba(11, 102, 120, 0.2))",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "18px"
+                    }}>
+                      📍
+                    </div>
+                    <div>
+                      <h4 style={{ fontSize: "15px", fontWeight: "700", color: "var(--color-text)", margin: 0 }}>{b.name}</h4>
+                      <span style={{ fontSize: "11px", fontWeight: "600", color: "#64748b" }}>ID: {b.branch_id}</span>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: "13px", color: "var(--color-text-secondary)", margin: 0, minHeight: "40px", lineHeight: "1.4" }}>
+                    {b.location || "Location not configured"}
+                  </p>
+                  <div style={{
+                    borderTop: "1px dashed rgba(11, 102, 120, 0.15)",
+                    paddingTop: "10px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    fontSize: "11px",
+                    fontWeight: "600",
+                    color: "var(--color-primary)"
+                  }}>
+                    <span>Status: Active</span>
+                    <span style={{
+                      padding: "2px 8px",
+                      borderRadius: "100px",
+                      background: "rgba(45, 158, 107, 0.1)",
+                      color: "#2d9e6b",
+                      fontSize: "10px"
+                    }}>✓ Operational</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "30px", background: "rgba(255,255,255,0.4)", borderRadius: "20px", border: "1px solid rgba(255,255,255,0.6)" }}>
+                <p style={{ color: "#64748b", margin: 0, fontSize: "14px" }}>No branch locations configured yet.</p>
+              </div>
+            )}
           </div>
         </main>
       </div>

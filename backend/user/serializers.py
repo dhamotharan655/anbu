@@ -6,7 +6,7 @@ from django.contrib.auth.hashers import make_password
 from .models import (
     User, Staff, BookServiceComplaint, ClientDetails, Products, 
     StockItem, MotorDetails, MotorVariant, HolidayCalendar,
-    Branch, JobType, ExpiredItem
+    Branch, JobType, ExpiredItem, Promotion, InventoryTransaction
 )
 
 
@@ -1358,6 +1358,8 @@ class BranchSerializer(serializers.Serializer):
     branch_id = serializers.CharField(required=True)
     name = serializers.CharField(required=True)
     location = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    whatsapp_number = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    contact_number = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     is_active = serializers.BooleanField(default=True)
     created_at = serializers.DateTimeField(read_only=True)
 
@@ -1410,3 +1412,55 @@ class ExpiredItemSerializer(serializers.Serializer):
             setattr(instance, attr, value)
         instance.save()
         return instance
+
+
+# -------------------------------
+# Promotion Serializer
+# -------------------------------
+class PromotionSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    name = serializers.CharField(required=True)
+    description = serializers.CharField(required=True)
+    price = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    photo_url = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    created_at = serializers.DateTimeField(read_only=True)
+
+    def create(self, validated_data):
+        promo = Promotion(**validated_data)
+        promo.save()
+        return promo
+
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+
+# -------------------------------
+# Inventory Transaction Serializer
+# -------------------------------
+class InventoryTransactionSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    transaction_id = serializers.CharField(required=True)
+    branch_name = serializers.CharField(required=True)
+    type = serializers.CharField(required=True)
+    category = serializers.CharField(required=True)
+    amount = serializers.FloatField(required=True)
+    status = serializers.CharField(required=True)
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    date = serializers.DateTimeField(required=False)
+    created_at = serializers.DateTimeField(read_only=True)
+
+    def create(self, validated_data):
+        from .models import InventoryTransaction
+        transaction = InventoryTransaction(**validated_data)
+        transaction.save()
+        return transaction
+
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+

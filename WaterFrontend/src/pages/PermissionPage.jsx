@@ -35,7 +35,14 @@ const inputStyle = {
 };
 
 const PAGE_ICONS = {
-  dashboard: "📊", booking: "📋", staff: "👥", "add-staff": "➕",
+  dashboard: "📊", 
+  "dashboard-all": "📊 ➔ All Tab", 
+  "dashboard-pending": "📥 ➔ Pending Tab", 
+  "dashboard-assigned": "👥 ➔ Assigned Tab",
+  "dashboard-completed": "✅ ➔ Completed Tab", 
+  "dashboard-due": "⏰ ➔ Due Tab", 
+  "dashboard-overdue": "⚠️ ➔ Overdue Tab",
+  booking: "📋", staff: "👥", "add-staff": "➕",
   "staff-performance": "📈", history: "📂", customers: "🧑‍🤝‍🧑",
   "add-customer": "👤", "stock-management": "📦",
   invoices: "🧾", payroll: "💵", "holiday-management": "📅",
@@ -46,15 +53,59 @@ const PermissionPage = () => {
   const [admins, setAdmins] = useState([]);
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [permissions, setPermissions] = useState([]);
-  const [newUser, setNewUser] = useState({ full_name: "", password: "" });
+  const [newUser, setNewUser] = useState({ full_name: "", password: "", role: "admin" });
 
   // Job Types state
   const [jobTypes, setJobTypes] = useState([]);
   const [newJobTypeName, setNewJobTypeName] = useState("");
   const [jobTypeLoading, setJobTypeLoading] = useState(false);
 
+  // Promotions state
+  const [promotions, setPromotions] = useState([]);
+  const [newPromo, setNewPromo] = useState({ name: "", description: "", price: "" });
+  const [newPromoPhoto, setNewPromoPhoto] = useState(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+
+  const fetchPromotions = () => {
+    api.get("/promotions/")
+      .then((res) => setPromotions(res.data))
+      .catch((err) => console.error("Error loading promotions:", err));
+  };
+
+  // Contact / Site Settings state
+  const [contactSettings, setContactSettings] = useState({ whatsapp_number: "", contact_phone: "" });
+  const [contactSaving, setContactSaving] = useState(false);
+  const [contactSaved, setContactSaved] = useState(false);
+
+  const fetchContactSettings = () => {
+    api.get("/site-settings/")
+      .then((res) => setContactSettings({ whatsapp_number: res.data.whatsapp_number || "", contact_phone: res.data.contact_phone || "" }))
+      .catch(() => {});
+  };
+
+  const saveContactSettings = async () => {
+    setContactSaving(true);
+    try {
+      await api.post("/site-settings/update/", contactSettings);
+      setContactSaved(true);
+      setTimeout(() => setContactSaved(false), 3000);
+    } catch (e) {
+      alert("Failed to save settings");
+    } finally {
+      setContactSaving(false);
+    }
+  };
+
+
   const availablePages = [
-    "dashboard", "booking", "staff", "add-staff", "staff-performance",
+    "dashboard", 
+    "dashboard-all", 
+    "dashboard-pending", 
+    "dashboard-assigned", 
+    "dashboard-completed", 
+    "dashboard-due", 
+    "dashboard-overdue",
+    "booking", "staff", "add-staff", "staff-performance",
     "history", "customers", "add-customer", "stock-management",
     "invoices", "payroll", "holiday-management",
   ];
@@ -68,6 +119,9 @@ const PermissionPage = () => {
     api.get("/job-types/")
       .then((res) => setJobTypes(Array.isArray(res.data) ? res.data : []))
       .catch((err) => console.error("Error loading job types:", err));
+
+    fetchPromotions();
+    fetchContactSettings();
   }, []);
 
   const togglePermission = (page) => {
@@ -98,7 +152,7 @@ const PermissionPage = () => {
     try {
       await api.post("/users/create/", newUser);
       alert("User created successfully!");
-      setNewUser({ full_name: "", password: "" });
+      setNewUser({ full_name: "", password: "", role: "admin" });
       const res = await api.get("/users/");
       setAdmins(res.data);
       const newUserData = res.data.find(u => u.full_name === newUser.full_name);
@@ -139,13 +193,50 @@ const PermissionPage = () => {
     }
   };
 
-  const deleteJobType = async (id) => {
-    if (!window.confirm("Delete this job type?")) return;
+  const addPromotion = async () => {
+    if (!newPromo.name.trim() || !newPromo.description.trim()) {
+      return alert("Please fill in both Name and Description!");
+    }
+    setPromoLoading(true);
     try {
-      await api.delete(`/job-types/${id}/delete/`);
-      setJobTypes(jobTypes.filter(jt => jt.id !== id));
+      const formData = new FormData();
+      formData.append("name", newPromo.name.trim());
+      formData.append("description", newPromo.description.trim());
+      if (newPromo.price) {
+        formData.append("price", newPromo.price.trim());
+      }
+      if (newPromoPhoto) {
+        formData.append("photo", newPromoPhoto);
+      }
+
+      await api.post("/promotions/create/", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      alert("Promotion added successfully!");
+      setNewPromo({ name: "", description: "", price: "" });
+      setNewPromoPhoto(null);
+      const fileInput = document.getElementById("promo-photo-input");
+      if (fileInput) fileInput.value = "";
+      
+      fetchPromotions();
     } catch (err) {
-      alert("Failed to delete job type");
+      alert("Failed to add promotion!");
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const deletePromotion = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this promotion?")) return;
+    try {
+      await api.delete(`/promotions/${id}/delete/`);
+      alert("Promotion deleted successfully!");
+      fetchPromotions();
+    } catch (err) {
+      alert("Failed to delete promotion!");
     }
   };
 
@@ -153,6 +244,7 @@ const PermissionPage = () => {
     { id: "permissions", label: "Permissions", icon: <FiSettings /> },
     { id: "users", label: "Users", icon: <FiUserPlus /> },
     { id: "job-types", label: "Job Types", icon: <FiTag /> },
+    { id: "promotions", label: "Promotions", icon: <FiPlusCircle /> },
   ];
 
   return (
@@ -281,6 +373,26 @@ const PermissionPage = () => {
               <input className="form-input" type="text" value={newUser.full_name} onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })} placeholder="Enter username" />
             </div>
 
+            <div className="form-group" style={{ marginBottom: "1rem" }}>
+              <label className="form-label">Role</label>
+              <select
+                className="form-input"
+                style={{
+                  width: "100%",
+                  background: "rgba(255,255,255,0.88)",
+                  border: "1.5px solid rgba(124,92,191,0.15)",
+                  borderRadius: "14px",
+                  padding: "0.72rem 1rem",
+                  fontSize: "0.9rem"
+                }}
+                value={newUser.role || "admin"}
+                onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+              >
+                <option value="admin">Admin</option>
+                <option value="bigadmin">Super Admin (bigadmin)</option>
+              </select>
+            </div>
+
             <div className="form-group" style={{ marginBottom: "1.25rem" }}>
               <label className="form-label">Password</label>
               <input className="form-input" type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} placeholder="Enter password" />
@@ -403,6 +515,143 @@ const PermissionPage = () => {
                 <FiTag size={36} />
                 <p>No job types yet. Add your first one above.</p>
               </div>
+            )}
+          </motion.div>
+        </div>
+      )}
+
+      {/* PROMOTIONS TAB */}
+      {activeTab === "promotions" && (
+        <div style={{ maxWidth: "680px", margin: "0 auto", width: "100%" }}>
+
+
+          {/* Add Promotion form */}
+          <motion.div style={glassCard} initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
+            <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", fontWeight: 600, color: COLORS.text, marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <FiPlusCircle color={COLORS.primary} /> Add New Promotion
+            </h2>
+
+            <div className="form-group" style={{ marginBottom: "1rem" }}>
+              <label className="form-label">Promotion Name *</label>
+              <input 
+                className="form-input" 
+                type="text" 
+                value={newPromo.name} 
+                onChange={(e) => setNewPromo({ ...newPromo, name: e.target.value })} 
+                placeholder="e.g. Monsoon Sparkle Combo" 
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: "1rem" }}>
+              <label className="form-label">Price (Optional)</label>
+              <input 
+                className="form-input" 
+                type="text" 
+                value={newPromo.price} 
+                onChange={(e) => setNewPromo({ ...newPromo, price: e.target.value })} 
+                placeholder="e.g. ₹999 or Free with Service" 
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: "1rem" }}>
+              <label className="form-label">Description *</label>
+              <textarea 
+                className="form-input" 
+                rows="3"
+                style={{ resize: "vertical", minHeight: "80px", background: "rgba(255,255,255,0.88)", border: "1.5px solid rgba(124,92,191,0.15)", borderRadius: "14px", padding: "0.72rem 1rem", fontSize: "0.9rem", boxSizing: "border-box", width: "100%" }}
+                value={newPromo.description} 
+                onChange={(e) => setNewPromo({ ...newPromo, description: e.target.value })} 
+                placeholder="Enter discount details, terms and conditions..." 
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: "1.25rem" }}>
+              <label className="form-label">Photo (Optional)</label>
+              <input 
+                id="promo-photo-input"
+                className="form-input" 
+                type="file" 
+                accept="image/*" 
+                onChange={(e) => setNewPromoPhoto(e.target.files[0])} 
+              />
+            </div>
+
+            <button className="button-primary" onClick={addPromotion} disabled={promoLoading} style={{ width: "100%" }}>
+              <FiPlusCircle /> {promoLoading ? "Adding..." : "Add Promotion"}
+            </button>
+          </motion.div>
+
+          {/* Existing promotions */}
+          <motion.div style={glassCard} initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
+            <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", fontWeight: 600, color: COLORS.text, marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <FiTag color={COLORS.primary} /> Active Promotions
+            </h2>
+
+            {promotions.length > 0 ? (
+               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {promotions.map((promo) => (
+                  <motion.div
+                    key={promo.id}
+                    whileHover={{ scale: 1.012 }}
+                    style={{ 
+                      display: "flex", 
+                      gap: "1rem", 
+                      padding: "1rem", 
+                      background: "rgba(255,255,255,0.6)", 
+                      border: "1px solid rgba(11, 102, 120, 0.12)", 
+                      borderRadius: "16px",
+                      alignItems: "center"
+                    }}
+                  >
+                    {promo.photo_url ? (
+                      <img 
+                        src={promo.photo_url.startsWith("http") ? promo.photo_url : `${api.defaults.baseURL.replace('/api/', '')}${promo.photo_url}`} 
+                        alt={promo.name} 
+                        style={{ width: "70px", height: "70px", borderRadius: "12px", objectFit: "cover", flexShrink: 0, border: "1px solid rgba(0,0,0,0.05)" }}
+                      />
+                    ) : (
+                      <div style={{ width: "70px", height: "70px", borderRadius: "12px", background: "rgba(11, 102, 120, 0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-primary)", flexShrink: 0 }}>
+                        <FiTag size={24} />
+                      </div>
+                    )}
+
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, color: COLORS.text, fontSize: "0.95rem", marginBottom: "4px" }}>{promo.name}</div>
+                      <p style={{ fontSize: "0.8rem", color: COLORS.muted, margin: "0 0 6px 0", lineHeight: "1.3" }}>{promo.description}</p>
+                      {promo.price && (
+                        <span style={{ fontSize: "0.82rem", fontWeight: "700", color: COLORS.success, background: "rgba(45,158,107,0.1)", padding: "2px 8px", borderRadius: "6px" }}>
+                           {promo.price}
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => deletePromotion(promo.id)}
+                      style={{ 
+                        width: "36px", 
+                        height: "36px", 
+                        borderRadius: "50%", 
+                        border: "none", 
+                        display: "flex", 
+                        alignItems: "center", 
+                        justifyContent: "center", 
+                        cursor: "pointer", 
+                        background: "rgba(235,89,104,0.1)", 
+                        color: COLORS.danger,
+                        transition: "all 0.2s ease" 
+                      }}
+                      title="Delete promotion"
+                    >
+                      <FiTrash2 size={15} />
+                    </button>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state" style={{ padding: "2rem" }}>
+                <FiTag size={36} />
+                <p>No active promotions found</p>
+               </div>
             )}
           </motion.div>
         </div>

@@ -289,7 +289,7 @@ def login(request):
     
 @api_view(["GET"])
 def get_admins(request):
-    admins = User.objects(role="admin")
+    admins = User.objects(role__in=["admin", "bigadmin"])
     serializer = UserSerializer(admins, many=True)
     return Response(serializer.data)
 
@@ -4942,25 +4942,47 @@ def download_invoice(request, invoice_number):
 @api_view(['GET'])
 def calculate_payroll(request):
     """
-    Calculate payroll for all staff for a given month and year.
+    Calculate payroll for all staff for a given month and year or a custom date range.
     GET /api/payroll/calculate/?month=3&year=2026
+    GET /api/payroll/calculate/?start_date=2026-06-01&end_date=2026-06-15
     """
     try:
         now = get_ist_now()
-        month = int(request.GET.get('month', now.month))
-        year = int(request.GET.get('year', now.year))
+        start_date_str = request.GET.get('start_date', None)
+        end_date_str = request.GET.get('end_date', None)
         
-        # Define the boundary for counting attendance if we are in the current month
-        is_current_month = (month == now.month and year == now.year)
-        calculation_limit_day = now.day if is_current_month else 31
-        
-        # Get all existing payroll records for this month and year to preserve bonus/deductions
-        existing_payrolls = StaffPayroll.objects(month=month, year=year)
-        payroll_adjustments = {str(p.staff_id): {'bonus': p.bonus or 0, 'deduction': p.deduction or 0} for p in existing_payrolls}
-        
-        # Now it's safe to delete existing payroll records for this month and year
-        StaffPayroll.objects(month=month, year=year).delete()
-        
+        if start_date_str and end_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+            if start_date > end_date:
+                start_date, end_date = end_date, start_date
+            
+            date_list = []
+            curr = start_date
+            while curr <= end_date:
+                date_list.append(curr)
+                curr += timedelta(days=1)
+                
+            month = start_date.month
+            year = start_date.year
+            days_in_period = len(date_list)
+            
+            # Preserve existing adjustments for custom range if calculated before
+            existing_payrolls = StaffPayroll.objects(start_date=start_date, end_date=end_date)
+            payroll_adjustments = {str(p.staff_id): {'bonus': p.bonus or 0, 'deduction': p.deduction or 0} for p in existing_payrolls}
+            StaffPayroll.objects(start_date=start_date, end_date=end_date).delete()
+        else:
+            month = int(request.GET.get('month', now.month))
+            year = int(request.GET.get('year', now.year))
+            days_in_month = calendar.monthrange(year, month)[1]
+            date_list = [datetime(year, month, d) for d in range(1, days_in_month + 1)]
+            days_in_period = days_in_month
+            
+            # Preserve existing adjustments for standard month range
+            existing_payrolls = StaffPayroll.objects(month=month, year=year, start_date=None, end_date=None)
+            payroll_adjustments = {str(p.staff_id): {'bonus': p.bonus or 0, 'deduction': p.deduction or 0} for p in existing_payrolls}
+            StaffPayroll.objects(month=month, year=year, start_date=None, end_date=None).delete()
+            
         # Get all active staff
         staff_list = Staff.objects(is_active=True)
         
@@ -4969,14 +4991,14 @@ def calculate_payroll(request):
                 'success': True,
                 'month': month,
                 'year': year,
+                'start_date': start_date_str,
+                'end_date': end_date_str,
                 'payroll': [],
                 'message': 'No active staff found'
             }, status=status.HTTP_200_OK)
         
-        # Step 1: Auto-generate Sundays in HolidayCalendar for this month globally
-        days_in_month = calendar.monthrange(year, month)[1]
-        for d in range(1, days_in_month + 1):
-            date_obj = datetime(year, month, d)
+        # Step 1: Auto-generate Sundays in HolidayCalendar for this period globally
+        for date_obj in date_list:
             if date_obj.strftime("%A") == "Sunday":
                 # Check for global Sunday entry
                 existing = HolidayCalendar.objects(date=date_obj, staff_id=None).first()
@@ -5008,9 +5030,7 @@ def calculate_payroll(request):
             paid_holiday_days = 0
             unpaid_holiday_days = 0
 
-            for day in range(1, days_in_month + 1):
-                # ... same logic for calculation_limit_day
-                current_date = datetime(year, month, day)
+            for current_date in date_list:
                 res = resolve_attendance(staff_id, current_date)
                 
                 status_val = res.get("status")
@@ -5055,12 +5075,13 @@ def calculate_payroll(request):
                     total_multiplier += multiplier
                 else:
                     # ONLY increment absent_days if the day has already passed or is today
-                    if day <= calculation_limit_day:
+                    if current_date.date() <= now.date():
                         absent_days += 1
 
             # Calculate attendance percentage
             total_worked_days = present_days + (half_days * 0.5) + paid_holiday_days + leave_days
-            denominator = min(calculation_limit_day, days_in_month)
+            passed_days_in_period = sum(1 for d in date_list if d.date() <= now.date())
+            denominator = passed_days_in_period if passed_days_in_period > 0 else len(date_list)
             attendance_percentage = (total_worked_days / denominator * 100) if denominator > 0 else 0
             
             payroll_data.append({
@@ -5078,8 +5099,8 @@ def calculate_payroll(request):
                 'absent_days': absent_days,
                 'total_multiplier': round(total_multiplier, 2),
                 'total_salary': round(total_salary, 2),
-                'days_in_month': days_in_month,
-                'calculation_up_to': min(calculation_limit_day, days_in_month),
+                'days_in_month': days_in_period,
+                'calculation_up_to': denominator,
                 'attendance_percentage': round(attendance_percentage, 2),
                 'bonus': 0,
                 'deduction': 0,
@@ -5098,18 +5119,22 @@ def calculate_payroll(request):
             payroll_data[-1]['bonus'] = bonus
             payroll_data[-1]['deduction'] = deduction
 
-            # ✅ NEW: Sum all staff_incentive amounts from completed bookings this month
-            month_start = datetime(year, month, 1)
-            if month == 12:
-                month_end = datetime(year + 1, 1, 1)
+            # ✅ Sum all staff_incentive amounts from completed bookings in this period
+            if start_date_str and end_date_str:
+                period_start = start_date
+                period_end = end_date + timedelta(days=1)
             else:
-                month_end = datetime(year, month + 1, 1)
+                period_start = datetime(year, month, 1)
+                if month == 12:
+                    period_end = datetime(year + 1, 1, 1)
+                else:
+                    period_end = datetime(year, month + 1, 1)
 
             completed_bookings = BookServiceComplaint.objects(
                 staff_name__iexact=staff.name,
                 status='completed',
-                assigned_completed_at__gte=month_start,
-                assigned_completed_at__lt=month_end
+                assigned_completed_at__gte=period_start,
+                assigned_completed_at__lt=period_end
             )
             total_incentives = sum(float(getattr(b, 'staff_incentive', 0) or 0) for b in completed_bookings)
             payroll_data[-1]['total_incentives'] = round(total_incentives, 2)
@@ -5119,6 +5144,8 @@ def calculate_payroll(request):
             'success': True,
             'month': month,
             'year': year,
+            'start_date': start_date_str,
+            'end_date': end_date_str,
             'payroll': payroll_data
         }, status=status.HTTP_200_OK)
     
@@ -5136,25 +5163,49 @@ def save_payroll(request):
     """
     Save calculated payroll to database.
     POST /api/payroll/save
-    Body: { "month": 3, "year": 2026, "payroll": [...] }
+    Body: { "month": 3, "year": 2026, "payroll": [...], "start_date": "2026-06-01", "end_date": "2026-06-15" }
     """
     try:
         month = int(request.data.get('month'))
         year = int(request.data.get('year'))
+        start_date_str = request.data.get('start_date', None)
+        end_date_str = request.data.get('end_date', None)
         payroll_list = request.data.get('payroll', [])
         
+        start_date = None
+        if start_date_str:
+            try:
+                start_date = datetime.strptime(start_date_str.split('T')[0], '%Y-%m-%d')
+            except:
+                pass
+        end_date = None
+        if end_date_str:
+            try:
+                end_date = datetime.strptime(end_date_str.split('T')[0], '%Y-%m-%d')
+            except:
+                pass
+                
         saved_records = []
         
         for item in payroll_list:
             staff_id = item.get('staff_id')
             staff_name = item.get('staff_name')
             
-            # Check if payroll already exists for this staff/month/year
-            existing = StaffPayroll.objects(
-                staff_id=staff_id,
-                month=month,
-                year=year
-            ).first()
+            # Check if payroll already exists for this staff/range
+            if start_date and end_date:
+                existing = StaffPayroll.objects(
+                    staff_id=staff_id,
+                    start_date=start_date,
+                    end_date=end_date
+                ).first()
+            else:
+                existing = StaffPayroll.objects(
+                    staff_id=staff_id,
+                    month=month,
+                    year=year,
+                    start_date=None,
+                    end_date=None
+                ).first()
             
             if existing:
                 # Update existing record
@@ -5175,6 +5226,9 @@ def save_payroll(request):
                 existing.deduction = item.get('deduction', 0)
                 existing.total_incentives = item.get('total_incentives', 0)
                 existing.final_salary = round(existing.total_salary + (existing.bonus or 0) - (existing.deduction or 0) + (existing.total_incentives or 0), 2)
+                existing.status = item.get('status', existing.status or 'paid')
+                existing.start_date = start_date
+                existing.end_date = end_date
                 existing.generated_at = get_ist_now()
                 existing.save()
                 saved_records.append(str(existing.id))
@@ -5205,7 +5259,10 @@ def save_payroll(request):
                     bonus=bonus_val,
                     deduction=deduction_val,
                     total_incentives=item.get('total_incentives', 0),
-                    final_salary=round(total_salary_val + bonus_val - deduction_val + item.get('total_incentives', 0), 2)
+                    final_salary=round(total_salary_val + bonus_val - deduction_val + item.get('total_incentives', 0), 2),
+                    status=item.get('status', 'paid') or 'paid',
+                    start_date=start_date,
+                    end_date=end_date
                 )
                 payroll.save()
                 saved_records.append(str(payroll.id))
@@ -5228,16 +5285,27 @@ def get_payroll_history(request):
     """
     Get saved payroll history.
     GET /api/payroll/history/?month=3&year=2026
+    GET /api/payroll/history/?start_date=2026-06-01&end_date=2026-06-15
     """
     try:
         month = request.GET.get('month')
         year = request.GET.get('year')
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
         
         query = {}
-        if month:
-            query['month'] = int(month)
-        if year:
-            query['year'] = int(year)
+        if start_date_str and end_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+            query['start_date'] = start_date
+            query['end_date'] = end_date
+        else:
+            if month:
+                query['month'] = int(month)
+            if year:
+                query['year'] = int(year)
+                query['start_date'] = None
+                query['end_date'] = None
         
         if query:
             payroll_records = StaffPayroll.objects(__raw__=query).order_by('-year', '-month')
@@ -5246,7 +5314,6 @@ def get_payroll_history(request):
         
         data = []
         for record in payroll_records:
-            # Calculate final_salary correctly: total_salary + bonus - deduction
             calculated_final_salary = round((record.total_salary or 0) + (record.bonus or 0) - (record.deduction or 0) + (getattr(record, 'total_incentives', 0) or 0), 2)
             data.append({
                 'id': str(record.id),
@@ -5261,9 +5328,9 @@ def get_payroll_history(request):
                 'unpaid_holiday_days': getattr(record, 'unpaid_holiday_days', 0) or 0,
                 'leave_days': record.leave_days,
                 'absent_days': record.absent_days,
-                'total_multiplier': getattr(record, 'total_multiplier', 0) or 0,  # Sum of all daily multipliers
+                'total_multiplier': getattr(record, 'total_multiplier', 0) or 0,
                 'per_day_salary': record.per_day_salary,
-                'monthly_salary': getattr(record, 'monthly_salary', 0) or 0,  # Base salary
+                'monthly_salary': getattr(record, 'monthly_salary', 0) or 0,
                 'total_salary': record.total_salary,
                 'bonus': record.bonus,
                 'deduction': record.deduction,
@@ -5271,6 +5338,9 @@ def get_payroll_history(request):
                 'final_salary': calculated_final_salary,
                 'days_in_month': getattr(record, 'days_in_month', 0) or 0,
                 'attendance_percentage': getattr(record, 'attendance_percentage', 0) or 0,
+                'status': getattr(record, 'status', 'paid') or 'paid',
+                'start_date': record.start_date.strftime('%Y-%m-%d') if getattr(record, 'start_date', None) else None,
+                'end_date': record.end_date.strftime('%Y-%m-%d') if getattr(record, 'end_date', None) else None,
                 'generated_at': record.generated_at.strftime('%Y-%m-%d %H:%M:%S') if record.generated_at else None
             })
         
@@ -5327,28 +5397,89 @@ def update_payroll_adjustments(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['PUT'])
+def update_payroll_status(request):
+    """
+    Update payment status for a payroll record.
+    PUT /api/payroll/update-status
+    Body: { "payroll_id": "xxx", "status": "paid" }
+    """
+    try:
+        payroll_id = request.data.get('payroll_id')
+        status_val = request.data.get('status', 'paid')
+        
+        if status_val not in ["paid", "pending", "stopped"]:
+            return Response({
+                'success': False,
+                'error': 'Invalid status value'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        payroll = StaffPayroll.objects(id=payroll_id).first()
+        if not payroll:
+            return Response({
+                'success': False,
+                'error': 'Payroll record not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+            
+        payroll.status = status_val
+        payroll.save()
+        
+        return Response({
+            'success': True,
+            'message': 'Payroll status updated',
+            'data': {
+                'status': payroll.status
+            }
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(['GET'])
 def get_payroll_by_staff(request):
     """
     Get payroll details for a specific staff member.
     GET /api/payroll/by-staff/?staff_id=xxx&month=3&year=2026
+    GET /api/payroll/by-staff/?staff_id=xxx&start_date=2026-06-01&end_date=2026-06-15
     """
     try:
         staff_id = request.GET.get('staff_id')
         month = request.GET.get('month')
         year = request.GET.get('year')
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
         
-        if not staff_id or not month or not year:
+        if not staff_id:
             return Response({
                 'success': False,
-                'error': 'staff_id, month, and year are required'
+                'error': 'staff_id is required'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
-        payroll = StaffPayroll.objects(
-            staff_id=staff_id,
-            month=int(month),
-            year=int(year)
-        ).first()
+            
+        if start_date_str and end_date_str:
+            start_date = datetime.strptime(start_date_str.split('T')[0], '%Y-%m-%d')
+            end_date = datetime.strptime(end_date_str.split('T')[0], '%Y-%m-%d')
+            payroll = StaffPayroll.objects(
+                staff_id=staff_id,
+                start_date=start_date,
+                end_date=end_date
+            ).first()
+        else:
+            if not month or not year:
+                return Response({
+                    'success': False,
+                    'error': 'month and year are required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            payroll = StaffPayroll.objects(
+                staff_id=staff_id,
+                month=int(month),
+                year=int(year),
+                start_date=None,
+                end_date=None
+            ).first()
         
         if not payroll:
             return Response({
@@ -5369,6 +5500,9 @@ def get_payroll_by_staff(request):
                 'staff_name': payroll.staff_name,
                 'month': payroll.month,
                 'year': payroll.year,
+                'start_date': payroll.start_date.strftime('%Y-%m-%d') if getattr(payroll, 'start_date', None) else None,
+                'end_date': payroll.end_date.strftime('%Y-%m-%d') if getattr(payroll, 'end_date', None) else None,
+                'status': getattr(payroll, 'status', 'paid') or 'paid',
                 'phone': staff.phone if staff else '',
                 'present_days': payroll.present_days,
                 'half_days': payroll.half_days,
@@ -5415,20 +5549,34 @@ import calendar
 @api_view(['GET'])
 def get_staff_attendance_ranking(request):
     """
-    Get staff ranking based on attendance for a given month.
+    Get staff ranking based on attendance for a given month or a custom range.
     GET /api/payroll/ranking/?month=3&year=2026
+    GET /api/payroll/ranking/?start_date=2026-06-01&end_date=2026-06-15
     """
     try:
         now = get_ist_now()
-        month = int(request.GET.get('month', now.month))
-        year = int(request.GET.get('year', now.year))
+        start_date_str = request.GET.get('start_date', None)
+        end_date_str = request.GET.get('end_date', None)
         
-        # Define the boundary for counting attendance if we are in the current month
-        is_current_month = (month == now.month and year == now.year)
-        calculation_limit_day = now.day if is_current_month else 31
-        
-        # Get the actual number of days in the selected month
-        days_in_month = calendar.monthrange(year, month)[1]
+        if start_date_str and end_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+            if start_date > end_date:
+                start_date, end_date = end_date, start_date
+            
+            date_list = []
+            curr = start_date
+            while curr <= end_date:
+                date_list.append(curr)
+                curr += timedelta(days=1)
+                
+            month = start_date.month
+            year = start_date.year
+        else:
+            month = int(request.GET.get('month', now.month))
+            year = int(request.GET.get('year', now.year))
+            days_in_month = calendar.monthrange(year, month)[1]
+            date_list = [datetime(year, month, d) for d in range(1, days_in_month + 1)]
         
         # Get all active staff
         staff_list = Staff.objects(is_active=True)
@@ -5445,8 +5593,7 @@ def get_staff_attendance_ranking(request):
             absent_days = 0
             total_worked_days = 0
             
-            for day in range(1, days_in_month + 1):
-                current_date = datetime(year, month, day)
+            for current_date in date_list:
                 res = resolve_attendance(staff_id, current_date)
                 
                 status_val = res.get("status")
@@ -5467,12 +5614,12 @@ def get_staff_attendance_ranking(request):
                         present_days += 1
                         total_worked_days += 1
                 else:
-                    # ONLY increment absent_days if the day has already passed or is today
-                    if day <= calculation_limit_day:
+                    if current_date.date() <= now.date():
                         absent_days += 1
             
-            # Calculate attendance percentage based on calculation_limit_day (same as payroll)
-            denominator = min(calculation_limit_day, days_in_month)
+            # Calculate attendance percentage based on date_list
+            passed_days_in_period = sum(1 for d in date_list if d.date() <= now.date())
+            denominator = passed_days_in_period if passed_days_in_period > 0 else len(date_list)
             attendance_percentage = (total_worked_days / denominator * 100) if denominator > 0 else 0
             
             rankings.append({
@@ -5499,6 +5646,8 @@ def get_staff_attendance_ranking(request):
             'success': True,
             'month': month,
             'year': year,
+            'start_date': start_date_str,
+            'end_date': end_date_str,
             'rankings': rankings
         })
     except Exception as e:
@@ -6221,4 +6370,444 @@ def expired_item_detail(request, item_id):
         return Response({"success": True, "data": serializer.data}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ------------------------------
+#   Promotions Management APIs
+# ------------------------------
+@api_view(['GET'])
+def promotion_list(request):
+    """Retrieve all promotions."""
+    try:
+        from .models import Promotion
+        from .serializers import PromotionSerializer
+        promos = Promotion.objects().order_by('-created_at')
+        serializer = PromotionSerializer(promos, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def create_promotion(request):
+    """Create a new promotion with optional photo upload."""
+    try:
+        from .models import Promotion
+        from .serializers import PromotionSerializer
+        from django.core.files.storage import default_storage
+        
+        name = request.data.get('name')
+        description = request.data.get('description')
+        price = request.data.get('price')
+        
+        if not name or not description:
+            return Response({"error": "Name and description are required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        photo_url = None
+        if 'photo' in request.FILES:
+            photo = request.FILES['photo']
+            file_path = default_storage.save(f"promotions/{photo.name}", photo)
+            photo_url = f"/media/{file_path}"
+            
+        promo = Promotion(
+            name=name,
+            description=description,
+            price=price if price else None,
+            photo_url=photo_url
+        )
+        promo.save()
+        serializer = PromotionSerializer(promo)
+        return Response({"success": True, "data": serializer.data}, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['DELETE'])
+def delete_promotion(request, promo_id):
+    """Delete a promotion by ID."""
+    try:
+        from .models import Promotion
+        try:
+            promo = Promotion.objects.get(id=ObjectId(promo_id))
+        except Promotion.DoesNotExist:
+            return Response({"error": "Promotion not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+        promo.delete()
+        return Response({"success": True, "message": "Promotion deleted successfully"}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ------------------------------
+#   Site Settings APIs
+# ------------------------------
+@api_view(['GET'])
+def get_site_settings(request):
+    """Return global site settings (singleton)."""
+    try:
+        from .models import SiteSettings
+        settings_doc = SiteSettings.objects().first()
+        if not settings_doc:
+            # Return defaults if none saved yet
+            return Response({
+                "whatsapp_number": "",
+                "contact_phone": "",
+            }, status=status.HTTP_200_OK)
+        return Response({
+            "whatsapp_number": settings_doc.whatsapp_number or "",
+            "contact_phone": settings_doc.contact_phone or "",
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def update_site_settings(request):
+    """Create or update global site settings."""
+    try:
+        from .models import SiteSettings
+        from user.time_utils import get_ist_now
+        whatsapp_number = request.data.get("whatsapp_number", "")
+        contact_phone = request.data.get("contact_phone", "")
+
+        settings_doc = SiteSettings.objects().first()
+        if settings_doc:
+            settings_doc.whatsapp_number = whatsapp_number
+            settings_doc.contact_phone = contact_phone
+            settings_doc.updated_at = get_ist_now()
+            settings_doc.save()
+        else:
+            settings_doc = SiteSettings(
+                whatsapp_number=whatsapp_number,
+                contact_phone=contact_phone,
+            )
+            settings_doc.save()
+
+        return Response({"success": True, "message": "Settings saved successfully"}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ------------------------------
+#   Inventory Transaction APIs
+# ------------------------------
+@api_view(['GET'])
+def get_inventory_transactions(request):
+    """Retrieve all inventory and cash flow transactions, optionally filtering by branch."""
+    try:
+        from .models import InventoryTransaction, BookServiceComplaint, StockHistory, StaffPayroll
+        from .serializers import InventoryTransactionSerializer
+        from datetime import datetime
+        
+        branch_name = request.query_params.get('branch_name', None)
+        type_filter = request.query_params.get('type', None)
+
+        # 1. Fetch manual database transactions
+        query = {}
+        if branch_name and branch_name != "All":
+            query['branch_name'] = branch_name
+        if type_filter:
+            query['type'] = type_filter
+
+        transactions = InventoryTransaction.objects(**query).order_by('-date')
+        serializer = InventoryTransactionSerializer(transactions, many=True)
+        txn_list = list(serializer.data)
+
+        # 2. Automatically load income from completed complaints (if type filter matches)
+        if type_filter != 'expense':
+            complaint_query = {'status': 'completed'}
+            if branch_name and branch_name != "All":
+                complaint_query['branch_name'] = branch_name
+                
+            complaints = BookServiceComplaint.objects(**complaint_query)
+            
+            for complaint in complaints:
+                # Calculate amounts
+                client_amount = float(complaint.client_amount or 0)
+                grand_total = float(complaint.grand_total or complaint.total_amount or client_amount)
+                product_sales = max(0.0, grand_total - client_amount)
+                
+                amount_received = float(complaint.amount_received or 0)
+                due_amount = float(complaint.due_amount or 0)
+                
+                # Format completion date or creation date
+                date_val = complaint.assigned_completed_at or complaint.date_created or datetime.now()
+                # Ensure it's a datetime object
+                if isinstance(date_val, str):
+                    try:
+                        date_val = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                    except:
+                        date_val = datetime.now()
+                date_str = date_val.strftime('%Y-%m-%d')
+                
+                # Service amount splitting
+                if client_amount > 0:
+                    rec_svc = min(amount_received, client_amount)
+                    due_svc = client_amount - rec_svc
+                    
+                    if rec_svc > 0:
+                        txn_list.append({
+                            "id": f"COMP-SVC-REC-{complaint.complaint_no}",
+                            "transaction_id": f"COMP-SVC-REC-{complaint.complaint_no}",
+                            "branch_name": complaint.branch_name or "Branch 1",
+                            "type": "income",
+                            "category": "service_amount",
+                            "amount": rec_svc,
+                            "status": "received",
+                            "description": f"Service Charge (Received) - Job {complaint.complaint_no} ({complaint.customer_name})",
+                            "date": date_str
+                        })
+                    if due_svc > 0:
+                        txn_list.append({
+                            "id": f"COMP-SVC-DUE-{complaint.complaint_no}",
+                            "transaction_id": f"COMP-SVC-DUE-{complaint.complaint_no}",
+                            "branch_name": complaint.branch_name or "Branch 1",
+                            "type": "income",
+                            "category": "service_amount",
+                            "amount": due_svc,
+                            "status": "due",
+                            "description": f"Service Charge (Due) - Job {complaint.complaint_no} ({complaint.customer_name})",
+                            "date": date_str
+                        })
+                        
+                # Product sales splitting
+                if product_sales > 0:
+                    rec_prd = max(0.0, amount_received - client_amount)
+                    due_prd = product_sales - rec_prd
+                    
+                    if rec_prd > 0:
+                        txn_list.append({
+                            "id": f"COMP-PRD-REC-{complaint.complaint_no}",
+                            "transaction_id": f"COMP-PRD-REC-{complaint.complaint_no}",
+                            "branch_name": complaint.branch_name or "Branch 1",
+                            "type": "income",
+                            "category": "product_selling",
+                            "amount": rec_prd,
+                            "status": "received",
+                            "description": f"Product Selling (Received) - Job {complaint.complaint_no} ({complaint.customer_name})",
+                            "date": date_str
+                        })
+                    if due_prd > 0:
+                        txn_list.append({
+                            "id": f"COMP-PRD-DUE-{complaint.complaint_no}",
+                            "transaction_id": f"COMP-PRD-DUE-{complaint.complaint_no}",
+                            "branch_name": complaint.branch_name or "Branch 1",
+                            "type": "income",
+                            "category": "product_selling",
+                            "amount": due_prd,
+                            "status": "due",
+                            "description": f"Product Selling (Due) - Job {complaint.complaint_no} ({complaint.customer_name})",
+                            "date": date_str
+                        })
+
+        # 3. Automatically load dynamic expenses (if type filter matches)
+        if type_filter != 'income':
+            # A. Load product purchase expenses from StockHistory
+            stock_query = {'total_purchase_amount__gt': 0}
+            if branch_name and branch_name != "All":
+                stock_query['branch_name'] = branch_name
+            purchases = StockHistory.objects(**stock_query)
+            for purchase in purchases:
+                amount = float(purchase.total_purchase_amount or 0.0)
+                if amount > 0:
+                    date_val = purchase.date_of_purchase or purchase.created_at or datetime.now()
+                    if isinstance(date_val, str):
+                        try:
+                            date_val = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                        except:
+                            date_val = datetime.now()
+                    date_str = date_val.strftime('%Y-%m-%d')
+                    
+                    txn_list.append({
+                        "id": f"STOCK-PURCHASE-{purchase.id}",
+                        "transaction_id": f"STOCK-PURCHASE-{purchase.id}",
+                        "branch_name": purchase.branch_name or "Branch 1",
+                        "type": "expense",
+                        "category": "product_purchase",
+                        "amount": amount,
+                        "status": "paid",
+                        "description": f"Product Purchase - {purchase.stock_name} ({purchase.quantity} {purchase.unit or 'pcs'})",
+                        "date": date_str
+                    })
+
+            # B. Load payroll expenses from StaffPayroll
+            payroll_query = {}
+            if branch_name and branch_name != "All":
+                payroll_query['branch_name'] = branch_name
+            payrolls = StaffPayroll.objects(**payroll_query)
+            for payroll in payrolls:
+                status_val = getattr(payroll, 'status', 'paid') or 'paid'
+                if status_val == 'stopped':
+                    continue
+                amount = float(payroll.final_salary or 0.0)
+                if amount > 0:
+                    date_val = payroll.generated_at
+                    if not date_val:
+                        try:
+                            date_val = datetime(payroll.year, payroll.month, 28)
+                        except:
+                            date_val = datetime.now()
+                    if isinstance(date_val, str):
+                        try:
+                            date_val = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                        except:
+                            date_val = datetime.now()
+                    date_str = date_val.strftime('%Y-%m-%d')
+                    
+                    try:
+                        month_name = datetime(2000, payroll.month, 1).strftime('%B')
+                    except:
+                        month_name = f"Month {payroll.month}"
+                        
+                    txn_list.append({
+                        "id": f"STAFF-PAYROLL-{payroll.id}",
+                        "transaction_id": f"STAFF-PAYROLL-{payroll.id}",
+                        "branch_name": payroll.branch_name or "Branch 1",
+                        "type": "expense",
+                        "category": "staff_salary",
+                        "amount": amount,
+                        "status": "paid" if status_val == 'paid' else "pending",
+                        "description": f"Staff Payroll - {payroll.staff_name} for {month_name} {payroll.year}",
+                        "date": date_str
+                    })
+
+            # C. Load staff assignment allowance/given amount from BookServiceComplaint
+            assigned_query = {'assigned': True, 'amount__gt': 0}
+            if branch_name and branch_name != "All":
+                assigned_query['branch_name'] = branch_name
+            assigned_complaints = BookServiceComplaint.objects(**assigned_query)
+            for comp in assigned_complaints:
+                amount = float(comp.amount or 0.0)
+                date_val = comp.assigned_at or comp.date_created or datetime.now()
+                if isinstance(date_val, str):
+                    try:
+                        date_val = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                    except:
+                        date_val = datetime.now()
+                date_str = date_val.strftime('%Y-%m-%d')
+                
+                txn_list.append({
+                    "id": f"STAFF-ASSIGN-{comp.complaint_no}",
+                    "transaction_id": f"STAFF-ASSIGN-{comp.complaint_no}",
+                    "branch_name": comp.branch_name or "Branch 1",
+                    "type": "expense",
+                    "category": "petrol",
+                    "amount": amount,
+                    "status": "paid",
+                    "description": f"Staff Assignment Allowance (Petrol) ({comp.staff_name}) - Job {comp.complaint_no}",
+                    "date": date_str
+                })
+
+            # D. Load staff incentive from BookServiceComplaint
+            incentive_query = {'status': 'completed', 'staff_incentive__gt': 0}
+            if branch_name and branch_name != "All":
+                incentive_query['branch_name'] = branch_name
+            incentive_complaints = BookServiceComplaint.objects(**incentive_query)
+            for comp in incentive_complaints:
+                amount = float(comp.staff_incentive or 0.0)
+                date_val = comp.assigned_completed_at or comp.date_created or datetime.now()
+                if isinstance(date_val, str):
+                    try:
+                        date_val = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                    except:
+                        date_val = datetime.now()
+                date_str = date_val.strftime('%Y-%m-%d')
+                
+                txn_list.append({
+                    "id": f"STAFF-INCENTIVE-{comp.complaint_no}",
+                    "transaction_id": f"STAFF-INCENTIVE-{comp.complaint_no}",
+                    "branch_name": comp.branch_name or "Branch 1",
+                    "type": "expense",
+                    "category": "staff_incentive",
+                    "amount": amount,
+                    "status": "paid",
+                    "description": f"Staff Incentive ({comp.staff_name}) - Job {comp.complaint_no}",
+                    "date": date_str
+                })
+
+        # 4. Sort list by date descending
+        txn_list.sort(key=lambda x: x.get('date', '') or '', reverse=True)
+        return Response(txn_list, status=status.HTTP_200_OK)
+    except Exception as e:
+        import traceback
+        return Response({"error": str(e), "traceback": traceback.format_exc()}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def create_inventory_transaction(request):
+    """Create a new income or expense transaction."""
+    try:
+        import uuid
+        from .serializers import InventoryTransactionSerializer
+        
+        data = request.data.copy()
+        if not data.get('transaction_id'):
+            data['transaction_id'] = f"TXN-{uuid.uuid4().hex[:8].upper()}"
+
+        serializer = InventoryTransactionSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "success": True,
+                "message": "Transaction created successfully",
+                "transaction": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['PUT'])
+def update_inventory_transaction(request, trans_id):
+    """Update an existing transaction by ID."""
+    try:
+        from bson import ObjectId
+        from .models import InventoryTransaction
+        from .serializers import InventoryTransactionSerializer
+        
+        transaction = InventoryTransaction.objects(transaction_id=trans_id).first()
+        if not transaction:
+            try:
+                transaction = InventoryTransaction.objects(id=ObjectId(trans_id)).first()
+            except Exception:
+                pass
+
+        if not transaction:
+            return Response({"success": False, "error": "Transaction not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = InventoryTransactionSerializer(transaction, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "success": True,
+                "message": "Transaction updated successfully",
+                "transaction": serializer.data
+            }, status=status.HTTP_200_OK)
+        return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['DELETE'])
+def delete_inventory_transaction(request, trans_id):
+    """Delete a transaction by ID."""
+    try:
+        from bson import ObjectId
+        from .models import InventoryTransaction
+        
+        transaction = InventoryTransaction.objects(transaction_id=trans_id).first()
+        if not transaction:
+            try:
+                transaction = InventoryTransaction.objects(id=ObjectId(trans_id)).first()
+            except Exception:
+                pass
+
+        if not transaction:
+            return Response({"success": False, "error": "Transaction not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        transaction.delete()
+        return Response({"success": True, "message": "Transaction deleted successfully"}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 

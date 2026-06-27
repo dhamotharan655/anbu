@@ -126,6 +126,7 @@ urlpatterns = [
     path('payroll/save/', views.save_payroll, name='save_payroll'),
     path('payroll/history/', views.get_payroll_history, name='get_payroll_history'),
     path('payroll/update-adjustments/', views.update_payroll_adjustments, name='update_payroll_adjustments'),
+    path('payroll/update-status/', views.update_payroll_status, name='update_payroll_status'),
     path('payroll/by-staff/', views.get_payroll_by_staff, name='get_payroll_by_staff'),
     path('payroll/ranking/', views.get_staff_attendance_ranking, name='get_staff_attendance_ranking'),
     path('payroll/ytd/', views.get_ytd_payroll, name='get_ytd_payroll'),
@@ -173,6 +174,27 @@ urlpatterns = [
     # ------------------------------
     path('expired-items/', views.expired_item_list, name='expired_item_list'),
     path('expired-items/<str:item_id>/', views.expired_item_detail, name='expired_item_detail'),
+
+    # ------------------------------
+    #   Promotions APIs
+    # ------------------------------
+    path('promotions/', views.promotion_list, name='promotion_list'),
+    path('promotions/create/', views.create_promotion, name='create_promotion'),
+    path('promotions/<str:promo_id>/delete/', views.delete_promotion, name='delete_promotion'),
+
+    # ------------------------------
+    #   Site Settings APIs
+    # ------------------------------
+    path('site-settings/', views.get_site_settings, name='get_site_settings'),
+    path('site-settings/update/', views.update_site_settings, name='update_site_settings'),
+
+    # ------------------------------
+    #   Inventory/Financial Transaction APIs
+    # ------------------------------
+    path('inventory-transactions/', views.get_inventory_transactions, name='get_inventory_transactions'),
+    path('inventory-transactions/create/', views.create_inventory_transaction, name='create_inventory_transaction'),
+    path('inventory-transactions/<str:trans_id>/update/', views.update_inventory_transaction, name='update_inventory_transaction'),
+    path('inventory-transactions/<str:trans_id>/delete/', views.delete_inventory_transaction, name='delete_inventory_transaction'),
 
 ]
 

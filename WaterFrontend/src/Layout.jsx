@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import logo from "./assets/main_logo.jpg";
+import anbuLogo from "./assets/anbu_text_logo.png";
 import {
   FiHome,
   FiBarChart2,
@@ -16,6 +17,7 @@ import {
   FiGrid,
   FiShield,
   FiClock,
+  FiSettings,
 
 } from "react-icons/fi";
 
@@ -45,19 +47,22 @@ const Layout = () => {
 
   const navLinks = [
     { to: "/home", text: "Home", access: "all", icon: <FiHome /> },
+    { to: "/products", text: "Products", access: "all", icon: <FiPackage /> },
+    { to: "/services", text: "Services", access: "all", icon: <FiSettings /> },
     { to: "/dashboard", text: "Dashboard", access: "dashboard", icon: <FiBarChart2 /> },
     { to: "/service-reminders", text: "Reminders", access: "dashboard", icon: <FiClock /> },
-    { to: "/payment-due", text: "Payment Due", access: "dashboard", icon: <FiDollarSign /> },
+    { to: "/payment-due", text: "Payment Due", access: "bigadmin", icon: <FiDollarSign /> },
     { to: "/booking", text: "Booking", access: "booking", icon: <FiCalendar /> },
     { to: "/staff", text: "Staff", access: "staff", icon: <FiUsers /> },
 
-    { to: "/payroll", text: "Payroll", access: "payroll", icon: <FiBriefcase /> },
+    { to: "/payroll", text: "Payroll", access: "bigadmin", icon: <FiBriefcase /> },
     { to: "/customers", text: "Customers", access: "customers", icon: <FiUser /> },
     { to: "/staff-performance", text: "Performance", access: "staff-performance", icon: <FiTrendingUp /> },
     { to: "/stock-management", text: "Stock", access: "stock-management", icon: <FiPackage /> },
-    { to: "/invoices", text: "Invoices", access: "invoices", icon: <FiFileText /> },
+    { to: "/invoices", text: "Invoices", access: "bigadmin", icon: <FiFileText /> },
     { to: "/whatsapp-pending", text: "Pending Msg", access: "all", icon: <FiMessageSquare /> },
     { to: "/branch-management", text: "Branches", access: "bigadmin", icon: <FiGrid /> },
+    { to: "/inventory-financials", text: "Finance & Profit", access: "bigadmin", icon: <FiDollarSign /> },
     { to: "/permissions", text: "Permissions", access: "bigadmin", icon: <FiShield /> },
   ];
 
@@ -66,7 +71,7 @@ const Layout = () => {
       ? ({ isActive }) => (isActive ? "sidebar-nav-item active" : "sidebar-nav-item")
       : ({ isActive }) => (isActive ? "mobile-nav-item active" : "mobile-nav-item");
 
-    const onClick = sidebar ? () => setIsMobileMenuOpen(false) : undefined;
+    const onClick = () => setIsMobileMenuOpen(false);
 
     if (link.access === "all") {
       return (
@@ -104,10 +109,10 @@ const Layout = () => {
             <div className="sidebar-logo-container">
               <img src={logo} alt="Anbu Logo" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "8px" }} />
             </div>
-            <span className="sidebar-title">
-              <span className="title-line">Anbu</span>
-              <span className="title-line">Enterprises</span>
-              <span className="subtitle">Sales & Service</span>
+            <span className="sidebar-title-styled">
+              <img src={anbuLogo} alt="ANBU" className="anbu-logo-img" />
+              <span className="styled-enterprises">ENTERPRISES</span>
+              <span className="styled-sales-service">Sales &amp; Service</span>
             </span>
           </NavLink>
           <button
@@ -135,7 +140,7 @@ const Layout = () => {
 
       {/* MOBILE HAMBURGER - Visible only on mobile */}
       <button
-        className="mobile-menu-button"
+        className={`mobile-menu-button ${isMobileMenuOpen ? 'open' : ''}`}
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         aria-label="Toggle mobile menu"
       >
@@ -149,9 +154,13 @@ const Layout = () => {
         <div className="mobile-overlay" onClick={() => setIsMobileMenuOpen(false)}>
           <nav className="mobile-menu" onClick={(e) => e.stopPropagation()}>
             <div className="mobile-menu-header">
-              <div className="mobile-logo-container">
-                <img src={logo} alt="Anbu Logo" style={{ width: "24px", height: "24px", objectFit: "cover", borderRadius: "4px", marginRight: "8px" }} />
-                <span className="logo-text">Anbu</span>
+              <div className="mobile-logo-container" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <img src={logo} alt="Anbu Logo" style={{ width: "28px", height: "28px", objectFit: "cover", borderRadius: "6px" }} />
+                <span className="sidebar-title-styled">
+                  <img src={anbuLogo} alt="ANBU" className="anbu-logo-img" style={{ height: "2rem" }} />
+                  <span className="styled-enterprises" style={{ fontSize: "0.85rem", marginTop: "-4px" }}>ENTERPRISES</span>
+                  <span className="styled-sales-service" style={{ fontSize: "0.5rem", padding: "2px 5px", marginTop: "1px" }}>Sales & Service</span>
+                </span>
               </div>
               <button className="mobile-close-btn" onClick={() => setIsMobileMenuOpen(false)}>✕</button>
             </div>

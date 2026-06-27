@@ -1325,3 +1325,158 @@
   background: #fee2e2;
   color: #991b1b;
 }
+
+/* ── Mobile Layout Adjustments ────────────────────────────────── */
+@media (max-width: 768px) {
+  .staff-page-container {
+    padding: 1rem;
+  }
+
+  .staff-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .header-left {
+    gap: 0.75rem;
+  }
+
+  .header-icon-box {
+    width: 44px;
+    height: 44px;
+    font-size: 1.35rem;
+    border-radius: 12px;
+  }
+
+  .header-title-info h2 {
+    font-size: 1.4rem;
+  }
+
+  .header-title-info p {
+    font-size: 0.85rem;
+  }
+
+  .staff-tab-nav {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding: 0.35rem;
+    width: 100%;
+  }
+
+  .tab-btn {
+    padding: 0.5rem 0.85rem;
+    font-size: 0.75rem;
+    flex: 1 1 auto;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .staff-controls-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .search-wrapper {
+    max-width: none;
+    width: 100%;
+  }
+
+  .search-wrapper input {
+    padding: 0.75rem 1rem 0.75rem 2.75rem;
+    font-size: 0.9rem;
+  }
+
+  .search-wrapper .search-icon {
+    left: 1rem;
+    font-size: 1rem;
+  }
+
+  .summary-badges {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .count-badge {
+    padding: 0.5rem 0.85rem;
+    font-size: 0.75rem;
+    flex-grow: 1;
+    justify-content: center;
+  }
+
+  .staff-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .branch-group-header {
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .branch-group-title {
+    font-size: 1rem;
+  }
+
+  .branch-group-count {
+    font-size: 0.72rem;
+  }
+
+  /* Attendance history archive responsive rules */
+  .premium-history-modal {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+  }
+  .premium-history-modal .modal-header {
+    padding: 1rem !important;
+  }
+  .premium-history-modal .modal-title {
+    font-size: 1.15rem !important;
+    gap: 8px !important;
+  }
+  .premium-history-modal .modal-close {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  .history-filter-shelf {
+    padding: 1rem !important;
+  }
+  .shelf-inputs {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+  .shelf-group {
+    width: 100% !important;
+  }
+  .shelf-group select {
+    min-width: unset !important;
+    width: 100% !important;
+  }
+  .shelf-group input {
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+  .premium-history-modal .search-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.95rem !important;
+  }
+  .history-data-table-wrapper {
+    max-height: calc(100vh - 350px) !important;
+    padding: 0.5rem !important;
+    overflow-x: auto !important;
+  }
+  .modern-history-table th, .modern-history-table td {
+    padding: 8px 10px !important;
+    font-size: 0.8rem !important;
+  }
+}

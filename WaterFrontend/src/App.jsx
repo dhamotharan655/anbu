@@ -3,6 +3,7 @@ import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import Layout from './Layout';
 import AdminLogin from './pages/AdminLogin';
 import Home from './pages/Home';
+import LandingHome from './pages/LandingHome';
 import Dashboard from './pages/Dashboard';
 import Booking from './pages/Booking';
 import Staff from './pages/Staff';
@@ -27,6 +28,10 @@ import Payroll from './pages/Payroll';
 import PendingMessages from './pages/PendingMessages';
 import BranchManagement from './pages/BranchManagement/BranchManagement';
 import ServiceReminders from './pages/ServiceReminders';
+import Products from './pages/Products';
+import Services from './pages/Services';
+import PublicLayout from './PublicLayout';
+import InventoryFinancials from './pages/InventoryFinancials';
 
 
 function App() {
@@ -34,8 +39,12 @@ function App() {
     <Router>
       <GlobalRefreshProvider>
         <Routes>
-          {/* Default page = Admin Login */}
-          <Route path="/" element={<Navigate to="/admin-login" replace />} />
+          {/* Public landing pages - accessible without login */}
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<LandingHome />} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/services" element={<Services />} />
+          </Route>
 
           {/* Login page */}
           <Route path="/admin-login" element={<AdminLogin />} />
@@ -43,7 +52,7 @@ function App() {
           {/* Public invoice route - no authentication required */}
           <Route path="/invoice/:complaintId" element={<Invoice />} />
 
-          {/* Protected routes */}
+          {/* Protected routes (post-login) */}
           <Route element={<PrivateRoute />}>
             <Route element={<Layout />}>
               <Route path="/home" element={<Home />} />
@@ -101,7 +110,7 @@ function App() {
               } />
               <Route path="/customerhistory" element={<CustomerHistory />} />
               <Route path="/permissions" element={
-                <ProtectedRoute page="PermissionPage">
+                <ProtectedRoute page="bigadmin">
                   <PermissionPage />
                 </ProtectedRoute>
               }
@@ -112,12 +121,12 @@ function App() {
                 </ProtectedRoute>
               } />
               <Route path="/invoices" element={
-                <ProtectedRoute page="invoices">
+                <ProtectedRoute page="bigadmin">
                   <InvoicesList />
                 </ProtectedRoute>
               } />
               <Route path="/payment-due" element={
-                <ProtectedRoute page="dashboard">
+                <ProtectedRoute page="bigadmin">
                   <PaymentDue />
                 </ProtectedRoute>
               } />
@@ -127,8 +136,13 @@ function App() {
                 </ProtectedRoute>
               } />
               <Route path="/payroll" element={
-                <ProtectedRoute page="payroll">
+                <ProtectedRoute page="bigadmin">
                   <Payroll />
+                </ProtectedRoute>
+              } />
+              <Route path="/inventory-financials" element={
+                <ProtectedRoute page="bigadmin">
+                  <InventoryFinancials />
                 </ProtectedRoute>
               } />
               <Route path="/whatsapp-pending" element={<PendingMessages />} />
