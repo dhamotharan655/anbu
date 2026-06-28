@@ -570,10 +570,16 @@ const Home = () => {
           transform: translateY(-2px);
         }
         @media (max-width: 900px) {
-          .stat-grid { grid-template-columns: repeat(2, 1fr); }
-          .services-grid { grid-template-columns: 1fr; }
-          .hero-stats { flex-wrap: wrap; }
-          .main { padding: 24px 20px 48px; }
+          .home-stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .home-services-grid { grid-template-columns: 1fr !important; }
+          .home-hero-stats { flex-wrap: wrap !important; gap: 12px !important; }
+          .home-main { padding: 24px 20px 48px !important; }
+          .home-hero { padding: 30px 24px !important; }
+          .home-hero-title { font-size: 28px !important; }
+        }
+        @media (max-width: 600px) {
+          .home-stat-grid { grid-template-columns: 1fr !important; }
+          .home-hero-stats { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 12px !important; }
         }
       `}</style>
       <div style={styles.container}>
@@ -581,10 +587,10 @@ const Home = () => {
         <div style={styles.blob1}></div>
         <div style={styles.blob2}></div>
         <div style={styles.blob3}></div>
-
-        <main style={styles.main}>
+ 
+        <main className="home-main" style={styles.main}>
           {/* HERO */}
-          <div style={styles.hero}>
+          <div className="home-hero" style={styles.hero}>
             <div style={styles.heroDeco1}></div>
             <div style={styles.heroDeco2}></div>
             <div style={styles.heroContent}>
@@ -592,13 +598,13 @@ const Home = () => {
                 <div style={styles.heroDot}></div>
                 Admin Portal
               </div>
-              <h1 style={styles.heroTitle}>
+              <h1 className="home-hero-title" style={styles.heroTitle}>
                 Welcome Back, <em>{fullName}</em> ✦
               </h1>
               <p style={styles.heroSub}>
                 Manage your services with ease and efficiency. Everything you need is right here.
               </p>
-              <div style={styles.heroStats}>
+              <div className="home-hero-stats" style={styles.heroStats}>
                 <div style={styles.heroStat}>
                   <div style={styles.heroStatNum}>{stats.completed}</div>
                   <div style={styles.heroStatLabel}>Completed Tasks</div>
@@ -618,7 +624,7 @@ const Home = () => {
               </div>
             </div>
           </div>
-
+ 
           {/* QUICK OVERVIEW */}
           <div style={styles.sectionHeader}>
             <div style={styles.sectionTitle}>
@@ -627,8 +633,8 @@ const Home = () => {
             </div>
             <a href="#" style={styles.viewAll}>View all →</a>
           </div>
-
-          <div style={styles.statGrid}>
+ 
+          <div className="home-stat-grid" style={styles.statGrid}>
             {quickStats.map((stat, index) => (
               <div
                 key={index}
@@ -662,13 +668,13 @@ const Home = () => {
               </div>
             ))}
           </div>
-
+ 
           {/* MAIN SERVICES */}
           <div style={styles.sectionHeader}>
             <div style={styles.sectionTitle}>Main Services</div>
           </div>
-
-          <div style={styles.servicesGrid}>
+ 
+          <div className="home-services-grid" style={styles.servicesGrid}>
             {menuItems
               .filter((item) => canAccess(item.permission))
               .map((item) => (

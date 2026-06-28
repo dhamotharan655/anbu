@@ -47,8 +47,6 @@ const Layout = () => {
 
   const navLinks = [
     { to: "/home", text: "Home", access: "all", icon: <FiHome /> },
-    { to: "/products", text: "Products", access: "all", icon: <FiPackage /> },
-    { to: "/services", text: "Services", access: "all", icon: <FiSettings /> },
     { to: "/dashboard", text: "Dashboard", access: "dashboard", icon: <FiBarChart2 /> },
     { to: "/service-reminders", text: "Reminders", access: "dashboard", icon: <FiClock /> },
     { to: "/payment-due", text: "Payment Due", access: "bigadmin", icon: <FiDollarSign /> },

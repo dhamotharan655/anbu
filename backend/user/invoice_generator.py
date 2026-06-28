@@ -400,7 +400,7 @@ def generate_invoice_pdf(complaint, request=None):
 
     # ==================== ROW 1: HEADER - Two Equal Columns ====================
     # Left Column: Company Logo + Info
-    logo_path = os.path.join(settings.MEDIA_ROOT, 'anbu_logo.png')
+    logo_path = os.path.join(settings.MEDIA_ROOT, 'main_logo.jpg')
     if os.path.exists(logo_path):
         try:
             logo_cell = Image(logo_path, width=1.2*inch, height=0.9*inch)
@@ -409,6 +409,33 @@ def generate_invoice_pdf(complaint, request=None):
     else:
         logo_cell = Paragraph('', normal_style)
 
+    # Load dynamic company settings
+    from .models import SiteSettings, Branch
+    site_settings = SiteSettings.objects().first()
+    
+    comp_name = getattr(site_settings, 'company_name', '') or "Anbu Enterprises"
+    comp_email = getattr(site_settings, 'company_email', '') or "contact@anbuenterprises.com"
+    b_name = getattr(site_settings, 'bank_name', '') or "HDFC Bank"
+    b_branch = getattr(site_settings, 'bank_branch', '') or "Anna Nagar Branch"
+    b_acc_no = getattr(site_settings, 'bank_acc_no', '') or "50100234567890"
+    b_ifsc = getattr(site_settings, 'bank_ifsc', '') or "HDFC0001234"
+    c_upi = getattr(site_settings, 'company_upi', '') or "anbu@okaxis"
+    c_gpay = getattr(site_settings, 'company_gpay', '') or "+91 9876543210"
+    
+    # Try to resolve address and phone number from the branch stored on the job
+    branch_obj = None
+    if getattr(complaint, 'branch_name', None):
+        branch_obj = Branch.objects(name=complaint.branch_name).first()
+        
+    if branch_obj:
+        comp_address = branch_obj.location or getattr(site_settings, 'company_address', '') or "No 12, Main Road, Chennai"
+        comp_phone = branch_obj.contact_number or getattr(site_settings, 'company_phone', '') or "+91 9876543210"
+        comp_landline = branch_obj.whatsapp_number or getattr(site_settings, 'company_landline', '') or "044 2345 6789"
+    else:
+        comp_address = getattr(site_settings, 'company_address', '') or "No 12, Main Road, Chennai"
+        comp_phone = getattr(site_settings, 'company_phone', '') or "+91 9876543210"
+        comp_landline = getattr(site_settings, 'company_landline', '') or "044 2345 6789"
+
     complaint_no_display = complaint.complaint_no or "N/A"
     invoice_date = get_ist_now().strftime('%d-%m-%Y')
     staff_name = complaint.staff_name or "N/A"
@@ -416,11 +443,11 @@ def generate_invoice_pdf(complaint, request=None):
     # Left column content
     left_col_content = [
         [logo_cell],
-        [Paragraph("<b>ANBU ENTERPRISES</b>", bold_style)],
-        [Paragraph("Office-Phone: +91 9876543210", normal_style)],
-        [Paragraph("Land-Line: 044 2345 6789", normal_style)],
-        [Paragraph("Address: No 12, Main Road, Chennai", normal_style)],
-        [Paragraph("Email: contact@anbuenterprises.com", normal_style)],
+        [Paragraph(f"<b>{comp_name.upper()}</b>", bold_style)],
+        [Paragraph(f"Office-Phone: {comp_phone}", normal_style)],
+        [Paragraph(f"Land-Line: {comp_landline}", normal_style)],
+        [Paragraph(f"Address: {comp_address}", normal_style)],
+        [Paragraph(f"Email: {comp_email}", normal_style)],
     ]
     left_col_table = Table(left_col_content, colWidths=[half_width])
     left_col_table.setStyle(TableStyle([
@@ -484,11 +511,12 @@ def generate_invoice_pdf(complaint, request=None):
     # Right column - Bank Details
     bank_cell_content = [
         [Paragraph("<b>Company Bank Details</b>", bold_style)],
-        [Paragraph("Name: Anbu Enterprises", normal_style)],
-        [Paragraph("Bank: HDFC Bank", normal_style)],
-        [Paragraph("Branch: Anna Nagar Branch", normal_style)],
-        [Paragraph("Acc No: 50100234567890", normal_style)],
-        [Paragraph("IFSC Code: HDFC0001234", normal_style)],
+        [Paragraph(f"Name: {comp_name}", normal_style)],
+        [Paragraph(f"Bank: {b_name} ({b_branch})", normal_style)],
+        [Paragraph(f"Acc No: {b_acc_no}", normal_style)],
+        [Paragraph(f"IFSC Code: {b_ifsc}", normal_style)],
+        [Paragraph(f"UPI ID: {c_upi}", normal_style)],
+        [Paragraph(f"GPay No: {c_gpay}", normal_style)],
     ]
     bank_cell_table = Table(bank_cell_content, colWidths=[half_width])
     bank_cell_table.setStyle(TableStyle([

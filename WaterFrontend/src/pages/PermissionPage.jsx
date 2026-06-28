@@ -16,16 +16,7 @@ const COLORS = {
   glassBorder: "var(--color-border, rgba(255,255,255,0.8))",
 };
 
-const glassCard = {
-  background: COLORS.glass,
-  backdropFilter: "blur(20px)",
-  WebkitBackdropFilter: "blur(20px)",
-  border: `1px solid ${COLORS.glassBorder}`,
-  borderRadius: "20px",
-  boxShadow: "var(--shadow-md, 0 4px 20px rgba(11, 102, 120, 0.12))",
-  padding: "1.75rem",
-  marginBottom: "1.25rem",
-};
+const glassCard = {};
 
 const inputStyle = {
   width: "100%", background: "rgba(255,255,255,0.88)",
@@ -249,6 +240,97 @@ const PermissionPage = () => {
 
   return (
     <div className="page-container" style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+      <style>{`
+        .perm-tabs-container {
+          display: flex;
+          margin: 0 auto 2rem;
+          background: rgba(255,255,255,0.72);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border-radius: 100px;
+          padding: 5px;
+          border: 1px solid var(--color-border);
+          box-shadow: 0 4px 20px rgba(11, 102, 120, 0.1);
+          max-width: 600px;
+          width: 100%;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .perm-tabs-container::-webkit-scrollbar {
+          display: none;
+        }
+        .perm-tab-btn {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          padding: 0.55rem 1.25rem;
+          border: none;
+          border-radius: 100px;
+          font-family: var(--font-family-sans);
+          font-size: 0.88rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.25s ease;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .perm-glass-card {
+          background: rgba(255,255,255,0.72);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid var(--color-border, rgba(255,255,255,0.8));
+          border-radius: 20px;
+          box-shadow: var(--shadow-md, 0 4px 20px rgba(11, 102, 120, 0.12));
+          padding: 1.75rem;
+          margin-bottom: 1.25rem;
+          width: 100%;
+        }
+        .perm-promo-card {
+          display: flex;
+          gap: 1rem;
+          padding: 1rem;
+          background: rgba(255,255,255,0.6);
+          border: 1px solid rgba(11, 102, 120, 0.12);
+          border-radius: 16px;
+          align-items: center;
+          transition: all 0.2s ease;
+        }
+
+        @media (max-width: 768px) {
+          .perm-tabs-container {
+            border-radius: 14px;
+            padding: 4px;
+            max-width: 100%;
+            margin-bottom: 1.5rem;
+          }
+          .perm-tab-btn {
+            padding: 0.5rem 0.85rem;
+            font-size: 0.8rem;
+            border-radius: 10px;
+            gap: 0.35rem;
+          }
+          .perm-glass-card {
+            padding: 1.25rem;
+            border-radius: 16px;
+          }
+          .perm-promo-card {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            text-align: center;
+          }
+          .perm-promo-card img, .perm-promo-card div[style*="70px"] {
+            margin: 0 auto !important;
+          }
+          .perm-promo-card button {
+            align-self: center !important;
+            margin-top: 0.5rem;
+          }
+        }
+      `}</style>
+
       {/* HEADER */}
       <section className="page-section" style={{ textAlign: "center", width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
         <motion.div initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} style={{ textAlign: "center" }}>
@@ -261,17 +343,14 @@ const PermissionPage = () => {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ display: "flex", margin: "0 auto", background: "rgba(255,255,255,0.72)", backdropFilter: "blur(20px)", borderRadius: "100px", padding: "5px", border: "1px solid var(--color-border)", boxShadow: "0 4px 20px rgba(11, 102, 120, 0.1)", maxWidth: "600px", width: "100%" }}
+        className="perm-tabs-container"
       >
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            className="perm-tab-btn"
             style={{
-              flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-              gap: "0.5rem", padding: "0.55rem 1.25rem", border: "none",
-              borderRadius: "100px", fontFamily: "var(--font-family-sans)",
-              fontSize: "0.88rem", fontWeight: 600, cursor: "pointer", transition: "all 0.25s ease",
               background: activeTab === tab.id ? "var(--gradient-primary)" : "transparent",
               color: activeTab === tab.id ? "white" : COLORS.muted,
               boxShadow: activeTab === tab.id ? "var(--shadow-primary)" : "none",
@@ -286,7 +365,7 @@ const PermissionPage = () => {
       {activeTab === "permissions" && (
         <div style={{ maxWidth: "680px", margin: "0 auto", width: "100%" }}>
           {/* Select admin */}
-          <motion.div style={glassCard} initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
+          <motion.div className="perm-glass-card" initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
             <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", fontWeight: 600, color: COLORS.text, marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <FiUser color={COLORS.primary} /> Select Admin
             </h2>
@@ -313,7 +392,7 @@ const PermissionPage = () => {
           {/* Permissions */}
           <AnimatePresence>
             {selectedAdmin && (
-              <motion.div style={glassCard} initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
+              <motion.div className="perm-glass-card" initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
                 <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", fontWeight: 600, color: COLORS.text, marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                   <FiShield color={COLORS.primary} /> Allowed Pages
                 </h2>
@@ -363,7 +442,7 @@ const PermissionPage = () => {
       {activeTab === "users" && (
         <div style={{ maxWidth: "680px", margin: "0 auto", width: "100%" }}>
           {/* Add user */}
-          <motion.div style={glassCard} initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
+          <motion.div className="perm-glass-card" initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
             <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", fontWeight: 600, color: COLORS.text, marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <FiUserPlus color={COLORS.primary} /> Add New User
             </h2>
@@ -404,7 +483,7 @@ const PermissionPage = () => {
           </motion.div>
 
           {/* Existing users */}
-          <motion.div style={glassCard} initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
+          <motion.div className="perm-glass-card" initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
             <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", fontWeight: 600, color: COLORS.text, marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <FiUser color={COLORS.primary} /> Existing Users
             </h2>
@@ -458,7 +537,7 @@ const PermissionPage = () => {
       {/* JOB TYPES TAB */}
       {activeTab === "job-types" && (
         <div style={{ maxWidth: "680px", margin: "0 auto", width: "100%" }}>
-          <motion.div style={glassCard} initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
+          <motion.div className="perm-glass-card" initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
             <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", fontWeight: 600, color: COLORS.text, marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <FiTag color={COLORS.primary} /> Add Job Type
             </h2>
@@ -483,7 +562,7 @@ const PermissionPage = () => {
             </div>
           </motion.div>
 
-          <motion.div style={glassCard} initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
+          <motion.div className="perm-glass-card" initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
             <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", fontWeight: 600, color: COLORS.text, marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <FiTag color={COLORS.primary} /> Existing Job Types
             </h2>
@@ -526,7 +605,7 @@ const PermissionPage = () => {
 
 
           {/* Add Promotion form */}
-          <motion.div style={glassCard} initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
+          <motion.div className="perm-glass-card" initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
             <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", fontWeight: 600, color: COLORS.text, marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <FiPlusCircle color={COLORS.primary} /> Add New Promotion
             </h2>
@@ -582,7 +661,7 @@ const PermissionPage = () => {
           </motion.div>
 
           {/* Existing promotions */}
-          <motion.div style={glassCard} initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
+          <motion.div className="perm-glass-card" initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
             <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", fontWeight: 600, color: COLORS.text, marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <FiTag color={COLORS.primary} /> Active Promotions
             </h2>
@@ -593,15 +672,7 @@ const PermissionPage = () => {
                   <motion.div
                     key={promo.id}
                     whileHover={{ scale: 1.012 }}
-                    style={{ 
-                      display: "flex", 
-                      gap: "1rem", 
-                      padding: "1rem", 
-                      background: "rgba(255,255,255,0.6)", 
-                      border: "1px solid rgba(11, 102, 120, 0.12)", 
-                      borderRadius: "16px",
-                      alignItems: "center"
-                    }}
+                    className="perm-promo-card"
                   >
                     {promo.photo_url ? (
                       <img 

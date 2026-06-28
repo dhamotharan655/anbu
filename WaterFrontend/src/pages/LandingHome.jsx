@@ -417,123 +417,232 @@ const LandingHome = () => {
           .lhome-cta-box { padding: 38px 24px; }
           .lhome-sec { padding: 56px 18px; }
         }
+
+        /* Hero Grid Layout */
+        .lhome-hero-grid {
+          display: grid;
+          grid-template-columns: 1.2fr 1fr;
+          gap: 40px;
+          align-items: center;
+          max-width: 1200px;
+          margin: 0 auto;
+          position: relative;
+          z-index: 2;
+          width: 100%;
+        }
+        .lhome-hero-left {
+          text-align: left;
+          animation: fadeUp 0.8s ease both;
+        }
+        .lhome-hero-left .lhome-sub {
+          margin-left: 0;
+        }
+        .lhome-hero-left .lhome-ctas {
+          justify-content: flex-start;
+        }
+        .lhome-trust-badges {
+          display: flex;
+          gap: 20px;
+          margin-top: 30px;
+          font-size: 0.85rem;
+          color: #64748b;
+          font-weight: 600;
+          animation: fadeUp 1.1s ease 0.4s both;
+        }
+        
+        /* Showcase Styles */
+        .lhome-hero-right {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          animation: fadeUp 1s ease 0.2s both;
+        }
+        .lhome-showcase-container {
+          position: relative;
+          width: 100%;
+          max-width: 380px;
+        }
+        .lhome-showcase-glow {
+          position: absolute;
+          inset: -20px;
+          background: radial-gradient(circle, rgba(0,168,232,0.2) 0%, transparent 70%);
+          filter: blur(15px);
+          pointer-events: none;
+          animation: pulseGlow 4s ease-in-out infinite;
+        }
+        @keyframes pulseGlow {
+          0%, 100% { opacity: 0.8; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(1.1); }
+        }
+        .lhome-showcase-card {
+          background: rgba(255, 255, 255, 0.72);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          border: 1px solid rgba(11, 102, 120, 0.15);
+          border-radius: 32px;
+          padding: 40px 30px;
+          box-shadow: 0 20px 50px rgba(11, 102, 120, 0.1);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 24px;
+          position: relative;
+          animation: floatShowcase 6s ease-in-out infinite;
+        }
+        @keyframes floatShowcase {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-12px); }
+        }
+        .logo-ring-glow {
+          position: relative;
+          padding: 8px;
+          border-radius: 32px;
+          background: linear-gradient(135deg, rgba(0,168,232,0.15), rgba(241,179,42,0.15));
+          border: 1.5px solid rgba(0,168,232,0.25);
+          box-shadow: 0 10px 30px rgba(0,168,232,0.12);
+        }
+        .showcase-logo-img {
+          width: 140px;
+          height: 140px;
+          border-radius: 24px;
+          object-fit: cover;
+          display: block;
+          border: 2px solid white;
+        }
+        .showcase-name-block {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          width: 100%;
+        }
+        .showcase-text-logo {
+          height: 4.8rem;
+          width: auto;
+          object-fit: contain;
+          background: none;
+        }
+        .showcase-enterprises {
+          font-family: 'Bauhaus 93', 'Outfit', 'Arial Black', sans-serif;
+          font-size: 1.6rem;
+          font-weight: 900;
+          color: #0b6678;
+          letter-spacing: 6px;
+          text-transform: uppercase;
+          line-height: 1;
+          margin-top: -6px;
+        }
+        .showcase-badge-sales {
+          background: linear-gradient(135deg, #f5d800 0%, #e5c300 100%);
+          color: #000;
+          font-family: 'Arial Black', Arial, sans-serif;
+          font-size: 0.72rem;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          padding: 4px 14px;
+          border-radius: 6px;
+          box-shadow: 0 4px 12px rgba(245,216,0,0.25);
+          margin-top: 6px;
+        }
+        .showcase-floating-pill {
+          position: absolute;
+          bottom: -15px;
+          background: linear-gradient(135deg, #0b6678 0%, #128299 100%);
+          color: white;
+          font-weight: 700;
+          font-size: 0.78rem;
+          padding: 6px 16px;
+          border-radius: 100px;
+          box-shadow: 0 6px 20px rgba(11,102,120,0.3);
+          border: 1.5px solid rgba(255,255,255,0.2);
+          white-space: nowrap;
+        }
+
+        @media (max-width: 900px) {
+          .lhome-hero-grid {
+            grid-template-columns: 1fr;
+            text-align: center;
+            gap: 40px;
+          }
+          .lhome-hero-left {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .lhome-hero-left .lhome-sub {
+            margin: 0 auto 30px;
+          }
+          .lhome-hero-left .lhome-ctas {
+            justify-content: center;
+          }
+          .lhome-trust-badges {
+            justify-content: center;
+          }
+          .showcase-logo-img {
+            width: 120px;
+            height: 120px;
+          }
+        }
       `}</style>
 
       <div className="lhome">
-
-        {/* ===== BRAND HIGHLIGHT BANNER ===== */}
-        <div style={{
-          background: "linear-gradient(135deg, #020b18 0%, #061428 40%, #0a1e3a 70%, #020b18 100%)",
-          borderBottom: "3px solid rgba(0,168,232,0.5)",
-          padding: "36px 24px 32px",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "16px",
-          position: "relative",
-          overflow: "hidden",
-        }}>
-          {/* glow orb behind */}
-          <div style={{
-            position: "absolute", top: "50%", left: "50%",
-            transform: "translate(-50%,-50%)",
-            width: "500px", height: "200px",
-            background: "radial-gradient(ellipse, rgba(0,168,232,0.18) 0%, transparent 70%)",
-            pointerEvents: "none",
-          }} />
-          {/* Logo + Text row */}
-          <div style={{ display: "flex", alignItems: "center", gap: "22px", flexWrap: "wrap", justifyContent: "center", zIndex: 1 }}>
-            {/* Logo with pulse glow ring */}
-            <div style={{ position: "relative" }}>
-              <div style={{
-                position: "absolute", inset: "-6px",
-                borderRadius: "22px",
-                background: "linear-gradient(135deg, #00a8e8, #f5d800, #00a8e8)",
-                backgroundSize: "300% 300%",
-                animation: "gradShift 3s ease infinite",
-                opacity: 0.75,
-                filter: "blur(4px)",
-              }} />
-              <img src={mainLogo} alt="Anbu Logo" style={{
-                width: "90px", height: "90px",
-                borderRadius: "16px",
-                objectFit: "cover",
-                border: "3px solid rgba(0,168,232,0.6)",
-                display: "block",
-                position: "relative",
-                zIndex: 1,
-              }} />
-            </div>
-            {/* Brand name stack */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "5px" }}>
-              <img src={anbuTextLogo} alt="ANBU" style={{
-                height: "5.5rem", width: "auto",
-                objectFit: "contain",
-                background: "none",
-                filter: "drop-shadow(0 0 12px rgba(0,168,232,0.7))",
-              }} />
-              <span style={{
-                fontFamily: "'Bauhaus 93','Outfit','Arial Black',sans-serif",
-                fontSize: "1.5rem", fontWeight: 900,
-                color: "#ffffff",
-                letterSpacing: "5px",
-                textTransform: "uppercase",
-                textShadow: "0 0 20px rgba(0,168,232,0.6)",
-                marginTop: "-10px",
-                lineHeight: 1,
-              }}>ENTERPRISES</span>
-              <span style={{
-                background: "linear-gradient(90deg, #f5d800, #ffaa00)",
-                color: "#000",
-                fontFamily: "'Arial Black',Arial,sans-serif",
-                fontSize: "0.78rem", fontWeight: 900,
-                textTransform: "uppercase",
-                letterSpacing: "2px",
-                padding: "5px 14px",
-                borderRadius: "5px",
-                boxShadow: "0 4px 12px rgba(245,216,0,0.5)",
-                marginTop: "2px",
-              }}>Sales &amp; Service</span>
-            </div>
-          </div>
-          {/* Tagline */}
-          <p style={{
-            color: "rgba(0,168,232,0.9)",
-            fontSize: "0.88rem",
-            fontFamily: "'Plus Jakarta Sans',sans-serif",
-            fontWeight: 600,
-            margin: 0,
-            letterSpacing: "0.5px",
-            textAlign: "center",
-            zIndex: 1,
-          }}>🏆 Certified RO Purification Experts · Trusted since 2022 · 5,000+ Happy Customers</p>
-          <style>{`
-            @keyframes gradShift {
-              0%,100% { background-position: 0% 50%; }
-              50% { background-position: 100% 50%; }
-            }
-          `}</style>
-        </div>
 
         {/* ===== HERO ===== */}
         <section className="lhome-hero">
           <div className="lhome-orb1" />
           <div className="lhome-orb2" />
           <div className="lhome-orb3" />
-          <div className="lhome-hero-content">
-            <div className="lhome-badge">
-              <span className="lhome-badge-dot" />
-              Pure Water Experts Since 2022
+          
+          <div className="lhome-hero-grid">
+            {/* Left Column: Text & CTA */}
+            <div className="lhome-hero-left">
+              <div className="lhome-badge">
+                <span className="lhome-badge-dot" />
+                Pure Water Experts Since 2022
+              </div>
+              <h1 className="lhome-h1">
+                Clean Water for a<br /><em>Healthier Tomorrow</em>
+              </h1>
+              <p className="lhome-sub">
+                Anbu Enterprises delivers certified RO purification systems, professional servicing, and genuine spare parts — straight to your doorstep.
+              </p>
+              <div className="lhome-ctas">
+                <button className="lhome-btn-p" onClick={() => navigate("/products")}>Explore Products →</button>
+                <button className="lhome-btn-s" onClick={() => navigate("/services")}>Our Services</button>
+              </div>
+              
+              <div className="lhome-trust-badges">
+                <span>🏆 Certified Experts</span>
+                <span>⭐ 4.9/5 Rating</span>
+                <span>👥 5k+ Clients</span>
+              </div>
             </div>
-            <h1 className="lhome-h1">
-              Clean Water for a<br /><em>Healthier Tomorrow</em>
-            </h1>
-            <p className="lhome-sub">
-              Anbu Enterprises delivers certified RO purification systems, professional servicing, and genuine spare parts — straight to your doorstep.
-            </p>
-            <div className="lhome-ctas">
-              <button className="lhome-btn-p" onClick={() => navigate("/products")}>Explore Products →</button>
-              <button className="lhome-btn-s" onClick={() => navigate("/services")}>Our Services</button>
+            
+            {/* Right Column: Premium Glowing Logo Showcase */}
+            <div className="lhome-hero-right">
+              <div className="lhome-showcase-container">
+                <div className="lhome-showcase-glow" />
+                <div className="lhome-showcase-card">
+                  {/* Glowing Ring around Main Logo */}
+                  <div className="logo-ring-glow">
+                    <img src={mainLogo} alt="Anbu Logo" className="showcase-logo-img" />
+                  </div>
+                  
+                  {/* Stacked Name Logo */}
+                  <div className="showcase-name-block">
+                    <img src={anbuTextLogo} alt="ANBU" className="showcase-text-logo" />
+                    <span className="showcase-enterprises">ENTERPRISES</span>
+                    <span className="showcase-badge-sales">Sales &amp; Service</span>
+                  </div>
+                  
+                  {/* Floating Micro Badge */}
+                  <div className="showcase-floating-pill">
+                    💧 Pure Water Guaranteed
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>

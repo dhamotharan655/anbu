@@ -337,33 +337,12 @@ const Services = () => {
 
       <div className="svc-page">
 
-        {/* ===== BRAND HIGHLIGHT BANNER ===== */}
-        <div style={{
-          background: "linear-gradient(135deg, #020b18 0%, #061428 40%, #0a1e3a 70%, #020b18 100%)",
-          borderBottom: "3px solid rgba(0,168,232,0.5)",
-          padding: "36px 24px 32px",
-          display: "flex", flexDirection: "column",
-          alignItems: "center", gap: "16px",
-          position: "relative", overflow: "hidden",
-        }}>
-          <div style={{ position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:"500px",height:"200px",background:"radial-gradient(ellipse, rgba(0,168,232,0.18) 0%, transparent 70%)",pointerEvents:"none" }} />
-          <div style={{ display:"flex",alignItems:"center",gap:"22px",flexWrap:"wrap",justifyContent:"center",zIndex:1 }}>
-            <div style={{ position:"relative" }}>
-              <div style={{ position:"absolute",inset:"-6px",borderRadius:"22px",background:"linear-gradient(135deg, #00a8e8, #f5d800, #00a8e8)",backgroundSize:"300% 300%",animation:"gradShift 3s ease infinite",opacity:0.75,filter:"blur(4px)" }} />
-              <img src={mainLogo} alt="Anbu Logo" style={{ width:"90px",height:"90px",borderRadius:"16px",objectFit:"cover",border:"3px solid rgba(0,168,232,0.6)",display:"block",position:"relative",zIndex:1 }} />
-            </div>
-            <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-start",gap:"5px" }}>
-              <img src={anbuTextLogo} alt="ANBU" style={{ height:"5.5rem",width:"auto",objectFit:"contain",background:"none",filter:"drop-shadow(0 0 12px rgba(0,168,232,0.7))" }} />
-              <span style={{ fontFamily:"'Bauhaus 93','Outfit','Arial Black',sans-serif",fontSize:"1.5rem",fontWeight:900,color:"#fff",letterSpacing:"5px",textTransform:"uppercase",textShadow:"0 0 20px rgba(0,168,232,0.6)",marginTop:"-10px",lineHeight:1 }}>ENTERPRISES</span>
-              <span style={{ background:"linear-gradient(90deg,#f5d800,#ffaa00)",color:"#000",fontFamily:"'Arial Black',Arial,sans-serif",fontSize:"0.78rem",fontWeight:900,textTransform:"uppercase",letterSpacing:"2px",padding:"5px 14px",borderRadius:"5px",boxShadow:"0 4px 12px rgba(245,216,0,0.5)",marginTop:"2px" }}>Sales &amp; Service</span>
-            </div>
-          </div>
-          <p style={{ color:"rgba(0,168,232,0.9)",fontSize:"0.88rem",fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600,margin:0,letterSpacing:"0.5px",textAlign:"center",zIndex:1 }}>🔧 Expert Water Purification Services &amp; Repairs · Available 24/7</p>
-          <style>{`@keyframes gradShift{0%,100%{background-position:0% 50%;}50%{background-position:100% 50%;}}`}</style>
-        </div>
-
         {/* ===== HERO ===== */}
-        <section className="svc-hero">
+        <section className="svc-hero" style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px", background: "rgba(11, 102, 120, 0.06)", border: "1px solid rgba(11, 102, 120, 0.15)", borderRadius: "100px", padding: "6px 16px" }}>
+            <img src={mainLogo} alt="Logo" style={{ width: "24px", height: "24px", borderRadius: "6px" }} />
+            <span style={{ fontSize: "0.82rem", fontWeight: "800", letterSpacing: "1.2px", color: "var(--primary)" }}>ANBU ENTERPRISES</span>
+          </div>
           <div className="svc-hero-orb" />
           <div className="svc-hero-eyebrow">🛠️ Our Capabilities</div>
           <h1 className="svc-hero-h1">Expert Water <em>Services</em></h1>

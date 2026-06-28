@@ -432,6 +432,34 @@ def add_staff(request):
 
 
 # ------------------------------
+#   Get Single Staff Details
+# ------------------------------
+@api_view(['GET'])
+def get_staff_detail(request, staff_id):
+    try:
+        staff = Staff.objects(id=staff_id).first()
+        if not staff:
+            return Response({"error": "Staff not found"}, status=404)
+        
+        data = {
+            "id": str(staff.id),
+            "name": staff.name,
+            "phone": staff.phone,
+            "location": staff.location,
+            "photo_url": staff.photo_url,
+            "email": getattr(staff, 'email', ''),
+            "per_day_salary": getattr(staff, 'per_day_salary', 0) or 0,
+            "monthly_salary": getattr(staff, 'monthly_salary', 0) or 0,
+            "weekly_off_days": getattr(staff, 'weekly_off_days', []),
+            "salary_last_updated": format_date(getattr(staff, 'salary_last_updated', None)) if hasattr(staff, 'salary_last_updated') and staff.salary_last_updated else None,
+            "branch_name": getattr(staff, 'branch_name', '')
+        }
+        return Response(data)
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
+
+
+# ------------------------------
 #   Edit Staff (update photo if new uploaded)
 # ------------------------------
 @api_view(['PUT'])
@@ -4179,6 +4207,16 @@ def add_stock(request, stock_id):
                 stock_item.minimum_price = minimum_price
             if minimum_threshold is not None:
                 stock_item.minimum_threshold = minimum_threshold
+            if purchase_price_per_unit is not None:
+                stock_item.buying_price = purchase_price_per_unit
+            
+            # Update selling price if provided
+            selling_price_req = request.data.get('selling_price')
+            if selling_price_req is not None:
+                try:
+                    stock_item.selling_price = float(selling_price_req)
+                except:
+                    pass
             
             previous_quantity = stock_item.quantity
             success, message = stock_item.add_stock(quantity_to_add)
@@ -6452,10 +6490,32 @@ def get_site_settings(request):
             return Response({
                 "whatsapp_number": "",
                 "contact_phone": "",
+                "company_name": "Anbu Enterprises",
+                "company_address": "No 12, Main Road, Chennai",
+                "company_phone": "+91 9876543210",
+                "company_landline": "044 2345 6789",
+                "company_email": "contact@anbuenterprises.com",
+                "bank_name": "HDFC Bank",
+                "bank_branch": "Anna Nagar Branch",
+                "bank_acc_no": "50100234567890",
+                "bank_ifsc": "HDFC0001234",
+                "company_upi": "anbu@okaxis",
+                "company_gpay": "+91 9876543210"
             }, status=status.HTTP_200_OK)
         return Response({
             "whatsapp_number": settings_doc.whatsapp_number or "",
             "contact_phone": settings_doc.contact_phone or "",
+            "company_name": settings_doc.company_name or "Anbu Enterprises",
+            "company_address": settings_doc.company_address or "No 12, Main Road, Chennai",
+            "company_phone": settings_doc.company_phone or "+91 9876543210",
+            "company_landline": settings_doc.company_landline or "044 2345 6789",
+            "company_email": settings_doc.company_email or "contact@anbuenterprises.com",
+            "bank_name": settings_doc.bank_name or "HDFC Bank",
+            "bank_branch": settings_doc.bank_branch or "Anna Nagar Branch",
+            "bank_acc_no": settings_doc.bank_acc_no or "50100234567890",
+            "bank_ifsc": settings_doc.bank_ifsc or "HDFC0001234",
+            "company_upi": settings_doc.company_upi or "anbu@okaxis",
+            "company_gpay": settings_doc.company_gpay or "+91 9876543210"
         }, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -6469,17 +6529,50 @@ def update_site_settings(request):
         from user.time_utils import get_ist_now
         whatsapp_number = request.data.get("whatsapp_number", "")
         contact_phone = request.data.get("contact_phone", "")
+        company_name = request.data.get("company_name", "Anbu Enterprises")
+        company_address = request.data.get("company_address", "No 12, Main Road, Chennai")
+        company_phone = request.data.get("company_phone", "+91 9876543210")
+        company_landline = request.data.get("company_landline", "044 2345 6789")
+        company_email = request.data.get("company_email", "contact@anbuenterprises.com")
+        bank_name = request.data.get("bank_name", "HDFC Bank")
+        bank_branch = request.data.get("bank_branch", "Anna Nagar Branch")
+        bank_acc_no = request.data.get("bank_acc_no", "50100234567890")
+        bank_ifsc = request.data.get("bank_ifsc", "HDFC0001234")
+        company_upi = request.data.get("company_upi", "anbu@okaxis")
+        company_gpay = request.data.get("company_gpay", "+91 9876543210")
 
         settings_doc = SiteSettings.objects().first()
         if settings_doc:
             settings_doc.whatsapp_number = whatsapp_number
             settings_doc.contact_phone = contact_phone
+            settings_doc.company_name = company_name
+            settings_doc.company_address = company_address
+            settings_doc.company_phone = company_phone
+            settings_doc.company_landline = company_landline
+            settings_doc.company_email = company_email
+            settings_doc.bank_name = bank_name
+            settings_doc.bank_branch = bank_branch
+            settings_doc.bank_acc_no = bank_acc_no
+            settings_doc.bank_ifsc = bank_ifsc
+            settings_doc.company_upi = company_upi
+            settings_doc.company_gpay = company_gpay
             settings_doc.updated_at = get_ist_now()
             settings_doc.save()
         else:
             settings_doc = SiteSettings(
                 whatsapp_number=whatsapp_number,
                 contact_phone=contact_phone,
+                company_name=company_name,
+                company_address=company_address,
+                company_phone=company_phone,
+                company_landline=company_landline,
+                company_email=company_email,
+                bank_name=bank_name,
+                bank_branch=bank_branch,
+                bank_acc_no=bank_acc_no,
+                bank_ifsc=bank_ifsc,
+                company_upi=company_upi,
+                company_gpay=company_gpay
             )
             settings_doc.save()
 

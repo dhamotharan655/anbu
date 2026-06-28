@@ -118,15 +118,15 @@ from mongoengine import connect
 #     host="mongodb://root:Vien*$2000@vienstereoptic.com:27017/Ruban?authSource=admin",
 # )
 
-# connect(
-#     db="ruban_electricals",
-#     host="mongodb://localhost:27017/ruban_electricals"
-# )
-
 connect(
-    db="anbu-enterprises",
-    host="mongodb://13.204.145.55:27017/anbu-enterprises"
+    db="ruban_electricals",
+    host="mongodb://localhost:27017/ruban_electricals"
 )
+
+# connect(
+#     db="anbu-enterprises",
+#     host="mongodb://13.204.145.55:27017/anbu-enterprises"
+# )
 
 # connect(
 #     db="anbu-enterprises",

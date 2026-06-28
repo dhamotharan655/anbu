@@ -469,3 +469,207 @@
 .section-header {
   animation: fadeUp 0.4s 0.08s ease both;
 }
+
+/* Invoice Settings Button & Modal Styles */
+.settings-btn {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: white;
+  padding: 7px 14px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-family-sans);
+  z-index: 1;
+}
+
+.settings-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.inv-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.inv-modal-card {
+  background: white;
+  border-radius: 24px;
+  max-width: 600px;
+  width: 100%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  animation: modalSlideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.inv-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(11, 102, 120, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inv-modal-header h3 {
+  font-family: var(--font-family-heading);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.inv-modal-close {
+  background: rgba(11, 102, 120, 0.06);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+
+.inv-modal-close:hover {
+  background: rgba(235, 89, 104, 0.1);
+  color: var(--color-danger);
+}
+
+.inv-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  max-height: 60vh;
+}
+
+.inv-modal-body::-webkit-scrollbar {
+  width: 8px;
+  display: block;
+}
+
+.inv-modal-body::-webkit-scrollbar-track {
+  background: rgba(11, 102, 120, 0.05);
+  border-radius: 10px;
+}
+
+.inv-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(11, 102, 120, 0.3);
+  border-radius: 10px;
+  border: 2px solid #ffffff;
+}
+
+.inv-modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(11, 102, 120, 0.5);
+}
+
+.inv-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .inv-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.inv-form-group {
+  margin-bottom: 16px;
+}
+
+.inv-form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.inv-form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.inv-form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(11, 102, 120, 0.15);
+  outline: none;
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: all 0.2s;
+  background: rgba(11, 102, 120, 0.01);
+}
+
+.inv-form-input:focus {
+  border-color: var(--primary);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(11, 102, 120, 0.1);
+}
+
+.inv-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid rgba(11, 102, 120, 0.1);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: rgba(11, 102, 120, 0.02);
+}
+
+.inv-btn {
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.inv-btn-secondary {
+  background: rgba(11, 102, 120, 0.08);
+  color: var(--primary);
+}
+
+.inv-btn-secondary:hover {
+  background: rgba(11, 102, 120, 0.15);
+}
+
+.inv-btn-primary {
+  background: var(--gradient);
+  color: white;
+  box-shadow: 0 4px 12px rgba(11, 102, 120, 0.2);
+}
+
+.inv-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(11, 102, 120, 0.3);
+}
+
+@keyframes modalSlideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

@@ -16,6 +16,7 @@ urlpatterns = [
     # ------------------------------
     path('staff/add/', views.add_staff, name='add_staff'),
     path('staff/', views.get_staff, name='get_staff'),
+    path('staff/<str:staff_id>/', views.get_staff_detail, name='get_staff_detail'),
     path('staff/<str:staff_id>/edit/', views.edit_staff, name='edit_staff'),
     path('staff/<str:staff_id>/delete/', views.delete_staff, name='delete_staff'),
 

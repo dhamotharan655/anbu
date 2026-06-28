@@ -98,34 +98,34 @@ const AdminLogin = () => {
 
         .login-input {
           width: 100%;
-          background: rgba(255,255,255,0.95);
-          border: 1.5px solid rgba(255,255,255,0.3);
-          border-radius: 14px;
-          padding: 14px 18px 14px 48px;
+          background: rgba(255,255,255,0.06);
+          border: 1.5px solid rgba(255,255,255,0.12);
+          border-radius: 16px;
+          padding: 15px 18px 15px 48px;
           font-family: 'Plus Jakarta Sans', sans-serif;
           font-size: 15px;
-          color: #111827;
+          color: #ffffff;
           outline: none;
           transition: all 0.3s ease;
-          -webkit-text-fill-color: #111827;
+          -webkit-text-fill-color: #ffffff;
         }
-        .login-input::placeholder { color: #9ca3af; }
+        .login-input::placeholder { color: rgba(255,255,255,0.35); }
         .login-input:focus {
-          border-color: rgba(241,179,42,0.7);
-          background: #ffffff;
-          box-shadow: 0 0 0 4px rgba(241,179,42,0.12);
+          border-color: #0e8fa8;
+          background: rgba(255,255,255,0.1);
+          box-shadow: 0 0 0 4px rgba(14,143,168,0.25);
         }
         .login-input.error {
           border-color: rgba(239,68,68,0.7);
-          box-shadow: 0 0 0 4px rgba(239,68,68,0.1);
+          box-shadow: 0 0 0 4px rgba(239,68,68,0.15);
         }
         .btn-login {
           width: 100%;
           padding: 16px;
           border: none;
           border-radius: 16px;
-          background: linear-gradient(135deg, #f1b32a 0%, #e09b10 100%);
-          color: #1a0a00;
+          background: linear-gradient(135deg, #0e8fa8 0%, #0b6678 100%);
+          color: #ffffff;
           font-family: 'Plus Jakarta Sans', sans-serif;
           font-size: 16px;
           font-weight: 800;
@@ -135,14 +135,15 @@ const AdminLogin = () => {
           align-items: center;
           justify-content: center;
           gap: 10px;
-          box-shadow: 0 8px 28px rgba(241,179,42,0.35);
+          box-shadow: 0 8px 28px rgba(14,143,168,0.3);
           position: relative;
           overflow: hidden;
           letter-spacing: -0.01em;
         }
         .btn-login:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 14px 40px rgba(241,179,42,0.45);
+          box-shadow: 0 14px 40px rgba(14,143,168,0.45);
+          background: linear-gradient(135deg, #128299 0%, #0e8fa8 100%);
         }
         .btn-login:active:not(:disabled) { transform: translateY(0); }
         .btn-login:disabled { opacity: 0.7; cursor: not-allowed; }
@@ -158,7 +159,7 @@ const AdminLogin = () => {
 
         .stat-chip:hover {
           background: rgba(255,255,255,0.12) !important;
-          border-color: rgba(241,179,42,0.4) !important;
+          border-color: rgba(14,143,168,0.4) !important;
         }
 
         @media (max-width: 900px) {
@@ -228,7 +229,7 @@ const AdminLogin = () => {
         }} />
 
         {/* Main card */}
-        <div style={{
+        <div className="login-card" style={{
           display: "flex",
           width: "900px",
           maxWidth: "96vw",

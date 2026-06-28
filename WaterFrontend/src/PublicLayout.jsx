@@ -572,8 +572,9 @@ const PublicLayout = () => {
         }
 
         @media (max-width: 700px) {
-          .pnav-links, .pnav-cta { display: none; }
+          .pnav-links, .pnav-inner .pnav-cta { display: none; }
           .pnav-hamburger { display: block; }
+          .pnav-drawer .pnav-cta { display: block !important; }
         }
       `}</style>
 

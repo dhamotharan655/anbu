@@ -86,8 +86,11 @@ const StockManagement = () => {
         totalPurchaseAmount: 0,
         dateOfPurchase: new Date().toISOString().split('T')[0],
         minimumPrice: 0,
-        minimumThreshold: 0
+        minimumThreshold: 0,
+        sellingPrice: 0
     });
+
+    const [showPriceSyncConfirm, setShowPriceSyncConfirm] = useState(false);
 
     // Get authentication headers
     const getAuthHeaders = () => {
@@ -257,8 +260,8 @@ const StockManagement = () => {
     };
 
     // Handle stock quantity operations
-    const handleStockOperation = async (e) => {
-        e.preventDefault();
+    const handleStockOperation = async (e, bypassConfirm = false) => {
+        if (e && e.preventDefault) e.preventDefault();
         setLoading(true);
         setError('');
 
@@ -279,6 +282,13 @@ const StockManagement = () => {
                 setLoading(false);
                 return;
             }
+
+            // Check if selling price is different, and we haven't shown confirmation dialog yet
+            if (selectedStock && purchaseDetails.sellingPrice !== selectedStock.selling_price && !bypassConfirm) {
+                setLoading(false);
+                setShowPriceSyncConfirm(true);
+                return;
+            }
         }
 
         try {
@@ -295,7 +305,8 @@ const StockManagement = () => {
                     total_purchase_amount: purchaseDetails.totalPurchaseAmount,
                     date_of_purchase: purchaseDetails.dateOfPurchase,
                     minimum_price: purchaseDetails.minimumPrice,
-                    minimum_threshold: purchaseDetails.minimumThreshold
+                    minimum_threshold: purchaseDetails.minimumThreshold,
+                    selling_price: purchaseDetails.sellingPrice
                 }
                 : { quantity: stockQuantity };
 
@@ -306,6 +317,7 @@ const StockManagement = () => {
                 triggerRefresh('stock');
                 setShowAddStockModal(false);
                 setShowReduceStockModal(false);
+                setShowPriceSyncConfirm(false);
                 setSelectedStock(null);
                 setStockQuantity(0);
                 // Reset purchase details
@@ -315,12 +327,67 @@ const StockManagement = () => {
                     totalPurchaseAmount: 0,
                     dateOfPurchase: new Date().toISOString().split('T')[0],
                     minimumPrice: 0,
-                    minimumThreshold: 0
+                    minimumThreshold: 0,
+                    sellingPrice: 0
                 });
             }
         } catch (err) {
             console.error(`Error ${stockAction}ing stock:`, err);
             setError(err.response?.data?.error || `Failed to ${stockAction} stock`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Helper to confirm and sync price updates to the existing stock item
+    const handleConfirmPriceSync = () => {
+        handleStockOperation(null, true);
+    };
+
+    // Helper to create a new stock item with the new price
+    const handleCreateNewStock = async () => {
+        if (!selectedStock) return;
+        setLoading(true);
+        setError('');
+        try {
+            const requestData = {
+                name: `${selectedStock.name} - ₹${purchaseDetails.sellingPrice}`,
+                category: selectedStock.category || '',
+                quantity: stockQuantity,
+                unit: selectedStock.unit || 'pcs',
+                minimum_threshold: purchaseDetails.minimumThreshold || selectedStock.minimum_threshold || 2,
+                selling_price: purchaseDetails.sellingPrice,
+                buying_price: purchaseDetails.purchasePricePerUnit,
+                minimum_price: purchaseDetails.minimumPrice,
+                branch_name: selectedStock.branch_name || 'Main Branch',
+                supplier: purchaseDetails.supplier,
+                purchase_price_per_unit: purchaseDetails.purchasePricePerUnit,
+                total_purchase_amount: purchaseDetails.totalPurchaseAmount,
+                date_of_purchase: purchaseDetails.dateOfPurchase
+            };
+
+            const response = await api.post('/stocks/create/', requestData, getAuthHeaders());
+
+            if (response.data.success) {
+                fetchStockItems();
+                triggerRefresh('stock');
+                setShowAddStockModal(false);
+                setShowPriceSyncConfirm(false);
+                setSelectedStock(null);
+                setStockQuantity(0);
+                setPurchaseDetails({
+                    supplier: '',
+                    purchasePricePerUnit: 0,
+                    totalPurchaseAmount: 0,
+                    dateOfPurchase: new Date().toISOString().split('T')[0],
+                    minimumPrice: 0,
+                    minimumThreshold: 0,
+                    sellingPrice: 0
+                });
+            }
+        } catch (err) {
+            console.error("Error creating new price stock:", err);
+            setError(err.response?.data?.error || "Failed to create new stock item");
         } finally {
             setLoading(false);
         }
@@ -522,12 +589,13 @@ const StockManagement = () => {
                             setStockAction('add');
                             setStockQuantity(0);
                             setPurchaseDetails({
-                                supplier: '',
-                                purchasePricePerUnit: 0,
+                                supplier: item.supplier || '',
+                                purchasePricePerUnit: item.buying_price || 0,
                                 totalPurchaseAmount: 0,
                                 dateOfPurchase: new Date().toISOString().split('T')[0],
                                 minimumPrice: item.minimum_price || 0,
-                                minimumThreshold: item.minimum_threshold || 0
+                                minimumThreshold: item.minimum_threshold || 0,
+                                sellingPrice: item.selling_price || 0
                             });
                             setShowAddStockModal(true);
                         }}
@@ -1342,6 +1410,25 @@ const StockManagement = () => {
 
                                         <div className="form-grid-2" style={{ marginTop: '1rem' }}>
                                             <div className="form-group">
+                                                <label>Selling Price (₹) *</label>
+                                                <div className="input-with-prefix">
+                                                    <span className="input-prefix">₹</span>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        value={purchaseDetails.sellingPrice || ''}
+                                                        onChange={(e) => setPurchaseDetails({ ...purchaseDetails, sellingPrice: parseFloat(e.target.value) || 0 })}
+                                                        placeholder="0.00"
+                                                        className="form-input-highlight"
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="form-grid-2" style={{ marginTop: '1rem' }}>
+                                            <div className="form-group">
                                                 <label>Price / Unit (₹)</label>
                                                 <div className="input-with-prefix">
                                                     <span className="input-prefix">₹</span>
@@ -1391,6 +1478,48 @@ const StockManagement = () => {
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                )}
+
+                {showPriceSyncConfirm && (
+                    <div className="modal-overlay" style={{ zIndex: 1100 }}>
+                        <div className="modal-content" style={{ maxWidth: '450px', padding: '24px' }}>
+                            <div className="modal-header" style={{ marginBottom: '16px' }}>
+                                <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--color-primary)' }}>Selling Price Changed</h2>
+                                <button className="close-btn" onClick={() => setShowPriceSyncConfirm(false)}>×</button>
+                            </div>
+                            <div style={{ marginBottom: '24px', fontSize: '14px', lineHeight: '1.6', color: '#4b5563' }}>
+                                <p style={{ marginBottom: '12px' }}>
+                                    The selling price you entered (<strong>₹{purchaseDetails.sellingPrice.toFixed(2)}</strong>) is different from the existing stock price (<strong>₹{selectedStock?.selling_price?.toFixed(2) || '0.00'}</strong>).
+                                </p>
+                                <p>What would you like to do?</p>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <button 
+                                    className="btn-primary" 
+                                    onClick={handleConfirmPriceSync}
+                                    style={{ width: '100%', justifyContent: 'center', padding: '12px' }}
+                                    disabled={loading}
+                                >
+                                    🔄 Sync & Update Existing Stock Price
+                                </button>
+                                <button 
+                                    className="btn-secondary" 
+                                    onClick={handleCreateNewStock}
+                                    style={{ width: '100%', justifyContent: 'center', padding: '12px', background: '#f3f4f6', border: '1px solid #d1d5db', color: '#1f2937' }}
+                                    disabled={loading}
+                                >
+                                    ➕ Add as a New Stock Item
+                                </button>
+                                <button 
+                                    className="btn-secondary" 
+                                    onClick={() => setShowPriceSyncConfirm(false)}
+                                    style={{ width: '100%', justifyContent: 'center', padding: '10px' }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -1476,6 +1605,7 @@ const StockManagement = () => {
                                                             <th>Previous</th>
                                                             <th>New</th>
                                                             <th>Supplier</th>
+                                                            <th>Buying Price (Unit / Total)</th>
                                                             <th>By</th>
                                                         </tr>
                                                     </thead>
@@ -1506,6 +1636,14 @@ const StockManagement = () => {
                                                                     <td>{item.previous_quantity}</td>
                                                                     <td>{item.new_quantity}</td>
                                                                     <td>{item.supplier || '-'}</td>
+                                                                    <td>
+                                                                        {item.purchase_price_per_unit ? (
+                                                                            <span style={{ fontWeight: 600, color: '#0f766e' }}>
+                                                                                ₹{item.purchase_price_per_unit.toFixed(2)} 
+                                                                                {item.total_purchase_amount ? ` / ₹${item.total_purchase_amount.toFixed(2)}` : ''}
+                                                                            </span>
+                                                                        ) : '-'}
+                                                                    </td>
                                                                     <td>{item.performed_by}</td>
                                                                 </tr>
                                                             ))}
@@ -1592,7 +1730,7 @@ const StockManagement = () => {
                                                                                         title=""
                                                                                         showTotal={true}
                                                                                         isCompact={true}
-                                                                                        showPrice={false}
+                                                                                        showPrice={true}
                                                                                     />
                                                                                 ) : (
                                                                                     <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>-</span>
@@ -1605,7 +1743,7 @@ const StockManagement = () => {
                                                                                         title=""
                                                                                         showTotal={true}
                                                                                         isCompact={true}
-                                                                                        showPrice={false}
+                                                                                        showPrice={true}
                                                                                     />
                                                                                 ) : (
                                                                                     <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>-</span>

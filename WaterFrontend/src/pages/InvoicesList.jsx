@@ -11,6 +11,75 @@ const InvoicesList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredInvoices, setFilteredInvoices] = useState([]);
 
+  // Invoice Company Settings States
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsData, setSettingsData] = useState({
+    company_name: "Anbu Enterprises",
+    company_address: "No 12, Main Road, Chennai",
+    company_phone: "+91 9876543210",
+    company_landline: "044 2345 6789",
+    company_email: "contact@anbuenterprises.com",
+    bank_name: "HDFC Bank",
+    bank_branch: "Anna Nagar Branch",
+    bank_acc_no: "50100234567890",
+    bank_ifsc: "HDFC0001234",
+    company_upi: "anbu@okaxis",
+    company_gpay: "+91 9876543210",
+    whatsapp_number: "",
+    contact_phone: ""
+  });
+
+  const fetchSettings = async () => {
+    try {
+      setSettingsLoading(true);
+      const response = await api.get('site-settings/');
+      if (response.data) {
+        setSettingsData({
+          company_name: response.data.company_name || "Anbu Enterprises",
+          company_address: response.data.company_address || "No 12, Main Road, Chennai",
+          company_phone: response.data.company_phone || "+91 9876543210",
+          company_landline: response.data.company_landline || "044 2345 6789",
+          company_email: response.data.company_email || "contact@anbuenterprises.com",
+          bank_name: response.data.bank_name || "HDFC Bank",
+          bank_branch: response.data.bank_branch || "Anna Nagar Branch",
+          bank_acc_no: response.data.bank_acc_no || "50100234567890",
+          bank_ifsc: response.data.bank_ifsc || "HDFC0001234",
+          company_upi: response.data.company_upi || "anbu@okaxis",
+          company_gpay: response.data.company_gpay || "+91 9876543210",
+          whatsapp_number: response.data.whatsapp_number || "",
+          contact_phone: response.data.contact_phone || ""
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching site settings:', error);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const saveSettings = async (e) => {
+    e.preventDefault();
+    try {
+      setSettingsSaving(true);
+      await api.post('site-settings/update/', settingsData);
+      alert('Invoice and company settings updated successfully!');
+      setShowSettingsModal(false);
+    } catch (error) {
+      console.error('Error saving site settings:', error);
+      alert('Failed to save settings. Please try again.');
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showSettingsModal) {
+      fetchSettings();
+    }
+  }, [showSettingsModal]);
+
   useEffect(() => {
     fetchInvoices();
   }, []);
@@ -136,6 +205,10 @@ ${fullPdfUrl}`;
           <FiArrowLeft /> Back
         </button>
 
+        <button className="settings-btn" onClick={() => setShowSettingsModal(true)}>
+          ⚙️ Invoice Settings
+        </button>
+
         <div className="hero-icon">🧾</div>
         <h1>Invoices</h1>
         <p className="hero-subtitle">View and manage all generated invoices</p>
@@ -233,6 +306,167 @@ ${fullPdfUrl}`;
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <div className="inv-modal-overlay" onClick={() => setShowSettingsModal(false)}>
+          <div className="inv-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="inv-modal-header">
+              <h3>Edit Company &amp; Bank Details</h3>
+              <button className="inv-modal-close" onClick={() => setShowSettingsModal(false)}>✕</button>
+            </div>
+            
+            {settingsLoading ? (
+              <div style={{ padding: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div className="spinner"></div>
+                <p>Loading invoice settings...</p>
+              </div>
+            ) : (
+              <form onSubmit={saveSettings}>
+                <div className="inv-modal-body">
+                  <div className="inv-form-grid">
+                    
+                    {/* Company Name */}
+                    <div className="inv-form-group full-width">
+                      <label>Company Name</label>
+                      <input 
+                        type="text" 
+                        className="inv-form-input" 
+                        value={settingsData.company_name} 
+                        onChange={(e) => setSettingsData({...settingsData, company_name: e.target.value})} 
+                        required 
+                      />
+                    </div>
+                    
+                    {/* Address */}
+                    <div className="inv-form-group full-width">
+                      <label>Company Address</label>
+                      <input 
+                        type="text" 
+                        className="inv-form-input" 
+                        value={settingsData.company_address} 
+                        onChange={(e) => setSettingsData({...settingsData, company_address: e.target.value})} 
+                        required 
+                      />
+                    </div>
+                    
+                    {/* Phone & Landline */}
+                    <div className="inv-form-group">
+                      <label>Office Phone</label>
+                      <input 
+                        type="text" 
+                        className="inv-form-input" 
+                        value={settingsData.company_phone} 
+                        onChange={(e) => setSettingsData({...settingsData, company_phone: e.target.value})} 
+                        required 
+                      />
+                    </div>
+                    <div className="inv-form-group">
+                      <label>Landline Phone</label>
+                      <input 
+                        type="text" 
+                        className="inv-form-input" 
+                        value={settingsData.company_landline} 
+                        onChange={(e) => setSettingsData({...settingsData, company_landline: e.target.value})} 
+                      />
+                    </div>
+                    
+                    {/* Email & GST/Other */}
+                    <div className="inv-form-group full-width">
+                      <label>Company Email</label>
+                      <input 
+                        type="email" 
+                        className="inv-form-input" 
+                        value={settingsData.company_email} 
+                        onChange={(e) => setSettingsData({...settingsData, company_email: e.target.value})} 
+                        required 
+                      />
+                    </div>
+                    
+                    {/* Divider */}
+                    <div className="inv-form-group full-width" style={{ borderTop: '1px dashed rgba(11, 102, 120, 0.15)', margin: '8px 0' }}></div>
+                    <h4 className="inv-form-group full-width" style={{ margin: '0 0 8px 0', color: 'var(--primary)', textAlign: 'left' }}>Bank Details</h4>
+                    
+                    {/* Bank Name & Branch */}
+                    <div className="inv-form-group">
+                      <label>Bank Name</label>
+                      <input 
+                        type="text" 
+                        className="inv-form-input" 
+                        value={settingsData.bank_name} 
+                        onChange={(e) => setSettingsData({...settingsData, bank_name: e.target.value})} 
+                        required 
+                      />
+                    </div>
+                    <div className="inv-form-group">
+                      <label>Branch Name</label>
+                      <input 
+                        type="text" 
+                        className="inv-form-input" 
+                        value={settingsData.bank_branch} 
+                        onChange={(e) => setSettingsData({...settingsData, bank_branch: e.target.value})} 
+                        required 
+                      />
+                    </div>
+                    
+                    {/* Acc No & IFSC */}
+                    <div className="inv-form-group">
+                      <label>Account Number</label>
+                      <input 
+                        type="text" 
+                        className="inv-form-input" 
+                        value={settingsData.bank_acc_no} 
+                        onChange={(e) => setSettingsData({...settingsData, bank_acc_no: e.target.value})} 
+                        required 
+                      />
+                    </div>
+                    <div className="inv-form-group">
+                      <label>IFSC Code</label>
+                      <input 
+                        type="text" 
+                        className="inv-form-input" 
+                        value={settingsData.bank_ifsc} 
+                        onChange={(e) => setSettingsData({...settingsData, bank_ifsc: e.target.value})} 
+                        required 
+                      />
+                    </div>
+                    
+                    {/* UPI & GPay */}
+                    <div className="inv-form-group">
+                      <label>UPI ID</label>
+                      <input 
+                        type="text" 
+                        className="inv-form-input" 
+                        value={settingsData.company_upi} 
+                        onChange={(e) => setSettingsData({...settingsData, company_upi: e.target.value})} 
+                        required 
+                      />
+                    </div>
+                    <div className="inv-form-group">
+                      <label>GPay Number</label>
+                      <input 
+                        type="text" 
+                        className="inv-form-input" 
+                        value={settingsData.company_gpay} 
+                        onChange={(e) => setSettingsData({...settingsData, company_gpay: e.target.value})} 
+                        required 
+                      />
+                    </div>
+                    
+                  </div>
+                </div>
+                
+                <div className="inv-modal-footer">
+                  <button type="button" className="inv-btn inv-btn-secondary" onClick={() => setShowSettingsModal(false)}>Cancel</button>
+                  <button type="submit" className="inv-btn inv-btn-primary" disabled={settingsSaving}>
+                    {settingsSaving ? 'Saving...' : 'Save Settings'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       )}
     </div>

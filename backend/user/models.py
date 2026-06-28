@@ -1365,6 +1365,17 @@ class SiteSettings(Document):
     """
     whatsapp_number = StringField(default="", null=True)
     contact_phone = StringField(default="", null=True)
+    company_name = StringField(default="Anbu Enterprises", null=True)
+    company_address = StringField(default="No 12, Main Road, Chennai", null=True)
+    company_phone = StringField(default="+91 9876543210", null=True)
+    company_landline = StringField(default="044 2345 6789", null=True)
+    company_email = StringField(default="contact@anbuenterprises.com", null=True)
+    bank_name = StringField(default="HDFC Bank", null=True)
+    bank_branch = StringField(default="Anna Nagar Branch", null=True)
+    bank_acc_no = StringField(default="50100234567890", null=True)
+    bank_ifsc = StringField(default="HDFC0001234", null=True)
+    company_upi = StringField(default="anbu@okaxis", null=True)
+    company_gpay = StringField(default="+91 9876543210", null=True)
     updated_at = DateTimeField(default=get_ist_now)
 
     meta = {'collection': 'site_settings', 'strict': False}
