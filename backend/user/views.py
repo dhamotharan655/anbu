@@ -4976,6 +4976,49 @@ def download_invoice(request, invoice_number):
             "error": f"Failed to download invoice: {str(e)}"
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+# ------------------------------
+#   DOWNLOAD ESTIMATION PDF
+# ------------------------------
+@api_view(['GET'])
+def download_estimation(request, invoice_number):
+    """
+    Generate and download estimation PDF with proper filename
+    GET /api/download-estimation/<invoice_number>/
+    """
+    try:
+        # Find the complaint with this invoice number
+        complaint = BookServiceComplaint.objects(invoice_number=invoice_number).first()
+        
+        if not complaint:
+            return Response({
+                "error": "Job not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+            
+        # Generate estimation on the fly (set is_estimation=True)
+        estimation_data = generate_invoice_pdf(complaint, request, is_estimation=True)
+        
+        pdf_path = estimation_data['pdf_path']
+        pdf_filename = os.path.basename(pdf_path)
+        
+        if not os.path.exists(pdf_path):
+            return Response({
+                "error": "Estimation file could not be generated"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+        # Return file response
+        response = FileResponse(
+            open(pdf_path, 'rb'),
+            content_type='application/pdf'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{pdf_filename}"'
+        return response
+    except Exception as e:
+        return Response({
+            "error": f"Failed to generate estimation: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 # ------------------------------
 @api_view(['GET'])
 def calculate_payroll(request):

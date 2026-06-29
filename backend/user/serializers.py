@@ -1355,7 +1355,7 @@ class HolidayCalendarSerializer(serializers.Serializer):
 # -------------------------------
 class BranchSerializer(serializers.Serializer):
     id = serializers.CharField(read_only=True)
-    branch_id = serializers.CharField(required=True)
+    branch_id = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     name = serializers.CharField(required=True)
     location = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     whatsapp_number = serializers.CharField(required=False, allow_blank=True, allow_null=True)
@@ -1364,6 +1364,9 @@ class BranchSerializer(serializers.Serializer):
     created_at = serializers.DateTimeField(read_only=True)
 
     def create(self, validated_data):
+        if not validated_data.get('branch_id'):
+            import uuid
+            validated_data['branch_id'] = f"BR_{uuid.uuid4().hex[:8].upper()}"
         branch = Branch(**validated_data)
         branch.save()
         return branch

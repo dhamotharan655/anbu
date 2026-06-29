@@ -174,9 +174,9 @@ def parse_products_for_invoice(product_field, quantity_field=None, default_price
     return [{'name': product_name, 'quantity': quantity, 'selling_price': selling_price, 'buying_price': buying_price, 'discount_percent': 0, 'final_price': selling_price}]
 
 
-def generate_invoice_pdf(complaint, request=None):
+def generate_invoice_pdf(complaint, request=None, is_estimation=False):
     """
-    Generate invoice PDF for a completed complaint
+    Generate invoice PDF or Estimation PDF for a completed complaint
     
     Args:
         complaint: BookServiceComplaint object
@@ -256,8 +256,11 @@ def generate_invoice_pdf(complaint, request=None):
         complaint.save()
     
     # Generate invoice number
-    from user.invoice_utils import get_next_invoice_number
-    invoice_number = get_next_invoice_number()
+    if getattr(complaint, 'invoice_number', None):
+        invoice_number = complaint.invoice_number
+    else:
+        from user.invoice_utils import get_next_invoice_number
+        invoice_number = get_next_invoice_number()
     year = get_ist_now().year
     
     # Create invoices directory if not exists
@@ -266,7 +269,10 @@ def generate_invoice_pdf(complaint, request=None):
     
     # Generate PDF filename
     invoice_num_for_file = invoice_number.split('-')[-1]
-    pdf_filename = f"Invoice_INV-{year}-{invoice_num_for_file}.pdf"
+    if is_estimation:
+        pdf_filename = f"Estimation_EST-{year}-{invoice_num_for_file}.pdf"
+    else:
+        pdf_filename = f"Invoice_INV-{year}-{invoice_num_for_file}.pdf"
     pdf_path = os.path.join(invoices_dir, pdf_filename)
     
     # Generate PDF URL
@@ -328,17 +334,16 @@ def generate_invoice_pdf(complaint, request=None):
     
     # Create PDF document with consistent width
     # A4 width is 8.27 inches = 595 points
-    # With 0.5 inch margins (72 points each), usable width = 7.27 inches = ~523 points
-    # We'll use 7.5 inches = 540 points for consistency
-    usable_width = 7.5 * inch
+    # Usable width = 535 points (with 30 points / ~0.42 inch margins)
+    usable_width = 535
     
     doc = SimpleDocTemplate(
         pdf_path,
         pagesize=A4,
-        leftMargin=0.3*inch,
-        rightMargin=0.3*inch,
-        topMargin=0.3*inch,
-        bottomMargin=0.3*inch
+        leftMargin=30,
+        rightMargin=30,
+        topMargin=30,
+        bottomMargin=30
     )
     elements = []
 
@@ -347,63 +352,43 @@ def generate_invoice_pdf(complaint, request=None):
 
     normal_style = ParagraphStyle(
         'NormalCustom', parent=styles['Normal'],
-        fontSize=8, leading=11, textColor=colors.black
+        fontSize=9, leading=12, textColor=colors.HexColor('#1f2937')
     )
     bold_style = ParagraphStyle(
         'BoldCustom', parent=styles['Normal'],
-        fontSize=8, leading=11, fontName='Helvetica-Bold', textColor=colors.black
-    )
-    small_style = ParagraphStyle(
-        'SmallCustom', parent=styles['Normal'],
-        fontSize=7, leading=9, textColor=colors.black
-    )
-    center_bold = ParagraphStyle(
-        'CenterBold', parent=styles['Normal'],
-        fontSize=8, leading=11, fontName='Helvetica-Bold',
-        alignment=1, textColor=colors.black
+        fontSize=9, leading=12, fontName='Helvetica-Bold', textColor=colors.black
     )
     right_style = ParagraphStyle(
         'RightCustom', parent=styles['Normal'],
-        fontSize=8, leading=11, alignment=2, textColor=colors.black
+        fontSize=9, leading=12, alignment=2, textColor=colors.HexColor('#1f2937')
     )
-    footer_style = ParagraphStyle(
-        'Footer', parent=styles['Normal'],
-        fontSize=7, alignment=1, textColor=colors.black
+    right_bold = ParagraphStyle(
+        'RightBold', parent=styles['Normal'],
+        fontSize=9, leading=12, alignment=2, fontName='Helvetica-Bold', textColor=colors.black
+    )
+    center_style = ParagraphStyle(
+        'CenterCustom', parent=styles['Normal'],
+        fontSize=9, leading=12, alignment=1, textColor=colors.HexColor('#1f2937')
+    )
+    center_bold = ParagraphStyle(
+        'CenterBold', parent=styles['Normal'],
+        fontSize=9, leading=12, alignment=1, fontName='Helvetica-Bold', textColor=colors.black
+    )
+    center_white = ParagraphStyle(
+        'CenterWhite', parent=styles['Normal'],
+        fontSize=9, leading=12, alignment=1, fontName='Helvetica-Bold', textColor=colors.white
     )
 
-    BORDER_COLOR = colors.HexColor('#333333')  # Dark gray for clean, professional look
-    THIN = 1  # Consistent border thickness for all tables
+    PRIMARY_COLOR = colors.HexColor('#7983d9') # Clean Purple/Indigo color matching the pattern
     
-    # Define consistent column widths
-    # Total width: 7.5 inches = 540 points
-    # Header: 2fr (3.75 inch) | 1fr (3.75 inch) = 7.5 inch total
-    # Customer/Bank: 1fr (3.75 inch) | 1fr (3.75 inch) = 7.5 inch total
-    # Items: SlNo 8% | Desc 35% | HSN 12% | UnitCost 12% | Qty 8% | Disc 8% | Amount 17%
-    #       = 0.6" | 2.625" | 0.9" | 0.9" | 0.6" | 0.6" | 1.275" = 7.545" ≈ 7.5"
+    half_width = usable_width / 2.0  # 267.5 pt
     
-    half_width = 3.75 * inch
-    header_col_widths = [half_width, half_width]  # 2 columns, equal width
-    customer_bank_col_widths = [half_width, half_width]  # 2 columns, equal width
-    
-    # Items table column widths - proportional to match total width
-    item_col_widths = [
-        0.6 * inch,    # Sl.No - 8%
-        2.625 * inch,  # Description - 35%
-        0.9 * inch,    # HSN/SAC - 12%
-        0.9 * inch,    # Unit Cost - 12%
-        0.6 * inch,    # Qty - 8%
-        0.6 * inch,    # Disc - 8%
-        1.275 * inch   # Amount - 17%
-    ]
-    
-    full_width = [7.5 * inch]  # Full width for single column sections
-
-    # ==================== ROW 1: HEADER - Two Equal Columns ====================
-    # Left Column: Company Logo + Info
-    logo_path = os.path.join(settings.MEDIA_ROOT, 'main_logo.jpg')
+    # ==================== ROW 1: HEADER (Left: Info, Right: Logo) ====================
+    logo_path = os.path.join(settings.MEDIA_ROOT, 'image.png')
     if os.path.exists(logo_path):
         try:
-            logo_cell = Image(logo_path, width=1.2*inch, height=0.9*inch)
+            # Render logo at premium dimensions (approx 1.1 in x 0.65 in)
+            logo_cell = Image(logo_path, width=1.1*inch, height=0.65*inch)
         except Exception:
             logo_cell = Paragraph('', normal_style)
     else:
@@ -440,265 +425,237 @@ def generate_invoice_pdf(complaint, request=None):
     invoice_date = get_ist_now().strftime('%d-%m-%Y')
     staff_name = complaint.staff_name or "N/A"
 
-    # Left column content
-    left_col_content = [
-        [logo_cell],
-        [Paragraph(f"<b>{comp_name.upper()}</b>", bold_style)],
-        [Paragraph(f"Office-Phone: {comp_phone}", normal_style)],
-        [Paragraph(f"Land-Line: {comp_landline}", normal_style)],
-        [Paragraph(f"Address: {comp_address}", normal_style)],
-        [Paragraph(f"Email: {comp_email}", normal_style)],
-    ]
-    left_col_table = Table(left_col_content, colWidths=[half_width])
-    left_col_table.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 2),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
-        ('LEFTPADDING', (0, 0), (-1, -1), 4),
-    ]))
+    # Support multiline addresses (e.g. branch/head offices) separated by newlines or semicolons
+    comp_address_html = comp_address.replace('\n', '<br/>').replace(';', '<br/>')
 
-    # Right column content - Estimate details
-    right_col_content = [
-        [Paragraph(f"<b>Estimate No.</b>  {invoice_number}", normal_style)],
-        [Paragraph(f"<b>Date:</b>  {invoice_date}", normal_style)],
-        [Paragraph(f"<b>Anbu Employee:</b>  {staff_name}", normal_style)],
-        [Paragraph("<b>Purpose:</b>  Service", normal_style)],
+    header_left = [
+        Paragraph(f"<font size=14><b>{comp_name.upper()}</b></font>", bold_style),
+        Spacer(1, 4),
+        Paragraph(comp_address_html, normal_style),
+        Paragraph(f"Phone no.: {comp_phone}", normal_style),
+        Paragraph(f"Email: {comp_email}", normal_style),
+        Paragraph("State: 33-Tamil Nadu", normal_style),
     ]
-    right_col_table = Table(right_col_content, colWidths=[half_width])
-    right_col_table.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 2),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-        ('LEFTPADDING', (0, 0), (-1, -1), 4),
-    ]))
 
-    # Header row with two equal columns
-    header_row = Table(
-        [[left_col_table, right_col_table]],
-        colWidths=header_col_widths
-    )
-    header_row.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), THIN, BORDER_COLOR),
-        ('INNERGRID', (0, 0), (-1, -1), THIN, BORDER_COLOR),
+    header_table = Table([[header_left, logo_cell]], colWidths=[380, 155])
+    header_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 2),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
         ('LEFTPADDING', (0, 0), (-1, -1), 0),
         ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
     ]))
-    elements.append(header_row)
+    elements.append(header_table)
 
-    # ==================== ROW 2: CUSTOMER INFO | BANK DETAILS ====================
+    # Indigo line separator
+    divider_table = Table([['']], colWidths=[usable_width])
+    divider_table.setStyle(TableStyle([
+        ('LINEBELOW', (0, 0), (-1, -1), 1.5, PRIMARY_COLOR),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(divider_table)
+    elements.append(Spacer(1, 10))
+
+    # Center-aligned Tax Invoice or Estimation Title
+    title_text = "Estimation" if is_estimation else "Tax Invoice"
+    title_style = ParagraphStyle(
+        'InvoiceTitle', parent=styles['Normal'],
+        fontSize=16, leading=20, fontName='Helvetica-Bold',
+        alignment=1, textColor=PRIMARY_COLOR
+    )
+    elements.append(Paragraph(title_text, title_style))
+    elements.append(Spacer(1, 12))
+
+    # ==================== ROW 2: BILL TO & DETAILS ====================
     customer_name = complaint.customer_name or "N/A"
     customer_phone = complaint.phone or "N/A"
     customer_address = complaint.address or "N/A"
+    
+    # Split invoice number to show final numeric part cleanly
+    invoice_num_for_file = invoice_number.split('-')[-1]
 
-    # Left column - Customer Address
-    customer_cell_content = [
-        [Paragraph("<b>Customer Address</b>", bold_style)],
-        [Paragraph(customer_name, normal_style)],
-        [Paragraph(customer_address, normal_style)],
-        [Paragraph(f"<b>Mobile:</b>  {customer_phone}", normal_style)],
+    bill_to_content = [
+        Paragraph("<font color='#6b7280'><b>Bill To</b></font>", normal_style),
+        Spacer(1, 3),
+        Paragraph(f"<b>{customer_name}</b>", bold_style),
+        Paragraph(f"{customer_address}", normal_style),
     ]
-    customer_cell_table = Table(customer_cell_content, colWidths=[half_width])
-    customer_cell_table.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-        ('LEFTPADDING', (0, 0), (-1, -1), 4),
-    ]))
 
-    # Right column - Bank Details
-    bank_cell_content = [
-        [Paragraph("<b>Company Bank Details</b>", bold_style)],
-        [Paragraph(f"Name: {comp_name}", normal_style)],
-        [Paragraph(f"Bank: {b_name} ({b_branch})", normal_style)],
-        [Paragraph(f"Acc No: {b_acc_no}", normal_style)],
-        [Paragraph(f"IFSC Code: {b_ifsc}", normal_style)],
-        [Paragraph(f"UPI ID: {c_upi}", normal_style)],
-        [Paragraph(f"GPay No: {c_gpay}", normal_style)],
+    details_title = "Estimation Details" if is_estimation else "Invoice Details"
+    details_no_label = "Estimation No." if is_estimation else "Invoice No."
+
+    invoice_details_content = [
+        Paragraph(f"<font color='#6b7280'><b>{details_title}</b></font>", right_style),
+        Spacer(1, 3),
+        Paragraph(f"{details_no_label}: {invoice_num_for_file}", right_style),
+        Paragraph(f"Date: {invoice_date}", right_style),
     ]
-    bank_cell_table = Table(bank_cell_content, colWidths=[half_width])
-    bank_cell_table.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-        ('LEFTPADDING', (0, 0), (-1, -1), 4),
-    ]))
 
-    # Customer/Bank row with two equal columns
-    customer_bank_row = Table(
-        [[customer_cell_table, bank_cell_table]],
-        colWidths=customer_bank_col_widths
-    )
-    customer_bank_row.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), THIN, BORDER_COLOR),
-        ('INNERGRID', (0, 0), (-1, -1), THIN, BORDER_COLOR),
+    details_table = Table([[bill_to_content, invoice_details_content]], colWidths=[290, 245])
+    details_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 0),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
         ('LEFTPADDING', (0, 0), (-1, -1), 0),
         ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
     ]))
-    elements.append(customer_bank_row)
-    elements.append(Spacer(1, 4))
+    elements.append(details_table)
 
     # ==================== ITEMS TABLE ====================
-    # Full width table matching container width
-    table_header = [
-        Paragraph('<b>Sl.No.</b>', center_bold),
-        Paragraph('<b>Description of Goods</b>', center_bold),
-        Paragraph('<b>HSN/SAC</b>', center_bold),
-        Paragraph('<b>Unit Cost</b>', center_bold),
-        Paragraph('<b>Qty</b>', center_bold),
-        Paragraph('<b>Disc.</b>', center_bold),
-        Paragraph('<b>Amount</b>', center_bold),
+    # 6 columns matching the pattern: #, Item Name, HSN/ SAC, Quantity, Price/ Unit, Amount
+    item_col_widths = [
+        30,    # Sl No (#)
+        265,   # Item Name
+        60,    # HSN/SAC
+        50,    # Quantity
+        65,    # Price / Unit
+        65     # Amount
     ]
 
-    # Build item rows from items_data
-    item_rows = []
-    for row in items_data:
-        item_rows.append([
-            Paragraph(str(row[0]), normal_style),
-            Paragraph(str(row[1]), normal_style),
-            Paragraph(str(row[2]), normal_style),
-            Paragraph(str(row[3]), right_style),
-            Paragraph(str(row[4]), center_bold),
-            Paragraph(str(row[5]), right_style),
-            Paragraph(str(row[6]), right_style),
+    all_rows = []
+    # Table Header Row
+    all_rows.append([
+        Paragraph('<b>#</b>', center_white),
+        Paragraph('<b>Item Name</b>', center_white),
+        Paragraph('<b>HSN/ SAC</b>', center_white),
+        Paragraph('<b>Quantity</b>', center_white),
+        Paragraph('<b>Price/ Unit</b>', center_white),
+        Paragraph('<b>Amount</b>', center_white),
+    ])
+
+    # Table Item Rows
+    total_qty = 0
+    for idx, row in enumerate(items_data):
+        qty = int(row[4])
+        price_unit = float(row[6]) / qty if qty > 0 else 0.0
+        amount = float(row[6])
+        total_qty += qty
+
+        all_rows.append([
+            Paragraph(str(idx + 1), normal_style),
+            Paragraph(str(row[1]), bold_style), # Bold product name
+            Paragraph(str(row[2]), center_style),
+            Paragraph(str(qty), center_style),
+            Paragraph(f"Rs. {price_unit:,.2f}", right_style),
+            Paragraph(f"Rs. {amount:,.2f}", right_style),
         ])
 
-    # Total row (products total)
-    n_item_rows = len(item_rows)
-    total_discount = sum(
-        parse_numeric_value(row[5]) for row in items_data
-    )
-    total_row = [
-        Paragraph('', normal_style),
-        Paragraph('<b>Total</b>', center_bold),
-        Paragraph('', normal_style),
-        Paragraph(f'{products_total:.2f}', right_style),
-        Paragraph(f'{sum(parse_numeric_value(r[4]) for r in items_data):.0f}', right_style) if items_data else Paragraph('0', right_style),
-        Paragraph(f'{total_discount:.2f}%', right_style),
-        Paragraph(f'{products_total:.2f}', right_style),
-    ]
+    # Add Labour charges row if applicable
+    if labour_charges > 0:
+        all_rows.append([
+            Paragraph(str(len(items_data) + 1), normal_style),
+            Paragraph('<b>Labour & Service Charges</b>', bold_style),
+            Paragraph('9987', center_style),
+            Paragraph('1', center_style),
+            Paragraph(f"Rs. {labour_charges:,.2f}", right_style),
+            Paragraph(f"Rs. {labour_charges:,.2f}", right_style),
+        ])
+        total_qty += 1
 
-    # Labour charges row
-    labour_row = [
+    # Total row
+    all_rows.append([
         Paragraph('', normal_style),
+        Paragraph('<b>Total</b>', bold_style),
         Paragraph('', normal_style),
+        Paragraph(f'<b>{total_qty}</b>', center_bold),
         Paragraph('', normal_style),
-        Paragraph('', normal_style),
-        Paragraph('LABOUR CHARGES', normal_style),
-        Paragraph('', normal_style),
-        Paragraph(f'{labour_charges:.2f}', right_style),
-    ]
-
-    # Grand total row
-    grand_row = [
-        Paragraph('', normal_style),
-        Paragraph('', normal_style),
-        Paragraph('', normal_style),
-        Paragraph('', normal_style),
-        Paragraph('', normal_style),
-        Paragraph('<b>Grand Total</b>', bold_style),
-        Paragraph(f'<b>{grand_total:.2f}</b>', right_style),
-    ]
-
-    all_rows = [table_header] + item_rows + [total_row, labour_row, grand_row]
+        Paragraph(f'<b>Rs. {grand_total:,.2f}</b>', right_bold),
+    ])
 
     items_table = Table(all_rows, colWidths=item_col_widths, repeatRows=1)
     items_table.setStyle(TableStyle([
-        # Header
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e8e8e8')),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#333333')),
-        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('BACKGROUND', (0, 0), (-1, 0), PRIMARY_COLOR),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ('LEFTPADDING', (0, 0), (-1, -1), 2),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 2),
-        # Total row light bg
-        ('BACKGROUND', (0, 1 + n_item_rows), (-1, 1 + n_item_rows), colors.HexColor('#f5f5f5')),
-        # Grand total bold bg
-        ('BACKGROUND', (0, 3 + n_item_rows), (-1, 3 + n_item_rows), colors.HexColor('#e0e0e0')),
-        ('FONTNAME', (5, 3 + n_item_rows), (6, 3 + n_item_rows), 'Helvetica-Bold'),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        # Horizontal lines below rows
+        ('LINEBELOW', (0, 0), (-1, -2), 0.5, colors.HexColor('#e0e0e0')),
+        # Total row highlighted lines
+        ('LINEABOVE', (0, -1), (-1, -1), 1, PRIMARY_COLOR),
+        ('LINEBELOW', (0, -1), (-1, -1), 1, PRIMARY_COLOR),
     ]))
     elements.append(items_table)
-    elements.append(Spacer(1, 3))
+    elements.append(Spacer(1, 15))
 
-    # ==================== AMOUNT IN WORDS ====================
+    # ==================== MIDDLE SECTION: AMOUNT IN WORDS & CALCULATIONS CARD ====================
     amount_in_words = number_to_words(int(grand_total))
-    words_table = Table([
-        [Paragraph(f'<b>Amount in words:</b>  Rs. {amount_in_words} Only', normal_style)],
-    ], colWidths=full_width)
-    words_table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), THIN, BORDER_COLOR),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('LEFTPADDING', (0, 0), (-1, -1), 4),
-    ]))
-    elements.append(words_table)
-    elements.append(Spacer(1, 2))
+    amount_in_words_sentence = f"{amount_in_words} Rupees only"
 
-    # ==================== NOTE ====================
-    note_table = Table([
-        [Paragraph('<b>Note:</b> <i>if you have any clarification please contact - 9994390097</i>', normal_style)],
-    ], colWidths=full_width)
-    note_table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), THIN, BORDER_COLOR),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ('LEFTPADDING', (0, 0), (-1, -1), 4),
-    ]))
-    elements.append(note_table)
+    sub_total_val = grand_total
+    total_val = grand_total
+    
+    received_val = getattr(complaint, 'amount_received', None)
+    if received_val is None:
+        received_val = grand_total if complaint.status == 'completed' else 0.0
+    balance_val = total_val - received_val
+    if balance_val < 0:
+        balance_val = 0.0
 
-    # ==================== TERMS & CONDITIONS ====================
-    terms_table = Table([
-        [Paragraph('<b>Terms & Conditions</b>', bold_style)],
-        [Paragraph('1. Payment to be made within 15 days of invoice date.', small_style)],
-        [Paragraph('2. Warranty does not cover physical damage or burnouts.', small_style)],
-        [Paragraph('3. All disputes subject to Chennai jurisdiction.', small_style)],
-    ], colWidths=full_width)
-    terms_table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), THIN, BORDER_COLOR),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+    # Clean financial summary card
+    summary_data = [
+        [Paragraph("Sub Total", normal_style), Paragraph(f"Rs. {sub_total_val:,.2f}", right_style)],
+        [Paragraph("<font color='white'><b>Total</b></font>", bold_style), Paragraph(f"<font color='white'><b>Rs. {total_val:,.2f}</b></font>", right_bold)],
+        [Paragraph("Received", normal_style), Paragraph(f"Rs. {received_val:,.2f}", right_style)],
+        [Paragraph("<b>Balance</b>", bold_style), Paragraph(f"<b>Rs. {balance_val:,.2f}</b>", right_bold)],
+    ]
+    summary_table = Table(summary_data, colWidths=[100, 100])
+    summary_table.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+        ('BACKGROUND', (0, 1), (-1, 1), PRIMARY_COLOR), # Highlights total row in indigo background
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('LINEBELOW', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
     ]))
-    elements.append(terms_table)
 
-    # ==================== SIGNATURE ROW ====================
-    sig_row = Table([
-        [
-            Paragraph('<b>Customer Signature</b>', bold_style),
-            Paragraph('<b>Authorised Signatory</b>', bold_style),
-        ],
-        [
-            Paragraph('', normal_style),
-            Paragraph('', normal_style),
-        ],
-    ], colWidths=[half_width, half_width])
-    sig_row.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), THIN, BORDER_COLOR),
-        ('INNERGRID', (0, 0), (-1, -1), THIN, BORDER_COLOR),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+    left_summary_content = [
+        Paragraph("<font color='#6b7280'><b>Invoice Amount In Words</b></font>", normal_style),
+        Spacer(1, 3),
+        Paragraph(f"<b>{amount_in_words_sentence}</b>", bold_style),
+        Spacer(1, 15),
+        Paragraph("<font color='#6b7280'><b>Terms And Conditions</b></font>", normal_style),
+        Spacer(1, 3),
+        Paragraph("Thank you for doing business with us.", normal_style),
+    ]
+
+    middle_table = Table([[left_summary_content, summary_table]], colWidths=[315, 220])
+    middle_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
     ]))
-    elements.append(sig_row)
-    elements.append(Spacer(1, 4))
+    elements.append(middle_table)
 
-    # ==================== FOOTER ====================
-    footer_table = Table([
-        [Paragraph('This is computer generated invoice. No signature required.', footer_style)],
-    ], colWidths=full_width)
+    # ==================== FOOTER SECTION: PAY TO & SIGNATURE BLOCK ====================
+    pay_to_content = [
+        Paragraph("<b>Pay To:</b>", bold_style),
+        Spacer(1, 4),
+        Paragraph(f"Bank Name: {b_name}, {b_branch}", normal_style),
+        Paragraph(f"Bank Account No.: {b_acc_no}", normal_style),
+        Paragraph(f"Bank IFSC code: {b_ifsc}", normal_style),
+        Paragraph(f"Account Holder's Name: {comp_name.upper()}", normal_style),
+    ]
+
+    sig_content = [
+        Paragraph(f"For: {comp_name.upper()}", right_bold),
+        Spacer(1, 35),
+        Paragraph("Authorized Signatory", right_style),
+    ]
+
+    footer_table = Table([[pay_to_content, sig_content]], colWidths=[320, 215])
     footer_table.setStyle(TableStyle([
-        ('BOX', (0, 0), (-1, -1), THIN, BORDER_COLOR),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 10),
     ]))
     elements.append(footer_table)
 

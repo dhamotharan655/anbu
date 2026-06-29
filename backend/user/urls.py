@@ -107,6 +107,7 @@ urlpatterns = [
     path('generate-invoice/<str:complaint_id>/', views.generate_invoice, name='generate_invoice'),
     path('invoices/', views.get_all_invoices, name='get_all_invoices'),
     path('download-invoice/<str:invoice_number>/', views.download_invoice, name='download_invoice'),
+    path('download-estimation/<str:invoice_number>/', views.download_estimation, name='download_estimation'),
 
     # ------------------------------
     #   Payment Details APIs

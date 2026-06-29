@@ -133,6 +133,15 @@ const InvoicesList = () => {
     }
   };
 
+  const handleDownloadEstimation = (invoice, e) => {
+    e.stopPropagation();
+    if (invoice.invoice_number) {
+      const baseURL = api.defaults.baseURL.replace(/\/$/, ''); // Remove trailing slash
+      const downloadUrl = `${baseURL}/download-estimation/${invoice.invoice_number}/`;
+      window.open(downloadUrl, '_blank');
+    }
+  };
+
   const handleSendWhatsApp = (invoice, e) => {
     e.stopPropagation();
     if (invoice.invoice_pdf_url && invoice.customer_phone) {
@@ -291,9 +300,17 @@ ${fullPdfUrl}`;
                   <button
                     className="btn-icon"
                     onClick={(e) => handleDownloadPDF(invoice, e)}
-                    title="Download PDF"
+                    title="Download Invoice PDF"
                   >
                     <FiDownload size={15} />
+                  </button>
+                  <button
+                    className="btn-icon"
+                    onClick={(e) => handleDownloadEstimation(invoice, e)}
+                    title="Download Estimation PDF"
+                    style={{ color: '#d97706' }}
+                  >
+                    <FiFileText size={15} />
                   </button>
                   <button
                     className="btn-icon btn-whatsapp"
