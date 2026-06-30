@@ -441,7 +441,7 @@ ${fullPdfUrl}`;
       {/* Settings Tab Content */}
       {activeTab === 'settings' && (
         <div className="settings-container" style={{ padding: '0 24px 40px', maxWidth: '800px', margin: '0 auto' }}>
-          <div className="inv-modal-card" style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.08)', animation: 'none' }}>
+          <div className="inv-modal-card" style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.08)', animation: 'none', maxHeight: 'none', overflow: 'visible' }}>
             <div className="inv-modal-header" style={{ background: '#f8fafc' }}>
               <h3>Edit Company &amp; Bank Details</h3>
             </div>
