@@ -49,7 +49,7 @@ def extract_numeric_part(invoice_str):
     return None
 
 
-def get_next_invoice_number(year=None):
+def get_next_invoice_number(year=None, is_estimation=False):
     """
     Get the next correct invoice number to use.
     
@@ -58,9 +58,10 @@ def get_next_invoice_number(year=None):
     
     Args:
         year: Year to generate invoice for (defaults to current year)
+        is_estimation: If True, generate an EST sequence instead of INV
     
     Returns:
-        str: The next invoice number in format "INV-YYYY-N"
+        str: The next invoice number in format "INV-YYYY-N" or "EST-YYYY-N"
     
     Example:
         >>> get_next_invoice_number()
@@ -69,9 +70,11 @@ def get_next_invoice_number(year=None):
     if year is None:
         year = get_ist_now().year
     
+    prefix = "EST" if is_estimation else "INV"
+    
     # Get all invoices for current year
     all_invoices = BookServiceComplaint.objects(
-        invoice_number__startswith=f"INV-{year}-"
+        invoice_number__startswith=f"{prefix}-{year}-"
     )
     
     # Find max numeric part using proper numeric sorting
@@ -82,7 +85,7 @@ def get_next_invoice_number(year=None):
             max_num = num
     
     next_num = max_num + 1
-    return f"INV-{year}-{next_num}"
+    return f"{prefix}-{year}-{next_num}"
 
 
 def fix_invoice_sequence(year=None, dry_run=False):

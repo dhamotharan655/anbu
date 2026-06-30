@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import logo from "./assets/main_logo.jpg";
-import anbuLogo from "./assets/anbu_text_logo.png";
+import brandLogo from "./assets/image.png";
 import {
   FiHome,
   FiBarChart2,
@@ -107,10 +107,8 @@ const Layout = () => {
             <div className="sidebar-logo-container">
               <img src={logo} alt="Anbu Logo" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "8px" }} />
             </div>
-            <span className="sidebar-title-styled">
-              <img src={anbuLogo} alt="ANBU" className="anbu-logo-img" />
-              <span className="styled-enterprises">ENTERPRISES</span>
-              <span className="styled-sales-service">Sales &amp; Service</span>
+            <span className="sidebar-title-styled" style={{ display: 'flex', alignItems: 'center' }}>
+              <img src={brandLogo} alt="ANBU ENTERPRISES" style={{ height: "3.5rem", width: "auto", objectFit: "contain" }} />
             </span>
           </NavLink>
           <button
@@ -154,10 +152,8 @@ const Layout = () => {
             <div className="mobile-menu-header">
               <div className="mobile-logo-container" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <img src={logo} alt="Anbu Logo" style={{ width: "28px", height: "28px", objectFit: "cover", borderRadius: "6px" }} />
-                <span className="sidebar-title-styled">
-                  <img src={anbuLogo} alt="ANBU" className="anbu-logo-img" style={{ height: "2rem" }} />
-                  <span className="styled-enterprises" style={{ fontSize: "0.85rem", marginTop: "-4px" }}>ENTERPRISES</span>
-                  <span className="styled-sales-service" style={{ fontSize: "0.5rem", padding: "2px 5px", marginTop: "1px" }}>Sales & Service</span>
+                <span className="sidebar-title-styled" style={{ display: 'flex', alignItems: 'center' }}>
+                  <img src={brandLogo} alt="ANBU ENTERPRISES" style={{ height: "3.2rem", width: "auto", objectFit: "contain" }} />
                 </span>
               </div>
               <button className="mobile-close-btn" onClick={() => setIsMobileMenuOpen(false)}>✕</button>

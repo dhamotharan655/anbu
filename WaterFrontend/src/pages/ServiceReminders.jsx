@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api";
 import {
-  FiAlertTriangle, FiUser, FiPhone, FiMail, FiMapPin, FiTool, FiCalendar, FiUserCheck, FiEdit, FiX
+  FiAlertTriangle, FiUser, FiPhone, FiMail, FiMapPin, FiTool, FiCalendar, FiUserCheck, FiEdit, FiX, FiSend
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 
@@ -73,6 +73,54 @@ const handleScheduleService = (item) => {
       service_due_date: item.next_service_date
     }
   });
+};
+
+const handleSendReminderWhatsApp = async (item) => {
+  if (!item.phone) {
+    window.alert("Customer phone number is missing.");
+    return;
+  }
+  
+  // Normalize phone number (India = 91)
+  const sanitizedPhone = item.phone.replace(/\D/g, "");
+  if (!sanitizedPhone || sanitizedPhone.length < 10) {
+    window.alert("Invalid customer phone number.");
+    return;
+  }
+  const phoneWithCountryCode = sanitizedPhone.startsWith("91")
+    ? sanitizedPhone
+    : "91" + sanitizedPhone;
+
+  const customerName = item.customer_name || "Customer";
+  const complaintNo = item.complaint_no || "";
+  
+  let productName = item.product_name || "RO Water Purifier";
+  try {
+    if (typeof productName === 'string' && productName.trim().startsWith('[')) {
+      const parsed = JSON.parse(productName);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        productName = parsed.map(p => p.productName || p.name || p.product_name || 'Product').join(', ');
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  const message = `Hello ${customerName},\n\nThis is a friendly reminder from Anbu Enterprises that your service for ${productName} (Ref: #${complaintNo}) is now due.\n\nPlease contact us to schedule the service.\n\nThank you,\nAnbu Enterprises`;
+
+  const whatsappURL = `https://wa.me/${phoneWithCountryCode}?text=${encodeURIComponent(message)}`;
+  window.open(whatsappURL, "_blank");
+
+  // Update reminder sent status on backend
+  try {
+    await api.post('update-whatsapp-status/', {
+      complaint_no: complaintNo,
+      reminder_sent: true
+    });
+    fetchReminders();
+  } catch (err) {
+    console.error("Failed to update reminder status:", err);
+  }
 };
 
 
@@ -214,6 +262,34 @@ const handleScheduleService = (item) => {
 
                 <div className="card-actions">
                   
+                  <button
+                    className="button-primary action-button"
+                    onClick={() => handleSendReminderWhatsApp(item)}
+                    style={{
+                      background: item.reminder_sent 
+                        ? 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' // Indigo/Blue for "Send Again"
+                        : 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)', // WhatsApp green for "Send Reminder"
+                      color: '#fff',
+                      border: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 16px',
+                      borderRadius: '10px',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      boxShadow: item.reminder_sent
+                        ? '0 2px 8px rgba(59,130,246,0.3)'
+                        : '0 2px 8px rgba(37,211,102,0.3)',
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    <FiSend size={14} style={{ display: 'inline-block', verticalAlign: 'middle' }} />
+                    {item.reminder_sent ? "Send Again" : "Send Reminder"}
+                  </button>
+
                   <button
                     className="button-secondary action-button"
                     onClick={() => handleScheduleService(item)}

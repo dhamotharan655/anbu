@@ -105,6 +105,8 @@ urlpatterns = [
     #   Invoice Generation
     # ------------------------------
     path('generate-invoice/<str:complaint_id>/', views.generate_invoice, name='generate_invoice'),
+    path('generate-manual-estimation/', views.generate_manual_estimation, name='generate_manual_estimation'),
+    path('edit-manual-estimation/<str:invoice_number>/', views.edit_manual_estimation, name='edit_manual_estimation'),
     path('invoices/', views.get_all_invoices, name='get_all_invoices'),
     path('download-invoice/<str:invoice_number>/', views.download_invoice, name='download_invoice'),
     path('download-estimation/<str:invoice_number>/', views.download_estimation, name='download_estimation'),
@@ -172,6 +174,14 @@ urlpatterns = [
     path('job-types/<str:job_type_id>/delete/', views.job_type_detail, name='job_type_detail'),
 
     # ------------------------------
+    #   Services APIs
+    # ------------------------------
+    path('services/', views.service_list, name='service_list'),
+    path('services/create/', views.create_service, name='create_service'),
+    path('services/<str:service_id>/delete/', views.delete_service, name='delete_service'),
+    path('services/<str:service_id>/update/', views.update_service, name='update_service'),
+
+    # ------------------------------
     #   Expired / Scrap Items APIs
     # ------------------------------
     path('expired-items/', views.expired_item_list, name='expired_item_list'),
@@ -183,6 +193,7 @@ urlpatterns = [
     path('promotions/', views.promotion_list, name='promotion_list'),
     path('promotions/create/', views.create_promotion, name='create_promotion'),
     path('promotions/<str:promo_id>/delete/', views.delete_promotion, name='delete_promotion'),
+    path('promotions/<str:promo_id>/update/', views.update_promotion, name='update_promotion'),
 
     # ------------------------------
     #   Site Settings APIs

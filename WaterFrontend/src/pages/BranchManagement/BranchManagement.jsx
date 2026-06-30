@@ -118,7 +118,7 @@ const BranchManagement = () => {
                                     name="location" 
                                     value={formData.location} 
                                     onChange={handleInputChange} 
-                                    placeholder="e.g. Anna Nagar, Chennai"
+                                    placeholder="e.g. Anna Nagar, Tuticorin"
                                 />
                             </div>
                         </div>

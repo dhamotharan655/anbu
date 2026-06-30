@@ -94,7 +94,7 @@ def reverse_geocode(latitude, longitude):
             'accept-language': 'en'
         }
         headers = {
-             'User-Agent': 'RubanElectricals/1.0 (contact@example.com)'
+             'User-Agent': 'AnbuEnterprises/1.0 (contact@example.com)'
         }
         
         response = requests.get(url, params=params, headers=headers, timeout=5)
@@ -762,6 +762,7 @@ def service_reminders(request):
             "status": c.status,
             "staff_name": c.staff_name,
             "customer_id": customer_id,
+            "reminder_sent": getattr(c, "reminder_sent", False),
         })
     return Response(data)
 
@@ -1338,7 +1339,10 @@ class BookServiceCreateView(APIView):
         # ----------------------------------
         # ✅ 9️⃣ AUTO-CREATE MOTOR DETAILS FOR SALES
         # ----------------------------------
-        if data.get("job_type") == "motor_sale" or data.get("job_category") == "motor_sale":
+        job_cat = data.get("job_category") or ""
+        job_t = data.get("job_type") or ""
+        is_motor_sale = (job_t == "motor_sale") or (job_cat == "motor_sale") or ("motor_sale" in [x.strip() for x in job_cat.split(",")])
+        if is_motor_sale:
             try:
                 # Find motor product in the booked products
                 import json
@@ -1920,8 +1924,23 @@ def customer_list(request):
         customer.address = request.data.get('address', customer.address)
         customer.customer_email = request.data.get('customer_email', customer.customer_email)
         customer.customer_type = request.data.get('customer_type', customer.customer_type)
+        customer.alternate_number = request.data.get('alternate_number', getattr(customer, 'alternate_number', ''))
 
         customer.save()
+
+        # Update all associated bookings in BookServiceComplaint to keep customer details in sync
+        try:
+            BookServiceComplaint.objects(customer_id=customer_id).update(
+                set__customer_name=customer.customer_name,
+                set__phone=customer.phone,
+                set__address=customer.address,
+                set__customer_email=customer.customer_email,
+                set__customer_type=customer.customer_type,
+                set__alternate_number=customer.alternate_number
+            )
+            print(f"✅ Propagated customer updates to bookings for customer_id: {customer_id}")
+        except Exception as e:
+            print(f"⚠️ Failed to propagate customer updates to BookServiceComplaint: {e}")
 
         return Response({
             "success": True,
@@ -1932,7 +1951,8 @@ def customer_list(request):
                 "phone": customer.phone,
                 "address": customer.address,
                 "customer_email": customer.customer_email,
-                "customer_type": customer.customer_type
+                "customer_type": customer.customer_type,
+                "alternate_number": customer.alternate_number
             }
         })
 
@@ -3090,6 +3110,10 @@ def update_whatsapp_status(request):
         if 'booking_whatsapp_sent' in request.data:
             complaint.booking_whatsapp_sent = bool(request.data['booking_whatsapp_sent'])
             updated = True
+        if 'reminder_sent' in request.data:
+            complaint.reminder_sent = bool(request.data['reminder_sent'])
+            complaint.reminder_sent_at = get_ist_now()
+            updated = True
 
         if updated:
             complaint.save()
@@ -3099,7 +3123,8 @@ def update_whatsapp_status(request):
             "complaint_no": complaint.complaint_no,
             "whatsapp_sent_to_customer": complaint.whatsapp_sent_to_customer,
             "whatsapp_sent_to_staff": complaint.whatsapp_sent_to_staff,
-            "booking_whatsapp_sent": complaint.booking_whatsapp_sent
+            "booking_whatsapp_sent": complaint.booking_whatsapp_sent,
+            "reminder_sent": getattr(complaint, 'reminder_sent', False)
         }, status=200)
 
     except Exception as e:
@@ -4996,6 +5021,7 @@ def download_estimation(request, invoice_number):
             }, status=status.HTTP_404_NOT_FOUND)
             
         # Generate estimation on the fly (set is_estimation=True)
+        from .invoice_generator import generate_invoice_pdf
         estimation_data = generate_invoice_pdf(complaint, request, is_estimation=True)
         
         pdf_path = estimation_data['pdf_path']
@@ -5016,6 +5042,169 @@ def download_estimation(request, invoice_number):
     except Exception as e:
         return Response({
             "error": f"Failed to generate estimation: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ------------------------------
+#   GENERATE MANUAL ESTIMATION
+# ------------------------------
+@api_view(['POST'])
+def generate_manual_estimation(request):
+    """
+    Generate a manual estimation without an actual job.
+    POST /api/generate-manual-estimation/
+    Body:
+    {
+      "customer_name": "John Doe",
+      "phone": "9876543210",
+      "address": "123 Main St",
+      "items": [
+         {"name": "AC Service", "qty": 1, "selling_price": 500}
+      ]
+    }
+    """
+    try:
+        data = request.data
+        customer_name = data.get('customer_name')
+        phone = data.get('phone')
+        address = data.get('address', '')
+        items = data.get('items', [])
+        
+        if not customer_name or not phone:
+            return Response({"error": "Customer name and phone are required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if not items:
+            return Response({"error": "At least one item is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Generate a dummy complaint_no (EST-REQ) so we don't increment real complaints
+        import time
+        complaint_no = f"EST-REQ-{int(time.time())}"
+        
+        # 2. Format items to match what invoice_generator expects
+        # invoice_generator uses json.loads(product_name)
+        formatted_items = []
+        total_amount = 0
+        for item in items:
+            name = item.get('name', 'Item')
+            qty = int(item.get('qty', 1))
+            price = float(item.get('selling_price', 0))
+            
+            formatted_items.append({
+                "name": name,
+                "quantity": qty,
+                "selling_price": price,
+                "buying_price": 0,
+                "discount_percent": 0,
+                "final_price": price
+            })
+            total_amount += (price * qty)
+
+        # 3. Create a dummy BookServiceComplaint record
+        from user.time_utils import get_ist_now
+        complaint = BookServiceComplaint(
+            complaint_no=complaint_no,
+            customer_name=customer_name,
+            phone=phone,
+            address=address,
+            product_name=json.dumps(formatted_items),
+            status='estimation',
+            is_initial=True,
+            total_amount=total_amount,
+            grand_total=total_amount,
+            invoice_generated_at=get_ist_now()
+        )
+        complaint.save()
+
+        # 4. Generate the Estimation PDF using existing generator
+        from .invoice_generator import generate_invoice_pdf
+        estimation_data = generate_invoice_pdf(complaint, request, is_estimation=True)
+        
+        # 5. Update record with PDF URL
+        complaint.invoice_pdf_url = estimation_data['pdf_url']
+        complaint.invoice_number = estimation_data['invoice_number']
+        complaint.save()
+
+        return Response({
+            "message": "Estimation generated successfully",
+            "pdf_url": estimation_data['pdf_url'],
+            "invoice_number": estimation_data['invoice_number'],
+            "complaint_no": complaint.complaint_no
+        }, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        return Response({
+            "error": f"Failed to generate manual estimation: {str(e)}"
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ------------------------------
+#   EDIT MANUAL ESTIMATION
+# ------------------------------
+@api_view(['PUT'])
+def edit_manual_estimation(request, invoice_number):
+    """
+    Edit an existing manual estimation.
+    PUT /api/edit-manual-estimation/<str:invoice_number>/
+    """
+    try:
+        complaint = BookServiceComplaint.objects(invoice_number=invoice_number, status='estimation').first()
+        if not complaint:
+            return Response({"error": "Estimation not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data
+        customer_name = data.get('customer_name')
+        phone = data.get('phone')
+        address = data.get('address', '')
+        items = data.get('items', [])
+        
+        if not customer_name or not phone:
+            return Response({"error": "Customer name and phone are required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if not items:
+            return Response({"error": "At least one item is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        formatted_items = []
+        total_amount = 0
+        for item in items:
+            name = item.get('name', 'Item')
+            qty = int(item.get('qty', 1))
+            price = float(item.get('selling_price', 0))
+            
+            formatted_items.append({
+                "name": name,
+                "quantity": qty,
+                "selling_price": price,
+                "buying_price": 0,
+                "discount_percent": 0,
+                "final_price": price
+            })
+            total_amount += (price * qty)
+
+        complaint.customer_name = customer_name
+        complaint.phone = phone
+        complaint.address = address
+        complaint.product_name = json.dumps(formatted_items)
+        complaint.total_amount = total_amount
+        complaint.grand_total = total_amount
+        complaint.save()
+
+        # Regenerate the PDF
+        from .invoice_generator import generate_invoice_pdf
+        estimation_data = generate_invoice_pdf(complaint, request, is_estimation=True)
+        
+        complaint.invoice_pdf_url = estimation_data['pdf_url']
+        complaint.save()
+
+        return Response({
+            "message": "Estimation updated successfully",
+            "pdf_url": estimation_data['pdf_url'],
+            "invoice_number": complaint.invoice_number,
+            "complaint_no": complaint.complaint_no
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            "error": f"Failed to edit estimation: {str(e)}"
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -6454,6 +6643,116 @@ def expired_item_detail(request, item_id):
 
 
 # ------------------------------
+#   Services Management APIs
+# ------------------------------
+@api_view(['GET'])
+def service_list(request):
+    """Retrieve all active services."""
+    try:
+        from .models import Service
+        from .serializers import ServiceSerializer
+        services = Service.objects(is_active=True).order_by('-created_at')
+        serializer = ServiceSerializer(services, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def create_service(request):
+    """Create a new service under a JobType."""
+    try:
+        from .models import Service, JobType
+        from .serializers import ServiceSerializer
+        from bson import ObjectId
+
+        name = request.data.get('name')
+        price = request.data.get('price')
+        time = request.data.get('time')
+        desc = request.data.get('desc')
+        job_type_id = request.data.get('job_type_id')
+
+        if not name or not job_type_id:
+            return Response({"error": "Name and Job Type are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            job_type_ref = JobType.objects.get(id=ObjectId(job_type_id))
+        except Exception:
+            return Response({"error": "Invalid Job Type ID"}, status=status.HTTP_400_BAD_REQUEST)
+
+        service = Service(
+            name=name,
+            price=price if price else None,
+            time=time if time else None,
+            desc=desc if desc else None,
+            job_type=job_type_ref
+        )
+        service.save()
+        serializer = ServiceSerializer(service)
+        return Response({"success": True, "data": serializer.data}, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['DELETE'])
+def delete_service(request, service_id):
+    """Soft delete a service by setting is_active=False."""
+    try:
+        from .models import Service
+        from bson import ObjectId
+        try:
+            service = Service.objects.get(id=ObjectId(service_id))
+        except Exception:
+            return Response({"error": "Service not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        service.is_active = False
+        service.save()
+        return Response({"success": True, "message": "Service deleted successfully"}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST', 'PUT'])
+def update_service(request, service_id):
+    """Update an existing service by ID."""
+    try:
+        from .models import Service, JobType
+        from .serializers import ServiceSerializer
+        from bson import ObjectId
+
+        try:
+            service = Service.objects.get(id=ObjectId(service_id))
+        except Service.DoesNotExist:
+            return Response({"error": "Service not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        name = request.data.get('name')
+        price = request.data.get('price')
+        time = request.data.get('time')
+        desc = request.data.get('desc')
+        job_type_id = request.data.get('job_type_id')
+
+        if not name or not job_type_id:
+            return Response({"error": "Name and Job Type are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            job_type_ref = JobType.objects.get(id=ObjectId(job_type_id))
+            service.job_type = job_type_ref
+        except Exception:
+            return Response({"error": "Invalid Job Type ID"}, status=status.HTTP_400_BAD_REQUEST)
+
+        service.name = name
+        service.price = price if price else None
+        service.time = time if time else None
+        service.desc = desc if desc else None
+        service.save()
+
+        serializer = ServiceSerializer(service)
+        return Response({"success": True, "data": serializer.data}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ------------------------------
 #   Promotions Management APIs
 # ------------------------------
 @api_view(['GET'])
@@ -6480,6 +6779,7 @@ def create_promotion(request):
         name = request.data.get('name')
         description = request.data.get('description')
         price = request.data.get('price')
+        job_type_id = request.data.get('job_type_id')
         
         if not name or not description:
             return Response({"error": "Name and description are required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -6489,12 +6789,22 @@ def create_promotion(request):
             photo = request.FILES['photo']
             file_path = default_storage.save(f"promotions/{photo.name}", photo)
             photo_url = f"/media/{file_path}"
+
+        job_type_ref = None
+        if job_type_id:
+            from bson import ObjectId
+            from .models import JobType
+            try:
+                job_type_ref = JobType.objects.get(id=ObjectId(job_type_id))
+            except Exception:
+                pass
             
         promo = Promotion(
             name=name,
             description=description,
             price=price if price else None,
-            photo_url=photo_url
+            photo_url=photo_url,
+            job_type=job_type_ref
         )
         promo.save()
         serializer = PromotionSerializer(promo)
@@ -6519,6 +6829,55 @@ def delete_promotion(request, promo_id):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['POST', 'PUT'])
+def update_promotion(request, promo_id):
+    """Update an existing promotion by ID."""
+    try:
+        from .models import Promotion
+        from .serializers import PromotionSerializer
+        from django.core.files.storage import default_storage
+        from bson import ObjectId
+
+        try:
+            promo = Promotion.objects.get(id=ObjectId(promo_id))
+        except Promotion.DoesNotExist:
+            return Response({"error": "Promotion not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        name = request.data.get('name')
+        description = request.data.get('description')
+        price = request.data.get('price')
+        job_type_id = request.data.get('job_type_id')
+
+        if not name or not description:
+            return Response({"error": "Name and description are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if 'photo' in request.FILES:
+            photo = request.FILES['photo']
+            file_path = default_storage.save(f"promotions/{photo.name}", photo)
+            promo.photo_url = f"/media/{file_path}"
+        elif request.data.get('remove_photo') == 'true':
+            promo.photo_url = None
+
+        promo.name = name
+        promo.description = description
+        promo.price = price if price else None
+
+        if job_type_id:
+            from .models import JobType
+            try:
+                promo.job_type = JobType.objects.get(id=ObjectId(job_type_id))
+            except Exception:
+                pass
+        else:
+            promo.job_type = None
+
+        promo.save()
+        serializer = PromotionSerializer(promo)
+        return Response({"success": True, "data": serializer.data}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 # ------------------------------
 #   Site Settings APIs
 # ------------------------------
@@ -6534,7 +6893,7 @@ def get_site_settings(request):
                 "whatsapp_number": "",
                 "contact_phone": "",
                 "company_name": "Anbu Enterprises",
-                "company_address": "No 12, Main Road, Chennai",
+                "company_address": "No 12, Main Road, Tuticorin",
                 "company_phone": "+91 9876543210",
                 "company_landline": "044 2345 6789",
                 "company_email": "contact@anbuenterprises.com",
@@ -6549,7 +6908,7 @@ def get_site_settings(request):
             "whatsapp_number": settings_doc.whatsapp_number or "",
             "contact_phone": settings_doc.contact_phone or "",
             "company_name": settings_doc.company_name or "Anbu Enterprises",
-            "company_address": settings_doc.company_address or "No 12, Main Road, Chennai",
+            "company_address": settings_doc.company_address or "No 12, Main Road, Tuticorin",
             "company_phone": settings_doc.company_phone or "+91 9876543210",
             "company_landline": settings_doc.company_landline or "044 2345 6789",
             "company_email": settings_doc.company_email or "contact@anbuenterprises.com",
@@ -6573,7 +6932,7 @@ def update_site_settings(request):
         whatsapp_number = request.data.get("whatsapp_number", "")
         contact_phone = request.data.get("contact_phone", "")
         company_name = request.data.get("company_name", "Anbu Enterprises")
-        company_address = request.data.get("company_address", "No 12, Main Road, Chennai")
+        company_address = request.data.get("company_address", "No 12, Main Road, Tuticorin")
         company_phone = request.data.get("company_phone", "+91 9876543210")
         company_landline = request.data.get("company_landline", "044 2345 6789")
         company_email = request.data.get("company_email", "contact@anbuenterprises.com")

@@ -211,7 +211,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 1.25rem 1rem;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--color-primary, #0b6678);
 }
 
 .sidebar-logo-link {
@@ -660,8 +661,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem;
-  border-bottom: 1px solid rgba(124, 92, 191, 0.1);
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--color-primary, #0b6678);
   margin-bottom: 0.5rem;
 }
 
@@ -676,7 +678,7 @@
   background: none;
   border: none;
   font-size: 1.2rem;
-  color: #8b85a1;
+  color: #ffffff;
   cursor: pointer;
   padding: 0.5rem;
 }
@@ -2295,8 +2297,8 @@ html body div.modal-content.large-modal {
 }
 
 /* Scroll modal into view when opened */
-.modal-backdrop:visible,
-.modal-overlay:visible {
+.modal-backdrop,
+.modal-overlay {
   animation: scrollToModal 0.2s ease-out forwards;
 }
 

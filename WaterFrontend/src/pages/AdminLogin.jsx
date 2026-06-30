@@ -3,7 +3,7 @@ import api from "../api";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import logoImage from "../assets/main_logo.jpg";
-import anbuLogo from "../assets/anbu_text_logo.png";
+import brandLogo from "../assets/image.png";
 import { FiLogIn, FiUser, FiLock, FiEye, FiEyeOff, FiShield, FiZap, FiUsers, FiTrendingUp } from "react-icons/fi";
 
 const AdminLogin = () => {
@@ -108,6 +108,14 @@ const AdminLogin = () => {
           outline: none;
           transition: all 0.3s ease;
           -webkit-text-fill-color: #ffffff;
+        }
+        .login-input:-webkit-autofill,
+        .login-input:-webkit-autofill:hover, 
+        .login-input:-webkit-autofill:focus, 
+        .login-input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 1000px #0f353f inset !important;
+          -webkit-text-fill-color: #ffffff !important;
+          transition: background-color 5000s ease-in-out 0s;
         }
         .login-input::placeholder { color: rgba(255,255,255,0.35); }
         .login-input:focus {
@@ -291,9 +299,7 @@ const AdminLogin = () => {
               </div>
 
               <div className="sidebar-title-styled" style={{ marginBottom: "24px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px" }}>
-                <img src={anbuLogo} alt="ANBU" style={{ height: "4.5rem", width: "auto", objectFit: "contain" }} />
-                <span className="styled-enterprises" style={{ fontSize: "1.6rem", marginTop: "-10px" }}>ENTERPRISES</span>
-                <span className="styled-sales-service" style={{ fontSize: "0.85rem", padding: "4px 10px", marginTop: "2px" }}>Sales & Service</span>
+                <img src={brandLogo} alt="ANBU ENTERPRISES" style={{ height: "4.5rem", width: "auto", objectFit: "contain" }} />
               </div>
               <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "15px", marginBottom: "48px" }}>
                 Admin Control Portal

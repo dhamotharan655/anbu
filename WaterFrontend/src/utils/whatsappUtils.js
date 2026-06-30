@@ -67,7 +67,7 @@ export const generateWhatsAppLink = (phoneNumber, message = '') => {
  * @returns {string} - Default message text
  */
 export const generateDefaultMessage = (customerName, complaintNo) => {
-  return `Hello ${customerName},\n\nYour service request #${complaintNo} has been completed by Ruban Electricals.\n\nPlease find the invoice attached.\n\nThank you for choosing Ruban Electricals!\n\nBest regards,\nRuban Electricals Team. `;
+  return `Hello ${customerName},\n\nYour service request #${complaintNo} has been completed by Anbu Enterprises.\n\nPlease find the invoice attached.\n\nThank you for choosing Anbu Enterprises!\n\nBest regards,\nAnbu Enterprises Team. `;
 };
 
 /**
@@ -80,7 +80,7 @@ export const generateDefaultMessage = (customerName, complaintNo) => {
  * @returns {string} - Booking confirmation message text
  */
 export const generateBookingMessage = (customerName, complaintNo, productName, serviceType, date) => {
-  return `Hello ${customerName},\n\nYour service request has been successfully booked.\n\nComplaint No: ${complaintNo}\nProduct: ${productName}\nService Type: ${serviceType}\nDate: ${date}\n\nOur technician will contact you shortly.\n\nThank you,\nRuban Electricals`;
+  return `Hello ${customerName},\n\nYour service request has been successfully booked.\n\nComplaint No: ${complaintNo}\nProduct: ${productName}\nService Type: ${serviceType}\nDate: ${date}\n\nOur technician will contact you shortly.\n\nThank you,\nAnbu Enterprises`;
 };
 
 /**
@@ -94,7 +94,7 @@ export const generateBookingMessage = (customerName, complaintNo, productName, s
  * @returns {string} - Staff assignment message text
  */
 export const generateStaffAssignmentMessage = (staffName, complaintNo, customerName, complaintDetails, customerPhone, customerAddress) => {
-  return `Hello ${staffName},\n\nA new service complaint has been assigned to you.\n\nComplaint ID: ${complaintNo}\nCustomer Name: ${customerName}\nComplaint Details: ${complaintDetails}\nContact Number: ${customerPhone}\nAddress: ${customerAddress}\n\nPlease attend at the earliest.\n\nRuban Electricals - Your Trusted Partner`;
+  return `Hello ${staffName},\n\nA new service complaint has been assigned to you.\n\nComplaint ID: ${complaintNo}\nCustomer Name: ${customerName}\nComplaint Details: ${complaintDetails}\nContact Number: ${customerPhone}\nAddress: ${customerAddress}\n\nPlease attend at the earliest.\n\nAnbu Enterprises - Your Trusted Partner`;
 };
 
 /**

@@ -6,7 +6,7 @@ from django.contrib.auth.hashers import make_password
 from .models import (
     User, Staff, BookServiceComplaint, ClientDetails, Products, 
     StockItem, MotorDetails, MotorVariant, HolidayCalendar,
-    Branch, JobType, ExpiredItem, Promotion, InventoryTransaction
+    Branch, JobType, Service, ExpiredItem, Promotion, InventoryTransaction
 )
 
 
@@ -1426,7 +1426,15 @@ class PromotionSerializer(serializers.Serializer):
     description = serializers.CharField(required=True)
     price = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     photo_url = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    job_type_id = serializers.SerializerMethodField(read_only=True)
+    job_type_name = serializers.SerializerMethodField(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
+
+    def get_job_type_id(self, obj):
+        return str(obj.job_type.id) if obj.job_type else ""
+
+    def get_job_type_name(self, obj):
+        return obj.job_type.name if obj.job_type else ""
 
     def create(self, validated_data):
         promo = Promotion(**validated_data)
@@ -1466,4 +1474,25 @@ class InventoryTransactionSerializer(serializers.Serializer):
             setattr(instance, attr, value)
         instance.save()
         return instance
+
+
+# -------------------------------
+# Service Serializer
+# -------------------------------
+class ServiceSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    name = serializers.CharField(required=True)
+    price = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    time = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    desc = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    job_type_id = serializers.SerializerMethodField(read_only=True)
+    job_type_name = serializers.SerializerMethodField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+
+    def get_job_type_id(self, obj):
+        return str(obj.job_type.id) if obj.job_type else ""
+
+    def get_job_type_name(self, obj):
+        return obj.job_type.name if obj.job_type else ""
+
 

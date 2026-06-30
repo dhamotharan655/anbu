@@ -67,6 +67,7 @@ const PendingMessages = () => {
     let message;
 
     if (address && address.trim()) {
+      const encodedAddress = encodeURIComponent(address);
       googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
       message = `Hello ${staffName},\n\nA new service complaint has been assigned to you.\n\nComplaint ID: ${complaintNo}\nCustomer Name: ${customerName}\nComplaint Details: ${details}\nContact Number: ${customerPhone}\nCustomer Location:\n${googleMapsLink}\n\nAddress: ${address}\n\nPlease attend at the earliest.\n\nAnbu Enterprises - Your Trusted Partner`;
     } else {

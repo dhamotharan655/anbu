@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiUser, FiSettings, FiUserPlus, FiTrash2, FiShield, FiCheck, FiTag, FiPlusCircle } from "react-icons/fi";
+import { FiUser, FiSettings, FiUserPlus, FiTrash2, FiShield, FiCheck, FiTag, FiPlusCircle, FiTool, FiEdit2, FiX } from "react-icons/fi";
 
 const COLORS = {
   primary: "var(--color-primary, #0b6678)",
@@ -53,7 +53,7 @@ const PermissionPage = () => {
 
   // Promotions state
   const [promotions, setPromotions] = useState([]);
-  const [newPromo, setNewPromo] = useState({ name: "", description: "", price: "" });
+  const [newPromo, setNewPromo] = useState({ name: "", description: "", price: "", jobTypeId: "" });
   const [newPromoPhoto, setNewPromoPhoto] = useState(null);
   const [promoLoading, setPromoLoading] = useState(false);
 
@@ -62,6 +62,29 @@ const PermissionPage = () => {
       .then((res) => setPromotions(res.data))
       .catch((err) => console.error("Error loading promotions:", err));
   };
+
+  // Services state
+  const [services, setServices] = useState([]);
+  const [newService, setNewService] = useState({ name: "", price: "", time: "", desc: "", jobTypeId: "" });
+  const [serviceLoading, setServiceLoading] = useState(false);
+
+  const fetchServices = () => {
+    api.get("/services/")
+      .then((res) => setServices(res.data))
+      .catch((err) => console.error("Error loading services:", err));
+  };
+
+  // Editing and filter states
+  const [editingPromoId, setEditingPromoId] = useState(null);
+  const [editingServiceId, setEditingServiceId] = useState(null);
+
+  const [promoFilterJobType, setPromoFilterJobType] = useState("");
+  const [promoSearchQuery, setPromoSearchQuery] = useState("");
+
+  const [serviceFilterJobType, setServiceFilterJobType] = useState("");
+  const [serviceSearchQuery, setServiceSearchQuery] = useState("");
+
+
 
   // Contact / Site Settings state
   const [contactSettings, setContactSettings] = useState({ whatsapp_number: "", contact_phone: "" });
@@ -112,6 +135,7 @@ const PermissionPage = () => {
       .catch((err) => console.error("Error loading job types:", err));
 
     fetchPromotions();
+    fetchServices();
     fetchContactSettings();
   }, []);
 
@@ -184,6 +208,18 @@ const PermissionPage = () => {
     }
   };
 
+
+  const deleteJobType = async (jobTypeId) => {
+    if (!window.confirm("Are you sure you want to delete this job type?")) return;
+    try {
+      await api.delete(`/job-types/${jobTypeId}/delete/`);
+      setJobTypes(jobTypes.filter((jt) => jt.id !== jobTypeId));
+    } catch (err) {
+      alert(err.response?.data?.error || "Failed to delete job type");
+    }
+  };
+
+
   const addPromotion = async () => {
     if (!newPromo.name.trim() || !newPromo.description.trim()) {
       return alert("Please fill in both Name and Description!");
@@ -196,28 +232,49 @@ const PermissionPage = () => {
       if (newPromo.price) {
         formData.append("price", newPromo.price.trim());
       }
+      if (newPromo.jobTypeId) {
+        formData.append("job_type_id", newPromo.jobTypeId);
+      }
       if (newPromoPhoto) {
         formData.append("photo", newPromoPhoto);
       }
 
-      await api.post("/promotions/create/", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      if (editingPromoId) {
+        await api.post(`/promotions/${editingPromoId}/update/`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        alert("Promotion updated successfully!");
+      } else {
+        await api.post("/promotions/create/", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        alert("Promotion added successfully!");
+      }
 
-      alert("Promotion added successfully!");
-      setNewPromo({ name: "", description: "", price: "" });
+      setNewPromo({ name: "", description: "", price: "", jobTypeId: "" });
       setNewPromoPhoto(null);
+      setEditingPromoId(null);
       const fileInput = document.getElementById("promo-photo-input");
       if (fileInput) fileInput.value = "";
       
       fetchPromotions();
     } catch (err) {
-      alert("Failed to add promotion!");
+      alert(editingPromoId ? "Failed to update promotion!" : "Failed to add promotion!");
     } finally {
       setPromoLoading(false);
     }
+  };
+
+  const startEditPromo = (promo) => {
+    setNewPromo({
+      name: promo.name || "",
+      description: promo.description || "",
+      price: promo.price || "",
+      jobTypeId: promo.job_type_id || ""
+    });
+    setEditingPromoId(promo.id);
+    const topElement = document.getElementById("perm-page-title");
+    if (topElement) topElement.scrollIntoView({ behavior: "smooth" });
   };
 
   const deletePromotion = async (id) => {
@@ -231,11 +288,68 @@ const PermissionPage = () => {
     }
   };
 
+  const addService = async () => {
+    if (!newService.name.trim() || !newService.jobTypeId) {
+      return alert("Please enter a Service Name and select a Job Type!");
+    }
+    setServiceLoading(true);
+    try {
+      const payload = {
+        name: newService.name.trim(),
+        price: newService.price.trim(),
+        time: newService.time.trim(),
+        desc: newService.desc.trim(),
+        job_type_id: newService.jobTypeId
+      };
+
+      if (editingServiceId) {
+        await api.post(`/services/${editingServiceId}/update/`, payload);
+        alert("Service updated successfully!");
+      } else {
+        await api.post("/services/create/", payload);
+        alert("Service added successfully!");
+      }
+
+      setNewService({ name: "", price: "", time: "", desc: "", jobTypeId: "" });
+      setEditingServiceId(null);
+      fetchServices();
+    } catch (err) {
+      alert(editingServiceId ? "Failed to update service!" : "Failed to add service!");
+    } finally {
+      setServiceLoading(false);
+    }
+  };
+
+  const startEditService = (svc) => {
+    setNewService({
+      name: svc.name || "",
+      price: svc.price || "",
+      time: svc.time || "",
+      desc: svc.desc || "",
+      jobTypeId: svc.job_type_id || ""
+    });
+    setEditingServiceId(svc.id);
+    const topElement = document.getElementById("perm-page-title");
+    if (topElement) topElement.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const deleteService = async (serviceId) => {
+    if (!window.confirm("Are you sure you want to delete this service?")) return;
+    try {
+      await api.delete(`/services/${serviceId}/delete/`);
+      alert("Service deleted successfully!");
+      fetchServices();
+    } catch (err) {
+      alert("Failed to delete service!");
+    }
+  };
+
   const tabs = [
     { id: "permissions", label: "Permissions", icon: <FiSettings /> },
     { id: "users", label: "Users", icon: <FiUserPlus /> },
     { id: "job-types", label: "Job Types", icon: <FiTag /> },
     { id: "promotions", label: "Promotions", icon: <FiPlusCircle /> },
+    { id: "services", label: "Services", icon: <FiTool /> },
   ];
 
   return (
@@ -251,7 +365,7 @@ const PermissionPage = () => {
           padding: 5px;
           border: 1px solid var(--color-border);
           box-shadow: 0 4px 20px rgba(11, 102, 120, 0.1);
-          max-width: 600px;
+          max-width: 780px;
           width: 100%;
           overflow-x: auto;
           scrollbar-width: none;
@@ -301,10 +415,13 @@ const PermissionPage = () => {
 
         @media (max-width: 768px) {
           .perm-tabs-container {
-            border-radius: 14px;
-            padding: 4px;
+            border-radius: 16px;
+            padding: 6px;
             max-width: 100%;
             margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
           }
           .perm-tab-btn {
             padding: 0.5rem 0.85rem;
@@ -334,7 +451,7 @@ const PermissionPage = () => {
       {/* HEADER */}
       <section className="page-section" style={{ textAlign: "center", width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
         <motion.div initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} style={{ textAlign: "center" }}>
-          <h1 className="section-title">Admin Management</h1>
+          <h1 id="perm-page-title" className="section-title">Admin Management</h1>
           <p className="section-subtitle">Manage user permissions and create admin accounts</p>
         </motion.div>
       </section>
@@ -607,7 +724,21 @@ const PermissionPage = () => {
           {/* Add Promotion form */}
           <motion.div className="perm-glass-card" initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
             <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", fontWeight: 600, color: COLORS.text, marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <FiPlusCircle color={COLORS.primary} /> Add New Promotion
+              <FiPlusCircle color={COLORS.primary} /> {editingPromoId ? "Edit Promotion" : "Add New Promotion"}
+              {editingPromoId && (
+                <button 
+                  onClick={() => {
+                    setNewPromo({ name: "", description: "", price: "", jobTypeId: "" });
+                    setNewPromoPhoto(null);
+                    setEditingPromoId(null);
+                    const fileInput = document.getElementById("promo-photo-input");
+                    if (fileInput) fileInput.value = "";
+                  }} 
+                  style={{ marginLeft: "auto", background: "none", border: "none", color: COLORS.danger, cursor: "pointer", display: "flex", alignItems: "center", gap: "2px", fontSize: "0.85rem", fontWeight: "700" }}
+                >
+                  <FiX /> Cancel Edit
+                </button>
+              )}
             </h2>
 
             <div className="form-group" style={{ marginBottom: "1rem" }}>
@@ -630,6 +761,21 @@ const PermissionPage = () => {
                 onChange={(e) => setNewPromo({ ...newPromo, price: e.target.value })} 
                 placeholder="e.g. ₹999 or Free with Service" 
               />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: "1rem" }}>
+              <label className="form-label">Job Type *</label>
+              <select 
+                className="form-input" 
+                style={{ background: "rgba(255,255,255,0.88)", border: "1.5px solid rgba(124,92,191,0.15)", borderRadius: "14px", padding: "0.72rem 1rem", fontSize: "0.9rem", boxSizing: "border-box", width: "100%", height: "42px" }}
+                value={newPromo.jobTypeId} 
+                onChange={(e) => setNewPromo({ ...newPromo, jobTypeId: e.target.value })}
+              >
+                <option value="">Select Job Type...</option>
+                {jobTypes.map(jt => (
+                  <option key={jt.id} value={jt.id}>{jt.name}</option>
+                ))}
+              </select>
             </div>
 
             <div className="form-group" style={{ marginBottom: "1rem" }}>
@@ -656,7 +802,7 @@ const PermissionPage = () => {
             </div>
 
             <button className="button-primary" onClick={addPromotion} disabled={promoLoading} style={{ width: "100%" }}>
-              <FiPlusCircle /> {promoLoading ? "Adding..." : "Add Promotion"}
+              <FiPlusCircle /> {promoLoading ? "Saving..." : (editingPromoId ? "Update Promotion" : "Add Promotion")}
             </button>
           </motion.div>
 
@@ -666,64 +812,353 @@ const PermissionPage = () => {
               <FiTag color={COLORS.primary} /> Active Promotions
             </h2>
 
-            {promotions.length > 0 ? (
-               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                {promotions.map((promo) => (
-                  <motion.div
-                    key={promo.id}
-                    whileHover={{ scale: 1.012 }}
-                    className="perm-promo-card"
-                  >
-                    {promo.photo_url ? (
-                      <img 
-                        src={promo.photo_url.startsWith("http") ? promo.photo_url : `${api.defaults.baseURL.replace('/api/', '')}${promo.photo_url}`} 
-                        alt={promo.name} 
-                        style={{ width: "70px", height: "70px", borderRadius: "12px", objectFit: "cover", flexShrink: 0, border: "1px solid rgba(0,0,0,0.05)" }}
-                      />
-                    ) : (
-                      <div style={{ width: "70px", height: "70px", borderRadius: "12px", background: "rgba(11, 102, 120, 0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-primary)", flexShrink: 0 }}>
-                        <FiTag size={24} />
-                      </div>
-                    )}
-
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, color: COLORS.text, fontSize: "0.95rem", marginBottom: "4px" }}>{promo.name}</div>
-                      <p style={{ fontSize: "0.8rem", color: COLORS.muted, margin: "0 0 6px 0", lineHeight: "1.3" }}>{promo.description}</p>
-                      {promo.price && (
-                        <span style={{ fontSize: "0.82rem", fontWeight: "700", color: COLORS.success, background: "rgba(45,158,107,0.1)", padding: "2px 8px", borderRadius: "6px" }}>
-                           {promo.price}
-                        </span>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={() => deletePromotion(promo.id)}
-                      style={{ 
-                        width: "36px", 
-                        height: "36px", 
-                        borderRadius: "50%", 
-                        border: "none", 
-                        display: "flex", 
-                        alignItems: "center", 
-                        justifyContent: "center", 
-                        cursor: "pointer", 
-                        background: "rgba(235,89,104,0.1)", 
-                        color: COLORS.danger,
-                        transition: "all 0.2s ease" 
-                      }}
-                      title="Delete promotion"
-                    >
-                      <FiTrash2 size={15} />
-                    </button>
-                  </motion.div>
+            {/* Filter and Search Row */}
+            <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.25rem", flexWrap: "wrap" }}>
+              <input 
+                className="form-input"
+                style={{ flex: 1, minWidth: "200px" }}
+                type="text"
+                value={promoSearchQuery}
+                onChange={(e) => setPromoSearchQuery(e.target.value)}
+                placeholder="Search promotions by name or desc..."
+              />
+              <select
+                className="form-input"
+                style={{ width: "180px", minWidth: "150px", height: "40px", background: "rgba(255,255,255,0.88)", border: "1.5px solid rgba(124,92,191,0.15)", borderRadius: "14px", padding: "0 10px", fontSize: "0.85rem" }}
+                value={promoFilterJobType}
+                onChange={(e) => setPromoFilterJobType(e.target.value)}
+              >
+                <option value="">All Job Types</option>
+                {jobTypes.map(jt => (
+                  <option key={jt.id} value={jt.name}>{jt.name}</option>
                 ))}
+              </select>
+            </div>
+
+            {(() => {
+              const filtered = promotions.filter(p => {
+                if (promoFilterJobType && p.job_type_name !== promoFilterJobType) return false;
+                if (promoSearchQuery.trim()) {
+                  const q = promoSearchQuery.toLowerCase();
+                  const matchesName = p.name.toLowerCase().includes(q);
+                  const matchesDesc = p.description.toLowerCase().includes(q);
+                  if (!matchesName && !matchesDesc) return false;
+                }
+                return true;
+              });
+
+              if (filtered.length > 0) {
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    {filtered.map((promo) => (
+                      <motion.div
+                        key={promo.id}
+                        whileHover={{ scale: 1.012 }}
+                        className="perm-promo-card"
+                      >
+                        {promo.photo_url ? (
+                          <img 
+                            src={promo.photo_url.startsWith("http") ? promo.photo_url : `${api.defaults.baseURL.replace('/api/', '')}${promo.photo_url}`} 
+                            alt={promo.name} 
+                            style={{ width: "70px", height: "70px", borderRadius: "12px", objectFit: "cover", flexShrink: 0, border: "1px solid rgba(0,0,0,0.05)" }}
+                          />
+                        ) : (
+                          <div style={{ width: "70px", height: "70px", borderRadius: "12px", background: "rgba(11, 102, 120, 0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-primary)", flexShrink: 0 }}>
+                            <FiTag size={24} />
+                          </div>
+                        )}
+
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, color: COLORS.text, fontSize: "0.95rem", marginBottom: "4px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                            {promo.name}
+                            {promo.job_type_name && (
+                              <span style={{ fontSize: "0.72rem", color: COLORS.primary, background: "rgba(11, 102, 120, 0.08)", padding: "2px 8px", borderRadius: "6px", fontWeight: "600" }}>
+                                {promo.job_type_name}
+                              </span>
+                            )}
+                          </div>
+                          <p style={{ fontSize: "0.8rem", color: COLORS.muted, margin: "0 0 6px 0", lineHeight: "1.3" }}>{promo.description}</p>
+                          {promo.price && (
+                            <span style={{ fontSize: "0.82rem", fontWeight: "700", color: COLORS.success, background: "rgba(45,158,107,0.1)", padding: "2px 8px", borderRadius: "6px" }}>
+                              {promo.price}
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                          <button
+                            onClick={() => startEditPromo(promo)}
+                            style={{ 
+                              width: "36px", 
+                              height: "36px", 
+                              borderRadius: "50%", 
+                              border: "none", 
+                              display: "flex", 
+                              alignItems: "center", 
+                              justifyContent: "center", 
+                              cursor: "pointer", 
+                              background: "rgba(11, 102, 120, 0.08)", 
+                              color: COLORS.primary,
+                              transition: "all 0.2s ease" 
+                            }}
+                            title="Edit promotion"
+                          >
+                            <FiEdit2 size={14} />
+                          </button>
+                          <button
+                            onClick={() => deletePromotion(promo.id)}
+                            style={{ 
+                              width: "36px", 
+                              height: "36px", 
+                              borderRadius: "50%", 
+                              border: "none", 
+                              display: "flex", 
+                              alignItems: "center", 
+                              justifyContent: "center", 
+                              cursor: "pointer", 
+                              background: "rgba(235,89,104,0.1)", 
+                              color: COLORS.danger,
+                              transition: "all 0.2s ease" 
+                            }}
+                            title="Delete promotion"
+                          >
+                            <FiTrash2 size={15} />
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                );
+              } else {
+                return (
+                  <div className="empty-state" style={{ padding: "2rem" }}>
+                    <FiTag size={36} />
+                    <p>No matching promotions found</p>
+                  </div>
+                );
+              }
+            })()}
+          </motion.div>
+        </div>
+      )}
+
+      {/* SERVICES TAB */}
+      {activeTab === "services" && (
+        <div style={{ maxWidth: "680px", margin: "0 auto", width: "100%" }}>
+          {/* Add Service form */}
+          <motion.div className="perm-glass-card" initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
+            <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", fontWeight: 600, color: COLORS.text, marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <FiTool color={COLORS.primary} /> {editingServiceId ? "Edit Service" : "Add New Service"}
+              {editingServiceId && (
+                <button 
+                  onClick={() => {
+                    setNewService({ name: "", price: "", time: "", desc: "", jobTypeId: "" });
+                    setEditingServiceId(null);
+                  }} 
+                  style={{ marginLeft: "auto", background: "none", border: "none", color: COLORS.danger, cursor: "pointer", display: "flex", alignItems: "center", gap: "2px", fontSize: "0.85rem", fontWeight: "700" }}
+                >
+                  <FiX /> Cancel Edit
+                </button>
+              )}
+            </h2>
+
+            <div className="form-group" style={{ marginBottom: "1rem" }}>
+              <label className="form-label">Service Name *</label>
+              <input 
+                className="form-input" 
+                type="text" 
+                value={newService.name} 
+                onChange={(e) => setNewService({ ...newService, name: e.target.value })} 
+                placeholder="e.g. Chemical Cleaning, Coil Repair" 
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: "1rem" }}>
+              <label className="form-label">Job Type *</label>
+              <select 
+                className="form-input" 
+                style={{ background: "rgba(255,255,255,0.88)", border: "1.5px solid rgba(124,92,191,0.15)", borderRadius: "14px", padding: "0.72rem 1rem", fontSize: "0.9rem", boxSizing: "border-box", width: "100%", height: "42px" }}
+                value={newService.jobTypeId} 
+                onChange={(e) => setNewService({ ...newService, jobTypeId: e.target.value })}
+              >
+                <option value="">Select Job Type...</option>
+                {jobTypes.map(jt => (
+                  <option key={jt.id} value={jt.id}>{jt.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Price (e.g. ₹500)</label>
+                <input 
+                  className="form-input" 
+                  type="text" 
+                  value={newService.price} 
+                  onChange={(e) => setNewService({ ...newService, price: e.target.value })} 
+                  placeholder="₹500" 
+                />
               </div>
-            ) : (
-              <div className="empty-state" style={{ padding: "2rem" }}>
-                <FiTag size={36} />
-                <p>No active promotions found</p>
-               </div>
-            )}
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Duration (e.g. 45 Mins)</label>
+                <input 
+                  className="form-input" 
+                  type="text" 
+                  value={newService.time} 
+                  onChange={(e) => setNewService({ ...newService, time: e.target.value })} 
+                  placeholder="45 Mins" 
+                />
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: "1.25rem" }}>
+              <label className="form-label">Description</label>
+              <textarea 
+                className="form-input" 
+                rows="3"
+                style={{ resize: "vertical", minHeight: "80px", background: "rgba(255,255,255,0.88)", border: "1.5px solid rgba(124,92,191,0.15)", borderRadius: "14px", padding: "0.72rem 1rem", fontSize: "0.9rem", boxSizing: "border-box", width: "100%" }}
+                value={newService.desc} 
+                onChange={(e) => setNewService({ ...newService, desc: e.target.value })} 
+                placeholder="Briefly describe what this service includes..." 
+              />
+            </div>
+
+            <button className="button-primary" onClick={addService} disabled={serviceLoading} style={{ width: "100%" }}>
+              <FiPlusCircle /> {serviceLoading ? "Saving..." : (editingServiceId ? "Update Service" : "Add Service")}
+            </button>
+          </motion.div>
+
+          {/* Existing Services */}
+          <motion.div className="perm-glass-card" initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }}>
+            <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: "1.15rem", fontWeight: 600, color: COLORS.text, marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <FiTool color={COLORS.primary} /> Active Services Catalog
+            </h2>
+
+            {/* Filter and Search Row */}
+            <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.25rem", flexWrap: "wrap" }}>
+              <input 
+                className="form-input"
+                style={{ flex: 1, minWidth: "200px" }}
+                type="text"
+                value={serviceSearchQuery}
+                onChange={(e) => setServiceSearchQuery(e.target.value)}
+                placeholder="Search services by name or desc..."
+              />
+              <select
+                className="form-input"
+                style={{ width: "180px", minWidth: "150px", height: "40px", background: "rgba(255,255,255,0.88)", border: "1.5px solid rgba(124,92,191,0.15)", borderRadius: "14px", padding: "0 10px", fontSize: "0.85rem" }}
+                value={serviceFilterJobType}
+                onChange={(e) => setServiceFilterJobType(e.target.value)}
+              >
+                <option value="">All Job Types</option>
+                {jobTypes.map(jt => (
+                  <option key={jt.id} value={jt.name}>{jt.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {(() => {
+              const filtered = services.filter(s => {
+                if (serviceFilterJobType && s.job_type_name !== serviceFilterJobType) return false;
+                if (serviceSearchQuery.trim()) {
+                  const q = serviceSearchQuery.toLowerCase();
+                  const matchesName = s.name.toLowerCase().includes(q);
+                  const matchesDesc = s.desc && s.desc.toLowerCase().includes(q);
+                  if (!matchesName && !matchesDesc) return false;
+                }
+                return true;
+              });
+
+              if (filtered.length > 0) {
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    {filtered.map((svc) => (
+                      <motion.div
+                        key={svc.id}
+                        whileHover={{ scale: 1.012 }}
+                        className="perm-promo-card"
+                      >
+                        <div style={{ width: "50px", height: "50px", borderRadius: "12px", background: "rgba(11, 102, 120, 0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.primary, flexShrink: 0 }}>
+                          <FiTool size={20} />
+                        </div>
+
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, color: COLORS.text, fontSize: "0.95rem", marginBottom: "4px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                            {svc.name}
+                            {svc.job_type_name && (
+                              <span style={{ fontSize: "0.72rem", color: COLORS.primary, background: "rgba(11, 102, 120, 0.08)", padding: "2px 8px", borderRadius: "6px", fontWeight: "600" }}>
+                                {svc.job_type_name}
+                              </span>
+                            )}
+                          </div>
+                          {svc.desc && <p style={{ fontSize: "0.8rem", color: COLORS.muted, margin: "0 0 6px 0", lineHeight: "1.3" }}>{svc.desc}</p>}
+                          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                            {svc.price && (
+                              <span style={{ fontSize: "0.78rem", fontWeight: "700", color: COLORS.success, background: "rgba(45,158,107,0.1)", padding: "2px 8px", borderRadius: "6px" }}>
+                                Price: {svc.price}
+                              </span>
+                            )}
+                            {svc.time && (
+                              <span style={{ fontSize: "0.78rem", fontWeight: "700", color: "#d97706", background: "rgba(217,119,6,0.1)", padding: "2px 8px", borderRadius: "6px" }}>
+                                Duration: {svc.time}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                          <button
+                            onClick={() => startEditService(svc)}
+                            style={{ 
+                              width: "36px", 
+                              height: "36px", 
+                              borderRadius: "50%", 
+                              border: "none", 
+                              display: "flex", 
+                              alignItems: "center", 
+                              justifyContent: "center", 
+                              cursor: "pointer", 
+                              background: "rgba(11, 102, 120, 0.08)", 
+                              color: COLORS.primary,
+                              transition: "all 0.2s ease" 
+                            }}
+                            title="Edit service"
+                          >
+                            <FiEdit2 size={14} />
+                          </button>
+                          <button
+                            onClick={() => deleteService(svc.id)}
+                            style={{ 
+                              width: "36px", 
+                              height: "36px", 
+                              borderRadius: "50%", 
+                              border: "none", 
+                              display: "flex", 
+                              alignItems: "center", 
+                              justifyContent: "center", 
+                              cursor: "pointer", 
+                              background: "rgba(235,89,104,0.1)", 
+                              color: COLORS.danger,
+                              transition: "all 0.2s ease" 
+                            }}
+                            title="Delete service"
+                          >
+                            <FiTrash2 size={15} />
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                );
+              } else {
+                return (
+                  <div className="empty-state" style={{ padding: "2rem" }}>
+                    <FiTool size={36} />
+                    <p>No matching services found</p>
+                  </div>
+                );
+              }
+            })()}
           </motion.div>
         </div>
       )}

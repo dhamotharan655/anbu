@@ -1,438 +1,394 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import { CATEGORY_META } from "../utils/servicesData";
+import { useBooking } from "../context/BookingContext";
 import api from "../api";
-import mainLogo from "../assets/main_logo.jpg";
-import anbuTextLogo from "../assets/anbu_text_logo.png";
 
-const SERVICES = [
-  {
+// Helper to get category metadata with defaults
+function getCategoryMeta(title) {
+  const defaults = {
+    id: title.toLowerCase().replace(/[^a-z0-9]/g, "_"),
+    title: title,
     icon: "🔧",
-    title: "RO System Installation",
-    desc: "Secure, leakage-free mounting with pressure adjustment and initial TDS testing included.",
-    duration: "1 – 1.5 Hours",
-    color: "#0b6678",
-  },
-  {
-    icon: "🔄",
-    title: "Filter Replacement Service",
-    desc: "Multi-stage filter swap (sediment, pre-carbon, post-carbon, UF membrane) with full cleaning.",
-    duration: "45 – 60 Minutes",
-    color: "#128299",
-  },
-  {
-    icon: "📊",
-    title: "TDS & Water Quality Test",
-    desc: "Detailed analysis using calibrated TDS meters and pH indicators. Report provided instantly.",
-    duration: "20 – 30 Minutes",
-    color: "#2d9e6b",
-  },
-  {
-    icon: "📅",
-    title: "Annual Maintenance Contract",
-    desc: "4 periodic visits, unlimited breakdown calls, and full replacement of consumable filters.",
-    duration: "1-Year Validity",
-    color: "#f1b32a",
-  },
-  {
-    icon: "⚡",
-    title: "Emergency Repair",
-    desc: "Fast response for leaks, pressure drops, and pump failures. Same-day slots guaranteed.",
-    duration: "Within 4 Hours",
-    color: "#eb5968",
-  },
-  {
-    icon: "🏗️",
-    title: "Relocation Service",
-    desc: "Safe dismantling, transport, and reinstallation of your RO system at a new address.",
-    duration: "2 – 3 Hours",
-    color: "#7c5cbf",
-  },
-];
+    accent: "#0b6678",
+    tagline: "Expert Appliance Solutions"
+  };
+  return CATEGORY_META[title] || defaults;
+}
 
-const STEPS = [
-  { n: "01", title: "Call to Book", desc: "Call or message our branch directly to schedule a visit at your convenience." },
-  { n: "02", title: "Technician Dispatched", desc: "A certified technician from your nearest branch is assigned immediately." },
-  { n: "03", title: "Diagnosis & Fix", desc: "TDS levels checked, fault isolated, and genuine parts installed." },
-  { n: "04", title: "Quality Verified", desc: "Post-service water test confirms purity before the technician leaves." },
-];
+/* ── Service Card ── */
+function ServiceCard({ service }) {
+  const { addItem } = useBooking();
+  const meta = getCategoryMeta(service.job_type_name || "General");
+  const [hovered, setHovered] = useState(false);
 
-const Services = () => {
-  const [branches, setBranches] = useState([]);
-
-  useEffect(() => {
-    // Fetch branches
-    api.get("/branches/")
-      .then((res) => {
-        const d = res.data;
-        setBranches(
-          d && d.branches
-            ? d.branches.filter((b) => b.is_active)
-            : Array.isArray(d) ? d.filter((b) => b.is_active) : []
-        );
-      })
-      .catch(() => {});
-  }, []);
-
-  const triggerCentralBooking = (serviceTitle) => {
-    window.dispatchEvent(
-      new CustomEvent("open-booking-modal", {
-        detail: {
-          product: "Other Service",
-          issue: `I want to book the service: ${serviceTitle}`
-        }
-      })
-    );
+  const handleAdd = () => {
+    addItem({
+      name: `${service.name} (${service.job_type_name || "General"})`,
+      price: service.price || "Contact for pricing",
+      category: service.job_type_name || "General",
+      type: "service",
+    });
   };
 
   return (
-    <>
+    <div className={`s-card ${hovered ? "hovered" : ""}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}>
+
+      {/* Accent left bar */}
+      <div className="s-card-bar" style={{ background: meta.accent }} />
+
+      {/* Header */}
+      <div className="s-card-header">
+        <div className="s-card-icon" style={{
+          background: `${meta.accent}12`,
+          borderColor: `${meta.accent}35`,
+          boxShadow: hovered ? `0 0 18px ${meta.accent}25` : "none"
+        }}>
+          {meta.icon}
+        </div>
+        <div className="s-card-info">
+          <h3 className="s-card-name">{service.name}</h3>
+          <span className="s-card-cat">{service.job_type_name || "General"}</span>
+        </div>
+      </div>
+
+      {/* Desc */}
+      <p className="s-card-desc">{service.desc || "Professional service and diagnostic visit."}</p>
+
+      {/* Badges */}
+      <div className="s-card-badges">
+        <span className="s-card-price-badge" style={{ background: `${meta.accent}10`, color: meta.accent, borderColor: `${meta.accent}25` }}>
+          {service.price || "Call for Quote"}
+        </span>
+        {service.time && <span className="s-card-time-badge">⏱ {service.time}</span>}
+      </div>
+
+      {/* Actions */}
+      <div className="s-card-actions">
+        <button className="s-card-btn-primary" onClick={handleAdd}
+          style={{ background: meta.accent }}>
+          📋 Book Now
+        </button>
+        <button className="s-card-btn-secondary" onClick={handleAdd}>
+          + Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Services Page ── */
+const Services = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const categoryParam = searchParams.get("category") || "All";
+  const [activeCategory, setActiveCategory] = useState(categoryParam);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [jobTypes, setJobTypes] = useState([]);
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [branches, setBranches] = useState([]);
+
+  // Fetch job types and services from the database
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      api.get("/job-types/"),
+      api.get("/services/")
+    ])
+      .then(([jtRes, srvRes]) => {
+        setJobTypes(Array.isArray(jtRes.data) ? jtRes.data : []);
+        setServices(Array.isArray(srvRes.data) ? srvRes.data : []);
+      })
+      .catch((err) => console.error("Error loading services data:", err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    api.get("/branches/").then(r => {
+      const list = r.data?.branches || r.data || [];
+      setBranches(Array.isArray(list) ? list.filter(b => b.is_active) : []);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const c = searchParams.get("category");
+    if (c) setActiveCategory(c);
+    else setActiveCategory("All");
+  }, [searchParams]);
+
+  const handleCategoryChange = (cat) => {
+    setActiveCategory(cat);
+    if (cat === "All") setSearchParams({});
+    else setSearchParams({ category: cat });
+  };
+
+  const getFiltered = () => {
+    let results = [...services];
+
+    // Filter by active category
+    if (activeCategory !== "All") {
+      results = results.filter(s => s.job_type_name === activeCategory);
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      results = results.filter(s =>
+        s.name.toLowerCase().includes(q) ||
+        (s.desc && s.desc.toLowerCase().includes(q)) ||
+        (s.job_type_name && s.job_type_name.toLowerCase().includes(q))
+      );
+    }
+    return results;
+  };
+
+  const filtered = getFiltered();
+
+  return (
+    <div className="s-root">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,700;0,9..144,800;1,9..144,700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-        .svc-page {
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          background: linear-gradient(168deg, #f0fafb 0%, #fefcf4 55%, #e9f6f8 100%);
+        .s-root {
+          --blue: #0b6678;
+          --blue-light: #128299;
+          --bg: #FAFBFE;
+          --bg-card: #FFFFFF;
+          --text-primary: #111827;
+          --text-secondary: #6B7280;
+          --text-tertiary: #9CA3AF;
+          --border: #E5E7EB;
+          --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+          --shadow-lg: 0 12px 40px rgba(0,0,0,0.1);
+          --shadow-xl: 0 20px 60px rgba(0,0,0,0.12);
+          --radius: 16px;
+          --radius-lg: 24px;
+          font-family: 'Inter', -apple-system, sans-serif;
+          background: var(--bg);
+          color: var(--text-primary);
           min-height: 100vh;
-          overflow-x: hidden;
+          padding-top: 32px;
+          -webkit-font-smoothing: antialiased;
+        }
+        .s-container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+
+        /* Header */
+        .s-header { text-align: center; margin-bottom: 40px; padding-top: 40px; }
+        .s-badge {
+          display: inline-flex; align-items: center; gap: 8px;
+          background: var(--blue); color: #fff;
+          font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px;
+          text-transform: uppercase; padding: 6px 16px;
+          border-radius: 100px; margin-bottom: 16px;
+        }
+        .s-title {
+          font-size: clamp(2rem, 4vw, 3rem); font-weight: 900;
+          color: var(--text-primary); margin-bottom: 12px;
+          letter-spacing: -0.03em;
+        }
+        .s-subtitle { color: var(--text-secondary); font-size: 1rem; max-width: 580px; margin: 0 auto; line-height: 1.6; }
+
+        /* Search */
+        .s-search-wrap { max-width: 480px; margin: 0 auto 32px; position: relative; }
+        .s-search {
+          width: 100%; padding: 14px 20px 14px 48px; border-radius: 14px;
+          background: var(--bg-card); border: 1.5px solid var(--border);
+          color: var(--text-primary); font-size: 0.95rem; font-family: inherit;
+          box-shadow: var(--shadow-sm); transition: all 0.2s;
+        }
+        .s-search:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(11, 102, 120, 0.12); }
+        .s-search::placeholder { color: var(--text-tertiary); }
+        .s-search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); font-size: 1.1rem; }
+
+        /* Chips */
+        .s-chips { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 48px; }
+        .s-chip {
+          padding: 10px 20px; border-radius: 12px; font-size: 0.85rem; font-weight: 700;
+          cursor: pointer; transition: all 0.25s;
+          border: 1.5px solid var(--border);
+          background: var(--bg-card); color: var(--text-secondary);
+          display: flex; align-items: center; gap: 8px; white-space: nowrap;
+          box-shadow: var(--shadow-sm);
+        }
+        .s-chip:hover { border-color: var(--blue); color: var(--blue); }
+        .s-chip.active { background: var(--blue); color: #fff; border-color: var(--blue); box-shadow: 0 4px 15px rgba(11, 102, 120, 0.25); }
+
+        /* Category section header */
+        .s-cat-header {
+          display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+          padding: 16px 24px; border-radius: var(--radius);
+          background: var(--bg-card); border: 1px solid var(--border);
+          box-shadow: var(--shadow-sm);
+        }
+        .s-cat-header-icon { font-size: 1.2rem; }
+        .s-cat-header-title { font-weight: 800; font-size: 1.1rem; }
+        .s-cat-header-count {
+          margin-left: auto; background: #F3F4F6; color: var(--text-secondary);
+          padding: 4px 14px; border-radius: 8px; font-size: 0.8rem; font-weight: 700;
         }
 
-        /* ---- HERO ---- */
-        .svc-hero {
-          position: relative;
-          padding: 70px 28px 56px;
-          text-align: center;
-          overflow: hidden;
+        /* Grid */
+        .s-grid {
+          display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+          gap: 24px; padding-bottom: 80px;
         }
-        .svc-hero-orb {
-          position: absolute;
-          border-radius: 50%;
-          pointer-events: none;
-          background: radial-gradient(circle, rgba(11,102,120,0.08) 0%, transparent 70%);
-          width: 600px; height: 600px;
-          top: -180px; left: -160px;
-          animation: orbF 14s ease-in-out infinite;
-        }
-        @keyframes orbF {
-          0%,100% { transform: translate(0,0) scale(1); }
-          50% { transform: translate(20px,-30px) scale(1.04); }
-        }
-        .svc-hero-eyebrow {
-          display: inline-flex; align-items: center; gap: 7px;
-          font-size: 11px; font-weight: 700; text-transform: uppercase;
-          letter-spacing: 1.6px; color: #0b6678;
-          background: rgba(11,102,120,0.08); border: 1px solid rgba(11,102,120,0.16);
-          padding: 5px 15px; border-radius: 100px; margin-bottom: 20px;
-          animation: fadeUp 0.7s ease both;
-        }
-        .svc-hero-h1 {
-          font-family: 'Fraunces', serif;
-          font-size: clamp(2rem, 5.5vw, 3.4rem);
-          font-weight: 800; line-height: 1.1; color: #0f172a;
-          margin: 0 0 16px;
-          animation: fadeUp 0.8s ease 0.1s both;
-        }
-        .svc-hero-h1 em {
-          font-style: italic;
-          background: linear-gradient(135deg, #0b6678 30%, #f1b32a 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-        .svc-hero-sub {
-          font-size: 1.05rem; color: #475569;
-          max-width: 520px; margin: 0 auto 32px; line-height: 1.65;
-          animation: fadeUp 0.9s ease 0.2s both;
-        }
+        @media (max-width: 700px) { .s-grid { grid-template-columns: 1fr; } }
 
-        /* ---- CONTACT STRIP ---- */
-        .svc-contact-strip {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 14px;
-          flex-wrap: wrap;
-          animation: fadeUp 1s ease 0.3s both;
-        }
-        .svc-contact-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          font-family: inherit;
-          font-size: 0.95rem;
-          font-weight: 800;
-          padding: 12px 28px;
-          border-radius: 100px;
-          border: none;
-          cursor: pointer;
-          transition: all 0.22s ease;
-          box-shadow: 0 6px 20px rgba(11,102,120,0.3);
-          color: #fff;
-          background: linear-gradient(135deg, #0b6678, #128299);
-        }
-        .svc-contact-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 10px 28px rgba(11,102,120,0.42);
-        }
-
-        /* ---- SECTION ---- */
-        .svc-sec {
-          max-width: 1140px;
-          margin: 0 auto;
-          padding: 0 28px 80px;
-        }
-        .svc-sec-hdr {
-          border-bottom: 1.5px solid rgba(11,102,120,0.1);
-          padding-bottom: 10px; margin-bottom: 28px;
-        }
-        .svc-sec-title {
-          font-family: 'Fraunces', serif;
-          font-size: 1.4rem; font-weight: 800; color: #0f172a; margin: 0;
-        }
-
-        /* ---- STEPS TIMELINE ---- */
-        .svc-steps {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 18px;
-          max-width: 1140px;
-          margin: 0 auto;
-          padding: 0 28px;
-          margin-bottom: 80px;
-        }
-        .svc-step {
-          background: rgba(255,255,255,0.82);
-          border: 1px solid rgba(11,102,120,0.1);
-          border-radius: 20px;
-          padding: 24px 20px;
-          box-shadow: 0 4px 18px rgba(0,0,0,0.025);
-          transition: all 0.26s ease;
-        }
-        .svc-step:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 12px 32px rgba(11,102,120,0.11);
-          border-color: rgba(11,102,120,0.2);
-        }
-        .svc-step-n {
-          font-family: 'Fraunces', serif;
-          font-size: 2.2rem; font-weight: 800;
-          color: rgba(11,102,120,0.12); line-height: 1;
-          margin-bottom: 10px;
-        }
-        .svc-step-title { font-size: 0.97rem; font-weight: 800; color: #0f172a; margin: 0 0 7px; }
-        .svc-step-desc { font-size: 0.83rem; color: #64748b; line-height: 1.55; margin: 0; }
-
-        /* ---- SERVICE CARDS ---- */
-        .svc-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 22px;
-        }
-        .svc-card {
-          background: rgba(255,255,255,0.84);
-          border: 1px solid rgba(255,255,255,0.9);
-          border-radius: 22px;
-          padding: 26px 24px;
-          display: flex; flex-direction: column;
-          box-shadow: 0 4px 18px rgba(0,0,0,0.025);
-          transition: all 0.28s ease;
+        /* Card */
+        .s-card {
+          background: var(--bg-card); border: 1.5px solid var(--border);
+          border-radius: var(--radius-lg); padding: 28px;
+          display: flex; flex-direction: column; gap: 18px;
           position: relative; overflow: hidden;
+          transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+          box-shadow: var(--shadow-sm);
         }
-        .svc-card::before {
-          content: "";
-          position: absolute;
-          top: 0; left: 0; right: 0;
-          height: 3px;
-          background: var(--acc);
-          border-radius: 22px 22px 0 0;
+        .s-card:hover, .s-card.hovered {
+          transform: translateY(-8px);
+          box-shadow: var(--shadow-xl);
+          border-color: transparent;
         }
-        .svc-card:hover {
-          transform: translateY(-6px);
-          box-shadow: 0 16px 40px rgba(11,102,120,0.12);
-          border-color: rgba(11,102,120,0.18);
-        }
-        .svc-card-icon {
-          font-size: 1.8rem;
-          width: 52px; height: 52px;
-          border-radius: 14px;
+        .s-card-bar { position: absolute; top: 0; left: 0; bottom: 0; width: 5px; }
+        .s-card-header { display: flex; align-items: center; gap: 16px; }
+        .s-card-icon {
+          width: 52px; height: 52px; border-radius: 14px;
           display: flex; align-items: center; justify-content: center;
-          margin-bottom: 14px;
+          font-size: 1.5rem; border: 1px solid transparent;
+          transition: all 0.3s;
         }
-        .svc-card-title { font-size: 1rem; font-weight: 800; color: #0f172a; margin: 0 0 8px; }
-        .svc-card-desc { font-size: 0.84rem; color: #64748b; line-height: 1.55; margin: 0 0 18px; flex: 1; }
-        .svc-card-footer {
-          display: flex; justify-content: space-between; align-items: center;
-          border-top: 1px dashed rgba(11,102,120,0.12);
-          padding-top: 14px; gap: 8px;
+        .s-card-info { display: flex; flex-direction: column; gap: 2px; }
+        .s-card-name { font-size: 1.15rem; font-weight: 800; color: var(--text-primary); margin: 0; }
+        .s-card-cat { font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        .s-card-desc { color: var(--text-secondary); font-size: 0.88rem; line-height: 1.55; margin: 0; }
+        .s-card-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+        .s-card-price-badge {
+          font-size: 0.8rem; font-weight: 800; padding: 4px 12px; border-radius: 8px; border: 1px solid transparent;
         }
-        .svc-card-meta { display: flex; flex-direction: column; gap: 2px; }
-        .svc-card-dur { font-size: 12px; font-weight: 600; color: #94a3b8; }
-        .svc-action-btn {
-          display: inline-flex; align-items: center; gap: 4px;
-          font-family: inherit; font-size: 12px; font-weight: 800;
-          color: #fff; border: none;
-          padding: 8px 18px; border-radius: 10px;
-          cursor: pointer; text-decoration: none; white-space: nowrap;
-          transition: opacity 0.2s, transform 0.18s;
-          background: var(--acc);
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        .s-card-time-badge {
+          background: #F3F4F6; color: var(--text-secondary);
+          font-size: 0.8rem; font-weight: 700; padding: 4px 12px; border-radius: 8px;
         }
-        .svc-action-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+        .s-card-actions { display: flex; gap: 10px; margin-top: auto; }
+        .s-card-btn-primary {
+          flex: 1; padding: 12px; border-radius: 12px; border: none;
+          color: #fff; font-size: 0.85rem; font-weight: 800; cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          transition: all 0.2s;
+        }
+        .s-card-btn-primary:hover { transform: translateY(-2px); filter: brightness(1.1); }
+        .s-card-btn-secondary {
+          padding: 12px 18px; border-radius: 12px;
+          background: #F3F4F6; border: 1px solid #E5E7EB;
+          color: var(--text-primary); font-size: 0.85rem; font-weight: 800; cursor: pointer;
+          transition: all 0.2s;
+        }
+        .s-card-btn-secondary:hover { background: #E5E7EB; }
 
-        /* ---- BRANCHES ---- */
-        .svc-branch-bg {
-          background: linear-gradient(160deg, rgba(11,102,120,0.03), rgba(241,179,42,0.03));
-          border-top: 1px solid rgba(11,102,120,0.07);
-          border-bottom: 1px solid rgba(11,102,120,0.07);
-        }
-        .svc-branch-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-          gap: 16px;
-        }
-        .svc-branch-card {
-          background: rgba(255,255,255,0.85);
-          border: 1px solid rgba(11,102,120,0.1);
-          border-radius: 16px; padding: 16px 18px;
-          display: flex; align-items: center; gap: 12px;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.02);
-          transition: all 0.24s ease;
-        }
-        .svc-branch-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 10px 24px rgba(11,102,120,0.1);
-          border-color: rgba(11,102,120,0.2);
-        }
-        .svc-branch-icon {
-          width: 40px; height: 40px; border-radius: 10px;
-          background: linear-gradient(135deg, rgba(11,102,120,0.1), rgba(18,130,153,0.16));
-          display: flex; align-items: center; justify-content: center;
-          font-size: 18px; flex-shrink: 0;
-        }
-        .svc-branch-name { font-size: 13.5px; font-weight: 800; color: #0f172a; margin: 0 0 2px; }
-        .svc-branch-loc { font-size: 12px; color: #64748b; margin: 0; }
-
-        /* ---- FOOTER ---- */
-        .svc-footer {
-          background: rgba(255,255,255,0.6);
-          border-top: 1px solid rgba(11,102,120,0.07);
-          padding: 20px 28px; text-align: center;
-          font-size: 13px; color: #94a3b8;
-        }
-
-        @keyframes fadeUp {
-          from { opacity:0; transform: translateY(18px); }
-          to { opacity:1; transform: translateY(0); }
-        }
-
-        @media (max-width: 900px) {
-          .svc-steps { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 600px) {
-          .svc-steps { grid-template-columns: 1fr; padding: 0 18px; }
-          .svc-hero { padding: 48px 18px 40px; }
-          .svc-sec { padding: 0 16px 60px; }
-          .svc-grid { grid-template-columns: 1fr; }
-          .svc-branch-grid { grid-template-columns: 1fr; }
-        }
+        /* Empty state */
+        .s-empty { text-align: center; padding: 80px 24px; color: var(--text-tertiary); }
       `}</style>
 
-      <div className="svc-page">
-
-        {/* ===== HERO ===== */}
-        <section className="svc-hero" style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px", background: "rgba(11, 102, 120, 0.06)", border: "1px solid rgba(11, 102, 120, 0.15)", borderRadius: "100px", padding: "6px 16px" }}>
-            <img src={mainLogo} alt="Logo" style={{ width: "24px", height: "24px", borderRadius: "6px" }} />
-            <span style={{ fontSize: "0.82rem", fontWeight: "800", letterSpacing: "1.2px", color: "var(--primary)" }}>ANBU ENTERPRISES</span>
-          </div>
-          <div className="svc-hero-orb" />
-          <div className="svc-hero-eyebrow">🛠️ Our Capabilities</div>
-          <h1 className="svc-hero-h1">Expert Water <em>Services</em></h1>
-          <p className="svc-hero-sub">
-            Certified diagnostics, filter replacements, repairs and yearly AMC contracts — backed by trained professionals.
+      <div className="s-container">
+        <div className="s-header">
+          <div className="s-badge">🛠 Professional Maintenance</div>
+          <h1 className="s-title">
+            {activeCategory === "All" ? "Appliance Services" : `${activeCategory} Services`}
+          </h1>
+          <p className="s-subtitle">
+            Reliable sales, maintenance, repair & install services for all categories.
           </p>
-
-          <div className="svc-contact-strip">
-            <button className="svc-contact-btn" onClick={() => triggerCentralBooking("General Service")}>
-              ⚡ Book Service / Inquiry
-            </button>
-          </div>
-        </section>
-
-        {/* ===== HOW IT WORKS ===== */}
-        <div style={{ maxWidth: "1140px", margin: "0 auto", padding: "40px 28px 20px" }}>
-          <div className="svc-sec-hdr">
-            <h2 className="svc-sec-title">How It Works</h2>
-          </div>
         </div>
-        <div className="svc-steps">
-          {STEPS.map((s) => (
-            <div key={s.n} className="svc-step">
-              <div className="svc-step-n">{s.n}</div>
-              <h3 className="svc-step-title">{s.title}</h3>
-              <p className="svc-step-desc">{s.desc}</p>
-            </div>
+
+        <div className="s-search-wrap">
+          <span className="s-search-icon">🔍</span>
+          <input type="text" className="s-search" placeholder="Search services..."
+            value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+        </div>
+
+        <div className="s-chips">
+          <button className={`s-chip ${activeCategory === "All" ? "active" : ""}`}
+            onClick={() => handleCategoryChange("All")}>
+            🏠 All
+          </button>
+          {jobTypes.map(jt => (
+            <button key={jt.id}
+              className={`s-chip ${activeCategory === jt.name ? "active" : ""}`}
+              onClick={() => handleCategoryChange(jt.name)}
+              style={activeCategory === jt.name ? { background: "var(--blue)", borderColor: "var(--blue)", boxShadow: `0 4px 15px rgba(11, 102, 120, 0.25)` } : {}}>
+              🔧 {jt.name}
+            </button>
           ))}
         </div>
 
-        {/* ===== SERVICES ===== */}
-        <div className="svc-sec">
-          <div className="svc-sec-hdr">
-            <h2 className="svc-sec-title">Our Services</h2>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--text-secondary)" }}>
+            <span style={{ fontSize: "1.1rem" }}>Loading services from database...</span>
           </div>
-          <div className="svc-grid">
-            {SERVICES.map((svc) => (
-              <div key={svc.title} className="svc-card" style={{ "--acc": svc.color }}>
-                <div
-                  className="svc-card-icon"
-                  style={{ background: `${svc.color}18` }}
-                >
-                  {svc.icon}
+        ) : filtered.length === 0 ? (
+          <div className="s-empty">
+            <div style={{ fontSize: "3rem", marginBottom: "16px" }}>🔍</div>
+            <h3 style={{ color: "var(--text-primary)", marginBottom: "8px" }}>No services found</h3>
+            <p>Try searching for something else or switch categories.</p>
+          </div>
+        ) : activeCategory === "All" && !searchQuery ? (
+          jobTypes.map(jt => {
+            const list = services.filter(s => s.job_type_id === jt.id || s.job_type_name === jt.name);
+            if (list.length === 0) return null;
+            const meta = getCategoryMeta(jt.name);
+            return (
+              <div key={jt.id} style={{ marginBottom: "48px" }}>
+                <div className="s-cat-header">
+                  <span className="s-cat-header-icon">{meta.icon}</span>
+                  <span className="s-cat-header-title" style={{ color: meta.accent }}>{jt.name}</span>
+                  <span className="s-cat-header-count">{list.length} services available</span>
                 </div>
-                <h3 className="svc-card-title">{svc.title}</h3>
-                <p className="svc-card-desc">{svc.desc}</p>
-                <div className="svc-card-footer">
-                  <div className="svc-card-meta">
-                    <span className="svc-card-dur">⏱ {svc.duration}</span>
-                  </div>
-                  <button
-                    className="svc-action-btn"
-                    style={{ "--acc": svc.color }}
-                    onClick={() => triggerCentralBooking(svc.title)}
-                  >
-                    ⚡ Book Now
-                  </button>
+                <div className="s-grid">
+                  {list.map(s => <ServiceCard key={s.id} service={s} />)}
                 </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="s-grid">
+            {filtered.map(s => <ServiceCard key={s.id} service={s} />)}
+          </div>
+        )}
+      </div>
+
+      {/* ── BRANCHES CONTACT ── */}
+      <section style={{ padding: "60px 24px", background: "linear-gradient(135deg, #0b6678 0%, #044d5c 100%)" }}>
+        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: "36px" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(255,255,255,0.15)", color: "#fff", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", padding: "6px 16px", borderRadius: "100px", marginBottom: "14px" }}>📍 Our Branches</div>
+            <h3 style={{ color: "#ffffff", fontSize: "1.8rem", fontWeight: 900, margin: "0 0 8px" }}>Find Us Near You</h3>
+            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.92rem" }}>Visit any branch for service, repairs & consultations</p>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "16px" }}>
+            {branches.length > 0 ? branches.map(b => (
+              <div key={b.branch_id} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "16px", padding: "20px" }}>
+                <div style={{ color: "#7ee8fa", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.2px", marginBottom: "6px" }}>Branch</div>
+                <div style={{ color: "#ffffff", fontWeight: 800, fontSize: "1rem", marginBottom: "8px" }}>📍 {b.name}</div>
+                {b.contact_number && (
+                  <a href={`tel:${b.contact_number}`} style={{ display: "block", color: "#7ee8fa", fontWeight: 600, fontSize: "0.92rem", textDecoration: "none", marginBottom: "4px" }}>📞 {b.contact_number}</a>
+                )}
+                {b.whatsapp_number && (
+                  <a href={`https://wa.me/${b.whatsapp_number.replace(/[+\s-]/g, "")}`} target="_blank" rel="noreferrer" style={{ display: "block", color: "#a7f3d0", fontWeight: 600, fontSize: "0.88rem", textDecoration: "none" }}>💬 {b.whatsapp_number}</a>
+                )}
+                {b.location && <div style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.8rem", marginTop: "6px" }}>{b.location}</div>}
+              </div>
+            )) : ["Eral", "Pudukottai", "Sawyerpuram"].map(loc => (
+              <div key={loc} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "16px", padding: "20px" }}>
+                <div style={{ color: "#7ee8fa", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.2px", marginBottom: "6px" }}>Branch</div>
+                <div style={{ color: "#ffffff", fontWeight: 800, fontSize: "1rem" }}>📍 {loc}</div>
               </div>
             ))}
           </div>
         </div>
-
-        {/* ===== BRANCHES ===== */}
-        {branches.length > 0 && (
-          <div className="svc-branch-bg">
-            <div className="svc-sec" style={{ paddingTop: "56px" }}>
-              <div className="svc-sec-hdr">
-                <h2 className="svc-sec-title">Locate Nearest Service Center</h2>
-              </div>
-              <div className="svc-branch-grid">
-                {branches.map((b) => (
-                  <div key={b.branch_id || b.id} className="svc-branch-card">
-                    <div className="svc-branch-icon">📍</div>
-                    <div>
-                      <p className="svc-branch-name">{b.name}</p>
-                      <p className="svc-branch-loc">{b.location || "Location coming soon"}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        <footer className="svc-footer">
-          © {new Date().getFullYear()} Anbu Enterprises — All rights reserved.
-        </footer>
-      </div>
-    </>
+      </section>
+    </div>
   );
 };
 

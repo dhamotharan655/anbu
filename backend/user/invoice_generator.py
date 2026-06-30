@@ -260,7 +260,7 @@ def generate_invoice_pdf(complaint, request=None, is_estimation=False):
         invoice_number = complaint.invoice_number
     else:
         from user.invoice_utils import get_next_invoice_number
-        invoice_number = get_next_invoice_number()
+        invoice_number = get_next_invoice_number(is_estimation=is_estimation)
     year = get_ist_now().year
     
     # Create invoices directory if not exists
@@ -413,11 +413,11 @@ def generate_invoice_pdf(complaint, request=None, is_estimation=False):
         branch_obj = Branch.objects(name=complaint.branch_name).first()
         
     if branch_obj:
-        comp_address = branch_obj.location or getattr(site_settings, 'company_address', '') or "No 12, Main Road, Chennai"
+        comp_address = branch_obj.location or getattr(site_settings, 'company_address', '') or "No 12, Main Road, Tuticorin"
         comp_phone = branch_obj.contact_number or getattr(site_settings, 'company_phone', '') or "+91 9876543210"
         comp_landline = branch_obj.whatsapp_number or getattr(site_settings, 'company_landline', '') or "044 2345 6789"
     else:
-        comp_address = getattr(site_settings, 'company_address', '') or "No 12, Main Road, Chennai"
+        comp_address = getattr(site_settings, 'company_address', '') or "No 12, Main Road, Tuticorin"
         comp_phone = getattr(site_settings, 'company_phone', '') or "+91 9876543210"
         comp_landline = getattr(site_settings, 'company_landline', '') or "044 2345 6789"
 
@@ -643,11 +643,23 @@ def generate_invoice_pdf(complaint, request=None, is_estimation=False):
         Paragraph(f"Account Holder's Name: {comp_name.upper()}", normal_style),
     ]
 
-    sig_content = [
-        Paragraph(f"For: {comp_name.upper()}", right_bold),
-        Spacer(1, 35),
-        Paragraph("Authorized Signatory", right_style),
-    ]
+    sign_path = os.path.join(settings.BASE_DIR, '..', 'WaterFrontend', 'src', 'assets', 'sign.png')
+    
+    if os.path.exists(sign_path):
+        sig_image = Image(sign_path, width=1.2*inch, height=0.45*inch)
+        sig_content = [
+            Paragraph(f"For: {comp_name.upper()}", right_bold),
+            Spacer(1, 5),
+            sig_image,
+            Spacer(1, 5),
+            Paragraph("Authorized Signatory", right_style),
+        ]
+    else:
+        sig_content = [
+            Paragraph(f"For: {comp_name.upper()}", right_bold),
+            Spacer(1, 35),
+            Paragraph("Authorized Signatory", right_style),
+        ]
 
     footer_table = Table([[pay_to_content, sig_content]], colWidths=[320, 215])
     footer_table.setStyle(TableStyle([

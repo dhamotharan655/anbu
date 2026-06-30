@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { FiFileText, FiSearch, FiDownload, FiMessageCircle, FiCalendar, FiUser, FiPhone, FiArrowLeft, FiEye, FiTrash2 } from 'react-icons/fi';
+import { FiFileText, FiSearch, FiDownload, FiMessageCircle, FiCalendar, FiUser, FiPhone, FiArrowLeft, FiEye, FiTrash2, FiPlus, FiEdit } from 'react-icons/fi';
+import CreateEstimationModal from '../components/CreateEstimationModal';
 import './InvoicesList.css';
 
 const InvoicesList = () => {
@@ -10,14 +11,16 @@ const InvoicesList = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredInvoices, setFilteredInvoices] = useState([]);
-
+  const [activeTab, setActiveTab] = useState('invoices'); // 'invoices' or 'estimations'
+  const [showEstimationModal, setShowEstimationModal] = useState(false);
+  const [editEstimationData, setEditEstimationData] = useState(null);
   // Invoice Company Settings States
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsData, setSettingsData] = useState({
     company_name: "Anbu Enterprises",
-    company_address: "No 12, Main Road, Chennai",
+    company_address: "No 12, Main Road, Tuticorin",
     company_phone: "+91 9876543210",
     company_landline: "044 2345 6789",
     company_email: "contact@anbuenterprises.com",
@@ -38,7 +41,7 @@ const InvoicesList = () => {
       if (response.data) {
         setSettingsData({
           company_name: response.data.company_name || "Anbu Enterprises",
-          company_address: response.data.company_address || "No 12, Main Road, Chennai",
+          company_address: response.data.company_address || "No 12, Main Road, Tuticorin",
           company_phone: response.data.company_phone || "+91 9876543210",
           company_landline: response.data.company_landline || "044 2345 6789",
           company_email: response.data.company_email || "contact@anbuenterprises.com",
@@ -86,14 +89,18 @@ const InvoicesList = () => {
 
   useEffect(() => {
     filterInvoices();
-  }, [searchQuery, invoices]);
+  }, [searchQuery, invoices, activeTab]);
 
   const fetchInvoices = async () => {
     try {
       setLoading(true);
       const response = await api.get('invoices/');
-      // ⭐ FEATURE 5: Exclude initial records from invoice flow
-      const nonInitialInvoices = (response.data || []).filter(invoice => invoice.is_initial !== true);
+      // Backend might return estimations and invoices. 
+      // is_initial might be True for estimations, but they have status='estimation'.
+      // We accept them all into 'invoices' state and filter later.
+      const nonInitialInvoices = (response.data || []).filter(invoice => 
+        invoice.is_initial !== true || invoice.status === 'estimation'
+      );
       setInvoices(nonInitialInvoices);
       setFilteredInvoices(nonInitialInvoices);
     } catch (error) {
@@ -104,13 +111,18 @@ const InvoicesList = () => {
   };
 
   const filterInvoices = () => {
-    if (!searchQuery.trim()) {
-      setFilteredInvoices(invoices);
-      return;
+    const query = searchQuery ? searchQuery.toLowerCase() : '';
+    
+    // First filter by tab purely based on the first 3 letters of the invoice number
+    let tabFiltered = invoices;
+    if (activeTab === 'invoices') {
+      tabFiltered = invoices.filter(inv => inv.invoice_number && inv.invoice_number.startsWith('INV'));
+    } else if (activeTab === 'estimations') {
+      tabFiltered = invoices.filter(inv => inv.invoice_number && inv.invoice_number.startsWith('EST'));
     }
 
-    const query = searchQuery.toLowerCase();
-    const filtered = invoices.filter(invoice => {
+    // Then filter by search query
+    const searchFiltered = tabFiltered.filter(invoice => {
       return (
         invoice.customer_name?.toLowerCase().includes(query) ||
         invoice.customer_phone?.toLowerCase().includes(query) ||
@@ -118,7 +130,7 @@ const InvoicesList = () => {
         invoice.complaint_no?.toLowerCase().includes(query)
       );
     });
-    setFilteredInvoices(filtered);
+    setFilteredInvoices(searchFiltered);
   };
 
   const handleDownloadPDF = (invoice, e) => {
@@ -188,7 +200,18 @@ ${fullPdfUrl}`;
   };
 
   const handleViewInvoice = (invoice) => {
-    navigate(`/invoice/${encodeURIComponent(invoice.complaint_no)}`);
+    if (invoice.invoice_number && invoice.invoice_number.startsWith('EST')) {
+      const baseURL = api.defaults.baseURL.replace(/\/$/, '');
+      const downloadUrl = `${baseURL}/download-estimation/${invoice.invoice_number}/`;
+      window.open(downloadUrl, '_blank');
+    } else {
+      navigate(`/invoice/${encodeURIComponent(invoice.complaint_no)}`);
+    }
+  };
+
+  const handleEditEstimation = (invoice) => {
+    setEditEstimationData(invoice);
+    setShowEstimationModal(true);
   };
 
   const handleBack = () => {
@@ -232,20 +255,74 @@ ${fullPdfUrl}`;
             className="search-input"
           />
         </div>
+        
+        <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+          <button 
+            className="settings-btn" 
+            style={{ 
+              position: 'relative', 
+              top: 0, right: 0, 
+              background: '#0ea5e9', 
+              color: 'white', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px' 
+            }} 
+            onClick={() => setShowEstimationModal(true)}
+          >
+            <FiPlus /> Create Estimation
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: '20px', padding: '0 24px' }}>
+        <button
+          onClick={() => setActiveTab('invoices')}
+          style={{
+            padding: '12px 24px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'invoices' ? '3px solid #0b6678' : '3px solid transparent',
+            color: activeTab === 'invoices' ? '#0b6678' : '#6b7280',
+            fontWeight: activeTab === 'invoices' ? 700 : 500,
+            fontSize: '1rem',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          Invoices
+        </button>
+        <button
+          onClick={() => setActiveTab('estimations')}
+          style={{
+            padding: '12px 24px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'estimations' ? '3px solid #0b6678' : '3px solid transparent',
+            color: activeTab === 'estimations' ? '#0b6678' : '#6b7280',
+            fontWeight: activeTab === 'estimations' ? 700 : 500,
+            fontSize: '1rem',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          Estimations
+        </button>
       </div>
 
       {/* Section Header */}
       <div className="section-header">
-        <div className="section-title">All Invoices</div>
-        <div className="invoice-count">{filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''} found</div>
+        <div className="section-title">{activeTab === 'invoices' ? 'All Invoices' : 'All Estimations'}</div>
+        <div className="invoice-count">{filteredInvoices.length} {activeTab === 'invoices' ? 'invoice' : 'estimation'}{filteredInvoices.length !== 1 ? 's' : ''} found</div>
       </div>
 
       {/* Invoice Grid */}
       {filteredInvoices.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">🔍</div>
-          <h3>No invoices found</h3>
-          <p>{searchQuery ? 'Try a different search term' : 'No invoices have been generated yet'}</p>
+          <h3>No {activeTab === 'invoices' ? 'invoices' : 'estimations'} found</h3>
+          <p>{searchQuery ? 'Try a different search term' : `No ${activeTab === 'invoices' ? 'invoices' : 'estimations'} have been generated yet`}</p>
         </div>
       ) : (
         <div className="invoice-grid">
@@ -276,10 +353,12 @@ ${fullPdfUrl}`;
                   <FiPhone size={15} />
                   <span>{invoice.customer_phone}</span>
                 </div>
-                <div className="info-row">
-                  <FiFileText size={15} />
-                  <span>Complaint: {invoice.complaint_no}</span>
-                </div>
+                {invoice.status !== 'estimation' && (
+                  <div className="info-row">
+                    <FiFileText size={15} />
+                    <span>Complaint: {invoice.complaint_no}</span>
+                  </div>
+                )}
 
                 <div className="amount-row">
                   <span className="amount-label">Grand Total</span>
@@ -295,7 +374,7 @@ ${fullPdfUrl}`;
                     }}
                   >
                     <FiEye size={14} />
-                    View Invoice
+                    {activeTab === 'estimations' ? 'View Estimation' : 'View Invoice'}
                   </button>
                   <button
                     className="btn-icon"
@@ -312,6 +391,16 @@ ${fullPdfUrl}`;
                   >
                     <FiFileText size={15} />
                   </button>
+                  {activeTab === 'estimations' && (
+                    <button
+                      className="btn-icon"
+                      onClick={(e) => { e.stopPropagation(); handleEditEstimation(invoice); }}
+                      title="Edit Estimation"
+                      style={{ color: '#0ea5e9' }}
+                    >
+                      <FiEdit size={15} />
+                    </button>
+                  )}
                   <button
                     className="btn-icon btn-whatsapp"
                     onClick={(e) => handleSendWhatsApp(invoice, e)}
@@ -328,7 +417,7 @@ ${fullPdfUrl}`;
 
       {/* Settings Modal */}
       {showSettingsModal && (
-        <div className="inv-modal-overlay" onClick={() => setShowSettingsModal(false)}>
+        <div className="settings-modal-overlay" onClick={() => setShowSettingsModal(false)}>
           <div className="inv-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="inv-modal-header">
               <h3>Edit Company &amp; Bank Details</h3>
@@ -485,6 +574,17 @@ ${fullPdfUrl}`;
             )}
           </div>
         </div>
+      )}
+
+      {showEstimationModal && (
+        <CreateEstimationModal 
+          onClose={() => {
+            setShowEstimationModal(false);
+            setEditEstimationData(null);
+          }} 
+          onCreated={fetchInvoices} 
+          editData={editEstimationData}
+        />
       )}
     </div>
   );

@@ -173,7 +173,7 @@ class BookServiceComplaint(Document):
     stock_reduced = BooleanField(default=False)  # NEW: Prevent double stock deduction
 
     status = StringField(
-        choices=['initial', 'pending', 'assigned', 'completed'],
+        choices=['initial', 'pending', 'assigned', 'completed', 'estimation'],
         default='pending'
     )
 
@@ -187,7 +187,7 @@ class BookServiceComplaint(Document):
     job_type = StringField(max_length=50, null=True)
     
     # ⭐ NEW: Job category for consistent filtering (motor_sale, motor_service, etc.)
-    job_category = StringField(max_length=50, null=True)
+    job_category = StringField(max_length=500, null=True)
     
     # ⭐ NEW: Flag to identify initial records (created from Add Customer)
     # Initial records are not real jobs - no staff assignment, payment, or invoice
@@ -1058,7 +1058,7 @@ class MotorDetails(Document):
     job_type = StringField(max_length=50, null=True)
     
     # ⭐ NEW: Job category for consistent filtering
-    job_category = StringField(max_length=50, null=True)
+    job_category = StringField(max_length=500, null=True)
     
     # Motor Information
     company_name = StringField(max_length=200, required=True)
@@ -1310,6 +1310,27 @@ class JobType(Document):
 
 
 # ------------------------------
+#   Services Model
+# ------------------------------
+class Service(Document):
+    """
+    Dynamic services that customers can book under each JobType.
+    """
+    name = StringField(required=True)
+    price = StringField(required=False, null=True)
+    time = StringField(required=False, null=True)
+    desc = StringField(required=False, null=True)
+    job_type = ReferenceField(JobType, required=True)
+    is_active = BooleanField(default=True)
+    created_at = DateTimeField(default=get_ist_now)
+
+    meta = {'collection': 'services', 'strict': False}
+
+    def __str__(self):
+        return f"{self.name} ({self.job_type.name})"
+
+
+# ------------------------------
 #   Expired / Scrap Items Model
 # ------------------------------
 class ExpiredItem(Document):
@@ -1348,6 +1369,7 @@ class Promotion(Document):
     description = StringField(required=True)
     price = StringField(required=False, null=True)
     photo_url = StringField(required=False, null=True)
+    job_type = ReferenceField(JobType, required=False)
     created_at = DateTimeField(default=get_ist_now)
 
     meta = {'collection': 'promotions', 'strict': False}
@@ -1366,7 +1388,7 @@ class SiteSettings(Document):
     whatsapp_number = StringField(default="", null=True)
     contact_phone = StringField(default="", null=True)
     company_name = StringField(default="Anbu Enterprises", null=True)
-    company_address = StringField(default="No 12, Main Road, Chennai", null=True)
+    company_address = StringField(default="No 12, Main Road, Tuticorin", null=True)
     company_phone = StringField(default="+91 9876543210", null=True)
     company_landline = StringField(default="044 2345 6789", null=True)
     company_email = StringField(default="contact@anbuenterprises.com", null=True)

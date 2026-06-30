@@ -540,9 +540,9 @@ const Booking = () => {
   const navigate = useNavigate();
   const { branches } = useGlobalRefresh();
   const [branchName, setBranchName] = useState(
-    sessionStorage.getItem('role') !== 'admin' && sessionStorage.getItem('role') !== 'bigadmin' 
-    ? sessionStorage.getItem('branch_name') || '' 
-    : ''
+    sessionStorage.getItem('role') !== 'admin' && sessionStorage.getItem('role') !== 'bigadmin'
+      ? sessionStorage.getItem('branch_name') || ''
+      : ''
   );
 
   const [customerName, setCustomerName] = useState("");
@@ -565,7 +565,7 @@ const Booking = () => {
 
   // Service type: in_service (at customer location) or out_service (at service center)
   const [serviceType, setServiceType] = useState("in_service");
-  const [jobCategory, setJobCategory] = useState("normal_service");
+  const [jobCategory, setJobCategory] = useState(["normal_service"]);
 
 
   // Phone verification states
@@ -684,9 +684,9 @@ const Booking = () => {
       return 0;
     }
     const minAllowedPrice = minimumPrice > 0 ? Math.max(minimumPrice, buyingPrice) : buyingPrice;
-    
+
     if (sellingPrice <= minAllowedPrice) return 0;
-    
+
     if (type === "amount") {
       return sellingPrice - minAllowedPrice;
     }
@@ -725,15 +725,15 @@ const Booking = () => {
   useEffect(() => {
     if (newProduct.productName) {
       const targetBranch = branchName || "Main Branch";
-      const stockItem = stockItems.find(item => 
-        item.name === newProduct.productName && 
+      const stockItem = stockItems.find(item =>
+        item.name === newProduct.productName &&
         (item.branch_name || "Main Branch") === targetBranch
       );
-      
+
       if (stockItem) {
         const isLow = stockItem.quantity <= stockItem.minimum_threshold;
         const isOut = stockItem.quantity === 0;
-        
+
         if (isOut) {
           setLowStockWarning({
             type: 'danger',
@@ -761,8 +761,8 @@ const Booking = () => {
   useEffect(() => {
     if (newProduct.productName && newProduct.quantity > 0) {
       const targetBranch = branchName || "Main Branch";
-      const stockItem = stockItems.find(item => 
-        item.name === newProduct.productName && 
+      const stockItem = stockItems.find(item =>
+        item.name === newProduct.productName &&
         (item.branch_name || "Main Branch") === targetBranch
       );
       if (stockItem && newProduct.quantity > stockItem.quantity) {
@@ -795,8 +795,8 @@ const Booking = () => {
 
       // Find stock item by product name and branch
       const targetBranch = branchName || "Main Branch";
-      const stockItem = stockItems.find(item => 
-        item.name === productName && 
+      const stockItem = stockItems.find(item =>
+        item.name === productName &&
         (item.branch_name || "Main Branch") === targetBranch
       );
 
@@ -831,7 +831,7 @@ const Booking = () => {
   // Handle sending WhatsApp from booking success modal
   const handleSendBookingWhatsApp = async () => {
     if (!bookingSuccessData) return;
-    
+
     const message = generateBookingMessage(
       bookingSuccessData.customer_name,
       bookingSuccessData.complaint_no,
@@ -839,11 +839,11 @@ const Booking = () => {
       bookingSuccessData.service_type,
       bookingSuccessData.date
     );
-    
+
     const normalizedPhone = normalizePhoneNumber(bookingSuccessData.customer_phone);
     const whatsappUrl = `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, "_blank");
-    
+
     // Update the backend to mark booking WhatsApp as sent
     try {
       await api.post('update-whatsapp-status/', {
@@ -880,8 +880,8 @@ const Booking = () => {
   // Get stock item for a product (branch-aware)
   const getStockItem = (productName) => {
     const targetBranch = branchName || "Main Branch";
-    return stockItems.find(item => 
-      item.name === productName && 
+    return stockItems.find(item =>
+      item.name === productName &&
       (item.branch_name || "Main Branch") === targetBranch
     );
   };
@@ -1262,7 +1262,7 @@ const Booking = () => {
     formData.append('complaint_details', details);
     formData.append('customer_type', customerType);
     formData.append('service_type', serviceType);
-    formData.append('job_category', jobCategory);
+    formData.append('job_category', Array.isArray(jobCategory) ? jobCategory.join(', ') : jobCategory);
     if (branchName) formData.append('branch_name', branchName);
 
     // Handle multiple products - store as JSON in product_name field
@@ -1309,20 +1309,20 @@ const Booking = () => {
         // Store booking data and show success modal
         const complaintNo = response.data?.complaint_no;
         if (complaintNo) {
-          const productDisplay = selectedProducts.length > 0 
+          const productDisplay = selectedProducts.length > 0
             ? formatProductNames(JSON.stringify(selectedProducts))
             : productName;
-          
+
           setBookingSuccessData({
             complaint_no: complaintNo,
             customer_name: customerName,
             customer_phone: phone,
             product_name: productDisplay || 'Service',
             service_type: serviceType,
-            date: new Date().toLocaleDateString('en-IN', { 
-              day: '2-digit', 
-              month: 'short', 
-              year: 'numeric' 
+            date: new Date().toLocaleDateString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric'
             })
           });
           setShowBookingSuccessModal(true);
@@ -1645,7 +1645,7 @@ const Booking = () => {
         {/* FORM CARD */}
         <form className="booking-form-card" onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
           {/* FORM SECTIONS */}
-          <motion.div 
+          <motion.div
             className="booking-form-section"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -1760,7 +1760,7 @@ const Booking = () => {
             </div>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             className="booking-form-section"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -1791,25 +1791,50 @@ const Booking = () => {
                 </div>
               </div>
 
-              <div className="booking-field">
+              <div className="booking-field" style={{ width: '100%' }}>
                 <label>Job Type <div className="booking-required-dot"></div></label>
-                <div className="booking-select-wrap">
-                  <select
-                    className="booking-select"
-                    style={jobTypeError ? { borderColor: '#ef4444', borderWidth: '2px' } : {}}
-                    value={jobCategory}
-                    onChange={(e) => {
-                      setJobCategory(e.target.value);
-                      setJobTypeError("");
-                    }}
-                  >
-                    <option value="">Select Job Type</option>
-                    {jobTypes.map((type) => (
-                      <option key={type.id || type.name} value={type.name}>
-                        {type.name}
-                      </option>
-                    ))}
-                  </select>
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '10px',
+                  marginTop: '6px'
+                }}>
+                  {jobTypes.map((type) => {
+                    const isSelected = Array.isArray(jobCategory) ? jobCategory.includes(type.name) : jobCategory === type.name;
+                    return (
+                      <button
+                        key={type.id || type.name}
+                        type="button"
+                        onClick={() => {
+                          let currentSelected = Array.isArray(jobCategory) ? [...jobCategory] : [jobCategory];
+                          if (currentSelected.includes(type.name)) {
+                            currentSelected = currentSelected.filter(name => name !== type.name);
+                          } else {
+                            currentSelected.push(type.name);
+                          }
+                          setJobCategory(currentSelected);
+                          setJobTypeError("");
+                        }}
+                        style={{
+                          padding: '10px 18px',
+                          borderRadius: '20px',
+                          border: isSelected ? '2px solid var(--color-primary, #0b6678)' : '1.5px solid var(--color-border, #e5e7eb)',
+                          background: isSelected ? 'rgba(11, 102, 120, 0.1)' : 'var(--color-white, #fff)',
+                          color: isSelected ? 'var(--color-primary, #0b6678)' : 'var(--color-text, #1f2937)',
+                          fontWeight: 600,
+                          fontSize: '0.88rem',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s ease',
+                          boxShadow: isSelected ? '0 4px 10px rgba(11, 102, 120, 0.15)' : 'none'
+                        }}
+                      >
+                        {isSelected ? '✓ ' : ''}{type.name}
+                      </button>
+                    );
+                  })}
                 </div>
                 {jobTypeError && <span className="booking-error-hint">{jobTypeError}</span>}
               </div>
@@ -1818,8 +1843,8 @@ const Booking = () => {
 
             {/* Warranty Section - Only show for Our Customer */}
             {customerType === "our_customer" && (
-              <div className="booking-form-card" style={{ 
-                background: 'rgba(212, 175, 55, 0.05)', 
+              <div className="booking-form-card" style={{
+                background: 'rgba(212, 175, 55, 0.05)',
                 border: '1px solid rgba(212, 175, 55, 0.2)',
                 padding: '24px',
                 marginTop: '20px',
@@ -1956,16 +1981,16 @@ const Booking = () => {
                       {stockItems
                         .filter(si => (si.branch_name || "Main Branch") === (branchName || "Main Branch"))
                         .map((stock) => (
-                        <option key={stock.stock_id || stock.id} value={stock.name}>
-                          {stock.name} {stock.quantity > 0 ? `(${stock.quantity} ${stock.unit || 'pcs'} available)` : '(Out of Stock)'}
-                        </option>
-                      ))}
+                          <option key={stock.stock_id || stock.id} value={stock.name}>
+                            {stock.name} {stock.quantity > 0 ? `(${stock.quantity} ${stock.unit || 'pcs'} available)` : '(Out of Stock)'}
+                          </option>
+                        ))}
                     </select>
                   </div>
 
                   {/* LOW STOCK ALERT MESSAGE */}
                   {lowStockWarning && (
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       style={{
@@ -2018,8 +2043,8 @@ const Booking = () => {
                         onChange={(e) => {
                           const type = e.target.value;
                           const maxVal = type === 'percentage' ? 100 : Infinity;
-                          setNewProduct({ 
-                            ...newProduct, 
+                          setNewProduct({
+                            ...newProduct,
                             discount_type: type,
                             discount_value: Math.min(newProduct.discount_value || 0, maxVal)
                           });
@@ -2046,7 +2071,7 @@ const Booking = () => {
             </div>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             className="booking-form-section"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -2095,11 +2120,11 @@ const Booking = () => {
             </div>
 
             {formError && (
-              <div style={{ 
-                marginTop: '24px', 
-                padding: '16px', 
-                background: '#fef2f2', 
-                border: '1px solid #fee2e2', 
+              <div style={{
+                marginTop: '24px',
+                padding: '16px',
+                background: '#fef2f2',
+                border: '1px solid #fee2e2',
                 borderRadius: '14px',
                 color: '#dc2626',
                 display: 'flex',
@@ -2156,7 +2181,7 @@ const Booking = () => {
                         {booking.status || 'Pending'}
                       </div>
                     </div>
-                    
+
                     <div style={{ display: 'grid', gap: '10px' }}>
                       <div style={{ display: 'flex', gap: '10px', fontSize: '13px' }}>
                         <FiPackage color="var(--color-primary-light)" />
@@ -2207,7 +2232,7 @@ const Booking = () => {
           zIndex: 99999,
           backdropFilter: 'blur(4px)'
         }}
-        onClick={() => handleProceedAfterBooking()}
+          onClick={() => handleProceedAfterBooking()}
         >
           <div style={{
             background: 'white',
@@ -2218,8 +2243,8 @@ const Booking = () => {
             boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
             animation: 'slideIn 0.3s ease-out'
           }}
-          ref={bookingSuccessModalRef}
-          onClick={(e) => e.stopPropagation()}
+            ref={bookingSuccessModalRef}
+            onClick={(e) => e.stopPropagation()}
           >
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
               <div style={{

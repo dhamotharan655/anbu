@@ -67,14 +67,14 @@ describe('WhatsApp Utility Functions', () => {
   describe('generateDefaultMessage', () => {
     it('should generate default service message', () => {
       const message = generateDefaultMessage('John Doe', 'WP-COMP-0001');
-      expect(message).toBe('Hello John Doe,\n\nYour service request #WP-COMP-0001 has been completed.\n\nPlease find the invoice attached.\n\nThank you!');
+      expect(message).toBe('Hello John Doe,\n\nYour service request #WP-COMP-0001 has been completed by Anbu Enterprises.\n\nPlease find the invoice attached.\n\nThank you for choosing Anbu Enterprises!\n\nBest regards,\nAnbu Enterprises Team. ');
     });
   });
 
   describe('generateWhatsAppLinkWithDefaultMessage', () => {
     it('should generate link with default message', () => {
       const link = generateWhatsAppLinkWithDefaultMessage('9876543210', 'John Doe', 'WP-COMP-0001');
-      const expectedMessage = encodeURIComponent('Hello John Doe,\n\nYour service request #WP-COMP-0001 has been completed.\n\nPlease find the invoice attached.\n\nThank you!');
+      const expectedMessage = encodeURIComponent('Hello John Doe,\n\nYour service request #WP-COMP-0001 has been completed by Anbu Enterprises.\n\nPlease find the invoice attached.\n\nThank you for choosing Anbu Enterprises!\n\nBest regards,\nAnbu Enterprises Team. ');
       expect(link).toBe(`https://wa.me/919876543210?text=${expectedMessage}`);
     });
   });
@@ -94,7 +94,7 @@ describe('WhatsApp Utility Functions', () => {
   describe('openWhatsAppWithDefaultMessage', () => {
     it('should open WhatsApp with default message', () => {
       openWhatsAppWithDefaultMessage('9876543210', 'John Doe', 'WP-COMP-0001');
-      const expectedMessage = encodeURIComponent('Hello John Doe,\n\nYour service request #WP-COMP-0001 has been completed.\n\nPlease find the invoice attached.\n\nThank you!');
+      const expectedMessage = encodeURIComponent('Hello John Doe,\n\nYour service request #WP-COMP-0001 has been completed by Anbu Enterprises.\n\nPlease find the invoice attached.\n\nThank you for choosing Anbu Enterprises!\n\nBest regards,\nAnbu Enterprises Team. ');
       expect(window.open).toHaveBeenCalledWith(`https://wa.me/919876543210?text=${expectedMessage}`, '_blank');
     });
   });

@@ -1,737 +1,696 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { SERVICES_CATEGORIES, CATEGORY_META } from "../utils/servicesData";
+import { useBooking } from "../context/BookingContext";
 import api from "../api";
-import mainLogo from "../assets/main_logo.jpg";
-import anbuTextLogo from "../assets/anbu_text_logo.png";
 
+/* ── helpers ── */
+const CATEGORY_KEYS = Object.keys(CATEGORY_META);
+
+const STATS = [
+  { label: "Happy Customers", target: 10000, suffix: "+", icon: "👥" },
+  { label: "Completed Services", target: 8000, suffix: "+", icon: "✅" },
+  { label: "Installations", target: 5000, suffix: "+", icon: "🔧" },
+  { label: "Satisfaction Rate", target: 98, suffix: "%", icon: "⭐" },
+];
+
+function useCountUp(target, active) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    let start = 0;
+    const step = Math.ceil(target / 80);
+    const timer = setInterval(() => {
+      start += step;
+      if (start >= target) { setCount(target); clearInterval(timer); }
+      else setCount(start);
+    }, 18);
+    return () => clearInterval(timer);
+  }, [target, active]);
+  return count;
+}
+
+function StatCard({ label, target, suffix, icon }) {
+  const [visible, setVisible] = useState(false);
+  const ref = useRef(null);
+  const count = useCountUp(target, visible);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setVisible(true); }, { threshold: 0.3 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+  return (
+    <div ref={ref} className="lh-stat-card">
+      <div className="lh-stat-icon">{icon}</div>
+      <div className="lh-stat-number">{count.toLocaleString()}{suffix}</div>
+      <div className="lh-stat-label">{label}</div>
+    </div>
+  );
+}
+
+/* ── Category Card Component ── */
+function CategoryCard({ catKey, onNavigate }) {
+  const meta = CATEGORY_META[catKey];
+  const [hovered, setHovered] = useState(false);
+  const catData = SERVICES_CATEGORIES.find(c => c.id === meta.id);
+  const serviceCount = catData ? catData.services.length : 0;
+
+  return (
+    <div
+      className={`lh-cat-card ${hovered ? "hovered" : ""}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Gradient top bar */}
+      <div className="lh-cat-card-bar" style={{ background: meta.accent }} />
+
+      <div className="lh-cat-card-icon" style={{
+        background: `${meta.accent}15`,
+        borderColor: `${meta.accent}40`,
+        boxShadow: hovered ? `0 0 24px ${meta.accent}30` : "none",
+      }}>
+        <span>{meta.icon}</span>
+      </div>
+
+      <h3 className="lh-cat-card-title">{meta.title}</h3>
+      <p className="lh-cat-card-tagline" style={{ color: meta.accent }}>{meta.tagline}</p>
+      <p className="lh-cat-card-count">{serviceCount} services available</p>
+
+      <div className="lh-cat-card-actions">
+        <button className="lh-cat-btn" onClick={() => onNavigate("products", meta.title)}
+          style={{ background: meta.accent, color: "#fff" }}>
+          Products →
+        </button>
+        <button className="lh-cat-btn lh-cat-btn-outline" onClick={() => onNavigate("services", meta.title)}
+          style={{ borderColor: meta.accent, color: meta.accent }}>
+          Services →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Component ── */
 const LandingHome = () => {
   const navigate = useNavigate();
+  const { toggleCart } = useBooking();
+  const [contact, setContact] = useState({ whatsapp_number: "", contact_phone: "", contact_email: "" });
+  const [heroIndex, setHeroIndex] = useState(0);
   const [branches, setBranches] = useState([]);
 
   useEffect(() => {
-    // API returns { success: true, branches: [...] }
-    api.get("/branches/")
-      .then((res) => {
-        const data = res.data;
-        if (data && data.branches) {
-          setBranches(data.branches.filter((b) => b.is_active));
-        } else if (Array.isArray(data)) {
-          setBranches(data.filter((b) => b.is_active));
-        }
-      })
-      .catch(() => { });
+    api.get("/site-settings/").then(r => setContact(r.data)).catch(() => { });
+    api.get("/branches/").then(r => {
+      const list = r.data?.branches || r.data || [];
+      setBranches(Array.isArray(list) ? list.filter(b => b.is_active) : []);
+    }).catch(() => {});
   }, []);
 
-  const features = [
-    { icon: "💧", title: "RO Purification Systems", desc: "7-stage certified filtration removing TDS, bacteria and heavy metals. Crystal clean water, guaranteed." },
-    { icon: "🔧", title: "Expert Maintenance", desc: "Our certified technicians handle filter replacements, pressure checks and AMC contracts promptly." },
-    { icon: "⚡", title: "Fast Doorstep Service", desc: "Book online and receive a qualified technician within hours — same-day slots available." },
-    { icon: "🌿", title: "Eco-Friendly Design", desc: "Advanced reject-reduction technology cuts water wastage by up to 50% compared to standard systems." },
-    { icon: "🏆", title: "Trusted Since 2022", desc: "8+ years serving thousands of households and businesses with a 98% satisfaction rate." },
-    { icon: "📞", title: "24/7 Customer Care", desc: "Round-the-clock support from every branch. Help is always one call away." },
-  ];
+  useEffect(() => {
+    const t = setInterval(() => setHeroIndex(i => (i + 1) % CATEGORY_KEYS.length), 3500);
+    return () => clearInterval(t);
+  }, []);
 
-  const stats = [
-    { num: "5,000+", label: "Happy Customers" },
-    { num: "8+", label: "Years Experience" },
-    { num: "98%", label: "Satisfaction Rate" },
-    { num: "24/7", label: "Support Available" },
-  ];
+  const handleNavigate = (section, category) => {
+    navigate(`/${section}?category=${encodeURIComponent(category)}`);
+  };
+
+  const heroMeta = CATEGORY_META[CATEGORY_KEYS[heroIndex]];
 
   return (
-    <>
+    <div className="lh-root">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-        .lhome {
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          background: linear-gradient(168deg, #f0fafb 0%, #fefcf4 55%, #e9f6f8 100%);
-          overflow-x: hidden;
-        }
-
-        /* ====== HERO ====== */
-        .lhome-hero {
-          position: relative;
-          min-height: calc(100vh - 64px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-          padding: 70px 24px 50px;
-          overflow: hidden;
-        }
-        .lhome-orb1 {
-          position: absolute;
-          width: 680px; height: 680px;
-          background: radial-gradient(circle, rgba(11,102,120,0.09) 0%, transparent 70%);
-          border-radius: 50%;
-          top: -180px; left: -200px;
-          pointer-events: none;
-          animation: orbFloat 15s ease-in-out infinite;
-        }
-        .lhome-orb2 {
-          position: absolute;
-          width: 500px; height: 500px;
-          background: radial-gradient(circle, rgba(241,179,42,0.08) 0%, transparent 70%);
-          border-radius: 50%;
-          bottom: -100px; right: -120px;
-          pointer-events: none;
-          animation: orbFloat 11s ease-in-out infinite reverse;
-        }
-        .lhome-orb3 {
-          position: absolute;
-          width: 300px; height: 300px;
-          background: radial-gradient(circle, rgba(18,130,153,0.06) 0%, transparent 70%);
-          border-radius: 50%;
-          top: 40%; right: 10%;
-          pointer-events: none;
-          animation: orbFloat 9s ease-in-out infinite 3s;
-        }
-        @keyframes orbFloat {
-          0%,100% { transform: translate(0,0) scale(1); }
-          33% { transform: translate(25px,-35px) scale(1.04); }
-          66% { transform: translate(-18px,22px) scale(0.96); }
-        }
-        .lhome-hero-content { position: relative; z-index: 2; max-width: 780px; }
-        .lhome-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 7px;
-          font-size: 11.5px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 1.6px;
-          color: #0b6678;
-          background: rgba(11,102,120,0.08);
-          border: 1px solid rgba(11,102,120,0.16);
-          padding: 5px 15px;
-          border-radius: 100px;
-          margin-bottom: 24px;
-          animation: fadeUp 0.7s ease both;
-        }
-        .lhome-badge-dot {
-          width: 6px; height: 6px;
-          background: #0b6678;
-          border-radius: 50%;
-          box-shadow: 0 0 8px rgba(11,102,120,0.6);
-          animation: pulse 2s ease-in-out infinite;
-        }
-        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(1.4)} }
-        .lhome-h1 {
-          font-family: 'Fraunces', serif;
-          font-size: clamp(2.4rem, 6vw, 4rem);
-          font-weight: 800;
-          line-height: 1.08;
-          color: #0f172a;
-          margin: 0 0 20px;
-          animation: fadeUp 0.8s ease 0.1s both;
-        }
-        .lhome-h1 em {
-          font-style: italic;
-          background: linear-gradient(135deg, #0b6678 30%, #f1b32a 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-        .lhome-sub {
-          font-size: 1.08rem;
-          color: #475569;
-          max-width: 520px;
-          margin: 0 auto 38px;
-          line-height: 1.7;
-          animation: fadeUp 0.9s ease 0.2s both;
-        }
-        .lhome-ctas {
-          display: flex;
-          gap: 14px;
-          justify-content: center;
-          flex-wrap: wrap;
-          animation: fadeUp 1s ease 0.3s both;
-        }
-        .lhome-btn-p {
-          font-family: inherit;
-          font-size: 0.95rem;
-          font-weight: 700;
-          color: #fff;
-          background: linear-gradient(135deg, #0b6678, #128299);
-          border: none;
-          padding: 14px 30px;
-          border-radius: 100px;
-          cursor: pointer;
-          box-shadow: 0 6px 22px rgba(11,102,120,0.32);
-          transition: all 0.24s ease;
-          letter-spacing: 0.01em;
-        }
-        .lhome-btn-p:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(11,102,120,0.42); }
-        .lhome-btn-s {
-          font-family: inherit;
-          font-size: 0.93rem;
-          font-weight: 700;
-          color: #0b6678;
-          background: rgba(11,102,120,0.07);
-          border: 1.5px solid rgba(11,102,120,0.2);
-          padding: 13px 28px;
-          border-radius: 100px;
-          cursor: pointer;
-          transition: all 0.22s ease;
-        }
-        .lhome-btn-s:hover { background: rgba(11,102,120,0.13); transform: translateY(-2px); }
-
-        @keyframes fadeUp {
-          from { opacity:0; transform: translateY(20px); }
-          to { opacity:1; transform: translateY(0); }
+        .lh-root {
+          --blue: #0b6678;
+          --blue-light: #128299;
+          --blue-dark: #044d5c;
+          --bg: #FAFBFE;
+          --bg-alt: #F0F4FA;
+          --bg-card: #FFFFFF;
+          --text-primary: #111827;
+          --text-secondary: #4B5563;
+          --text-tertiary: #9CA3AF;
+          --border: #E5E7EB;
+          --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+          --shadow-md: 0 4px 20px rgba(0,0,0,0.08);
+          --shadow-lg: 0 12px 40px rgba(0,0,0,0.06);
+          --shadow-xl: 0 20px 60px rgba(0,0,0,0.08);
+          --radius: 16px;
+          --radius-lg: 24px;
+          --radius-full: 100px;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          background: var(--bg);
+          color: var(--text-primary);
+          -webkit-font-smoothing: antialiased;
         }
 
-        /* ====== STATS BAND ====== */
-        .lhome-stats-band {
-          background: rgba(255,255,255,0.75);
-          backdrop-filter: blur(20px);
-          border-top: 1px solid rgba(11,102,120,0.08);
-          border-bottom: 1px solid rgba(11,102,120,0.08);
-          padding: 26px 24px;
-        }
-        .lhome-stats-inner {
-          max-width: 900px;
-          margin: 0 auto;
-          display: flex;
-          justify-content: space-around;
-          flex-wrap: wrap;
-          gap: 18px;
-        }
-        .lhome-stat { text-align: center; }
-        .lhome-stat-n {
-          font-family: 'Fraunces', serif;
-          font-size: 2.1rem;
-          font-weight: 800;
-          color: #0b6678;
-          line-height: 1;
-          margin-bottom: 5px;
-        }
-        .lhome-stat-l {
-          font-size: 11.5px;
-          font-weight: 600;
-          color: #64748b;
-          text-transform: uppercase;
-          letter-spacing: 0.8px;
-        }
-
-        /* ====== GENERIC SECTION ====== */
-        .lhome-sec {
-          max-width: 1140px;
-          margin: 0 auto;
-          padding: 80px 28px;
-        }
-        .lhome-sec-eyebrow {
-          font-size: 11px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 1.5px;
-          color: #0b6678;
-          text-align: center;
-          margin-bottom: 10px;
-        }
-        .lhome-sec-h {
-          font-family: 'Fraunces', serif;
-          font-size: clamp(1.7rem, 4vw, 2.3rem);
-          font-weight: 800;
-          color: #0f172a;
-          text-align: center;
-          margin: 0 0 10px;
-          line-height: 1.15;
-        }
-        .lhome-sec-p {
-          font-size: 0.96rem;
-          color: #64748b;
-          text-align: center;
-          max-width: 520px;
-          margin: 0 auto 52px;
-          line-height: 1.65;
-        }
-
-        /* ====== FEATURES ====== */
-        .lhome-feat-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 22px;
-        }
-        .lhome-feat-card {
-          background: rgba(255,255,255,0.78);
-          border: 1px solid rgba(255,255,255,0.9);
-          border-radius: 22px;
-          padding: 28px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.025);
-          transition: all 0.28s ease;
-        }
-        .lhome-feat-card:hover {
-          transform: translateY(-6px);
-          box-shadow: 0 14px 36px rgba(11,102,120,0.11);
-          border-color: rgba(11,102,120,0.18);
-        }
-        .lhome-feat-icon { font-size: 2.1rem; margin-bottom: 14px; }
-        .lhome-feat-title { font-size: 1rem; font-weight: 800; color: #0f172a; margin: 0 0 7px; }
-        .lhome-feat-desc { font-size: 0.855rem; color: #64748b; line-height: 1.58; margin: 0; }
-
-        /* ====== BRANCHES ====== */
-        .lhome-branches-bg {
-          background: linear-gradient(160deg, rgba(11,102,120,0.03), rgba(241,179,42,0.03));
-          border-top: 1px solid rgba(11,102,120,0.07);
-          border-bottom: 1px solid rgba(11,102,120,0.07);
-        }
-        .lhome-branch-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-          gap: 18px;
-        }
-        .lhome-branch-card {
-          background: rgba(255,255,255,0.85);
-          border: 1px solid rgba(11,102,120,0.1);
-          border-radius: 18px;
-          padding: 18px 20px;
-          display: flex;
-          gap: 14px;
-          align-items: flex-start;
-          box-shadow: 0 2px 14px rgba(0,0,0,0.025);
-          transition: all 0.24s ease;
-        }
-        .lhome-branch-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 10px 26px rgba(11,102,120,0.1);
-          border-color: rgba(11,102,120,0.22);
-        }
-        .lhome-branch-icon {
-          width: 44px; height: 44px;
-          border-radius: 12px;
-          background: linear-gradient(135deg, rgba(11,102,120,0.1), rgba(18,130,153,0.16));
-          display: flex; align-items: center; justify-content: center;
-          font-size: 19px;
-          flex-shrink: 0;
-        }
-        .lhome-branch-name { font-size: 14px; font-weight: 800; color: #0f172a; margin: 0 0 3px; }
-        .lhome-branch-loc { font-size: 12.5px; color: #64748b; margin: 0; line-height: 1.45; }
-        .lhome-branch-pill {
-          display: inline-block;
-          margin-top: 7px;
-          font-size: 10px;
-          font-weight: 700;
-          color: #2d9e6b;
-          background: rgba(45,158,107,0.1);
-          padding: 2px 9px;
-          border-radius: 100px;
-        }
-
-        /* ====== CTA BANNER ====== */
-        .lhome-cta-wrap {
-          max-width: 1140px;
-          margin: 0 auto;
-          padding: 0 28px 90px;
-        }
-        .lhome-cta-box {
-          background: linear-gradient(135deg, #0b6678 0%, #0d7a90 50%, #128299 100%);
-          border-radius: 28px;
-          padding: 56px 52px;
-          text-align: center;
-          color: #fff;
-          box-shadow: 0 20px 56px rgba(11,102,120,0.32);
-          position: relative;
-          overflow: hidden;
-        }
-        .lhome-cta-box::before {
-          content: "";
-          position: absolute;
-          top: -90px; right: -90px;
-          width: 280px; height: 280px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.05);
-          pointer-events: none;
-        }
-        .lhome-cta-box::after {
-          content: "";
-          position: absolute;
-          bottom: -70px; left: -70px;
-          width: 240px; height: 240px;
-          border-radius: 50%;
-          background: rgba(241,179,42,0.1);
-          pointer-events: none;
-        }
-        .lhome-cta-h {
-          font-family: 'Fraunces', serif;
-          font-size: clamp(1.5rem, 4vw, 2.1rem);
-          font-weight: 800;
-          margin: 0 0 10px;
-          position: relative; z-index: 1;
-        }
-        .lhome-cta-p {
-          font-size: 0.96rem;
-          opacity: 0.82;
-          margin: 0 0 30px;
-          position: relative; z-index: 1;
-        }
-        .lhome-cta-btns {
-          display: flex;
-          gap: 14px;
-          justify-content: center;
-          flex-wrap: wrap;
-          position: relative; z-index: 1;
-        }
-        .lhome-cta-btn-w {
-          font-family: inherit;
-          font-size: 0.92rem;
-          font-weight: 800;
-          color: #0b6678;
-          background: #fff;
-          border: none;
-          padding: 13px 28px;
-          border-radius: 100px;
-          cursor: pointer;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-          transition: all 0.22s ease;
-        }
-        .lhome-cta-btn-w:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,0.18); }
-        .lhome-cta-btn-o {
-          font-family: inherit;
-          font-size: 0.92rem;
-          font-weight: 700;
-          color: #fff;
-          background: rgba(255,255,255,0.14);
-          border: 1.5px solid rgba(255,255,255,0.35);
-          padding: 12px 26px;
-          border-radius: 100px;
-          cursor: pointer;
-          transition: all 0.22s ease;
-        }
-        .lhome-cta-btn-o:hover { background: rgba(255,255,255,0.22); transform: translateY(-2px); }
-
-        /* ====== FOOTER ====== */
-        .lhome-footer {
-          background: rgba(255,255,255,0.6);
-          border-top: 1px solid rgba(11,102,120,0.07);
-          padding: 22px 28px;
-          text-align: center;
-          font-size: 13px;
-          color: #94a3b8;
-          font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-
-        @media (max-width: 680px) {
-          .lhome-hero { padding: 50px 18px 40px; min-height: auto; }
-          .lhome-cta-box { padding: 38px 24px; }
-          .lhome-sec { padding: 56px 18px; }
-        }
-
-        /* Hero Grid Layout */
-        .lhome-hero-grid {
-          display: grid;
-          grid-template-columns: 1.2fr 1fr;
-          gap: 40px;
-          align-items: center;
+        /* ── Section Layout ── */
+        .lh-section {
+          padding: 100px 24px;
           max-width: 1200px;
           margin: 0 auto;
-          position: relative;
-          z-index: 2;
-          width: 100%;
         }
-        .lhome-hero-left {
-          text-align: left;
-          animation: fadeUp 0.8s ease both;
+        .lh-section-header {
+          text-align: center;
+          margin-bottom: 64px;
         }
-        .lhome-hero-left .lhome-sub {
-          margin-left: 0;
+        .lh-badge {
+          display: inline-flex; align-items: center; gap: 8px;
+          background: rgba(11, 102, 120, 0.1); color: var(--blue);
+          font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px;
+          text-transform: uppercase; padding: 6px 16px; border-radius: var(--radius-full);
+          margin-bottom: 20px;
         }
-        .lhome-hero-left .lhome-ctas {
-          justify-content: flex-start;
+        .lh-title {
+          font-size: clamp(2rem, 4.5vw, 3.5rem);
+          font-weight: 900; color: var(--text-primary);
+          line-height: 1.1; margin: 0 0 16px;
+          letter-spacing: -0.03em;
         }
-        .lhome-trust-badges {
-          display: flex;
-          gap: 20px;
-          margin-top: 30px;
-          font-size: 0.85rem;
-          color: #64748b;
-          font-weight: 600;
-          animation: fadeUp 1.1s ease 0.4s both;
-        }
-        
-        /* Showcase Styles */
-        .lhome-hero-right {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          animation: fadeUp 1s ease 0.2s both;
-        }
-        .lhome-showcase-container {
-          position: relative;
-          width: 100%;
-          max-width: 380px;
-        }
-        .lhome-showcase-glow {
-          position: absolute;
-          inset: -20px;
-          background: radial-gradient(circle, rgba(0,168,232,0.2) 0%, transparent 70%);
-          filter: blur(15px);
-          pointer-events: none;
-          animation: pulseGlow 4s ease-in-out infinite;
-        }
-        @keyframes pulseGlow {
-          0%, 100% { opacity: 0.8; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(1.1); }
-        }
-        .lhome-showcase-card {
-          background: rgba(255, 255, 255, 0.72);
-          backdrop-filter: blur(24px);
-          -webkit-backdrop-filter: blur(24px);
-          border: 1px solid rgba(11, 102, 120, 0.15);
-          border-radius: 32px;
-          padding: 40px 30px;
-          box-shadow: 0 20px 50px rgba(11, 102, 120, 0.1);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 24px;
-          position: relative;
-          animation: floatShowcase 6s ease-in-out infinite;
-        }
-        @keyframes floatShowcase {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-12px); }
-        }
-        .logo-ring-glow {
-          position: relative;
-          padding: 8px;
-          border-radius: 32px;
-          background: linear-gradient(135deg, rgba(0,168,232,0.15), rgba(241,179,42,0.15));
-          border: 1.5px solid rgba(0,168,232,0.25);
-          box-shadow: 0 10px 30px rgba(0,168,232,0.12);
-        }
-        .showcase-logo-img {
-          width: 140px;
-          height: 140px;
-          border-radius: 24px;
-          object-fit: cover;
-          display: block;
-          border: 2px solid white;
-        }
-        .showcase-name-block {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 4px;
-          width: 100%;
-        }
-        .showcase-text-logo {
-          height: 4.8rem;
-          width: auto;
-          object-fit: contain;
-          background: none;
-        }
-        .showcase-enterprises {
-          font-family: 'Bauhaus 93', 'Outfit', 'Arial Black', sans-serif;
-          font-size: 1.6rem;
-          font-weight: 900;
-          color: #0b6678;
-          letter-spacing: 6px;
-          text-transform: uppercase;
-          line-height: 1;
-          margin-top: -6px;
-        }
-        .showcase-badge-sales {
-          background: linear-gradient(135deg, #f5d800 0%, #e5c300 100%);
-          color: #000;
-          font-family: 'Arial Black', Arial, sans-serif;
-          font-size: 0.72rem;
-          font-weight: 900;
-          text-transform: uppercase;
-          letter-spacing: 2px;
-          padding: 4px 14px;
-          border-radius: 6px;
-          box-shadow: 0 4px 12px rgba(245,216,0,0.25);
-          margin-top: 6px;
-        }
-        .showcase-floating-pill {
-          position: absolute;
-          bottom: -15px;
-          background: linear-gradient(135deg, #0b6678 0%, #128299 100%);
-          color: white;
-          font-weight: 700;
-          font-size: 0.78rem;
-          padding: 6px 16px;
-          border-radius: 100px;
-          box-shadow: 0 6px 20px rgba(11,102,120,0.3);
-          border: 1.5px solid rgba(255,255,255,0.2);
-          white-space: nowrap;
+        .lh-subtitle {
+          color: var(--text-secondary);
+          font-size: 1.05rem; line-height: 1.7;
+          max-width: 600px; margin: 0 auto;
         }
 
-        @media (max-width: 900px) {
-          .lhome-hero-grid {
-            grid-template-columns: 1fr;
-            text-align: center;
-            gap: 40px;
-          }
-          .lhome-hero-left {
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-          }
-          .lhome-hero-left .lhome-sub {
-            margin: 0 auto 30px;
-          }
-          .lhome-hero-left .lhome-ctas {
-            justify-content: center;
-          }
-          .lhome-trust-badges {
-            justify-content: center;
-          }
-          .showcase-logo-img {
-            width: 120px;
-            height: 120px;
-          }
+        /* ── HERO ── */
+        .lh-hero {
+          position: relative; min-height: 85vh;
+          display: flex; align-items: center;
+          background: linear-gradient(180deg, #E6F2F5 0%, #FAFBFE 100%);
+          overflow: hidden;
         }
+        .lh-hero::before {
+          content: ''; position: absolute; inset: 0;
+          background: radial-gradient(ellipse at 30% 20%, rgba(11,102,120,0.08) 0%, transparent 60%),
+                      radial-gradient(ellipse at 80% 80%, rgba(11,102,120,0.05) 0%, transparent 50%);
+          pointer-events: none;
+        }
+        /* Subtle grid overlay */
+        .lh-hero::after {
+          content: ''; position: absolute; inset: 0;
+          background-image: linear-gradient(rgba(11,102,120,0.02) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(11,102,120,0.02) 1px, transparent 1px);
+          background-size: 60px 60px;
+          pointer-events: none;
+        }
+
+        .lh-hero-inner {
+          position: relative; z-index: 2;
+          max-width: 1200px; margin: 0 auto; padding: 60px 24px;
+          display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 80px; align-items: center;
+        }
+        @media (max-width: 900px) {
+          .lh-hero-inner { grid-template-columns: 1fr; gap: 40px; }
+          .lh-hero-right { display: none !important; }
+        }
+
+        .lh-hero-badge {
+          display: inline-flex; align-items: center; gap: 10px;
+          background: #ffffff;
+          border: 1px solid rgba(11, 102, 120, 0.15);
+          padding: 8px 20px; border-radius: var(--radius-full);
+          margin-bottom: 32px;
+          box-shadow: 0 4px 12px rgba(11, 102, 120, 0.04);
+        }
+        .lh-hero-badge-dot { width: 8px; height: 8px; border-radius: 50%; background: #10B981; animation: pulse-dot 2s infinite; }
+        @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+        .lh-hero-badge span { color: var(--text-primary); font-size: 0.82rem; font-weight: 600; }
+
+        .lh-hero-title {
+          font-size: clamp(2.5rem, 5.5vw, 4.2rem); font-weight: 900;
+          color: var(--text-primary); line-height: 1.08; margin: 0 0 20px;
+          letter-spacing: -0.03em;
+        }
+        .lh-hero-title-accent { color: var(--blue); }
+        .lh-hero-desc {
+          color: var(--text-secondary); font-size: 1.1rem; line-height: 1.7;
+          margin: 0 0 12px; max-width: 520px;
+        }
+
+        /* rotating category text */
+        .lh-hero-rotating {
+          display: inline-flex; align-items: center; gap: 10px;
+          margin-bottom: 36px; height: 32px; overflow: hidden;
+        }
+        .lh-hero-rotating-label { color: var(--text-secondary); font-size: 0.88rem; }
+        .lh-hero-rotating-value {
+          font-weight: 850; font-size: 0.95rem;
+          animation: slide-in 0.4s ease forwards;
+        }
+        @keyframes slide-in { from { transform: translateY(18px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .lh-hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; }
+        .lh-btn-primary {
+          padding: 15px 36px; border-radius: 14px; font-weight: 800; font-size: 1rem;
+          background: var(--blue); color: #fff; border: none; cursor: pointer;
+          box-shadow: 0 4px 20px rgba(11, 102, 120, 0.25);
+          transition: all 0.25s ease;
+        }
+        .lh-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(11, 102, 120, 0.35); background: #044d5c; }
+        .lh-btn-outline {
+          padding: 15px 36px; border-radius: 14px; font-weight: 700; font-size: 1rem;
+          background: #ffffff; color: var(--text-primary);
+          border: 1px solid var(--border); cursor: pointer;
+          transition: all 0.25s;
+          box-shadow: var(--shadow-sm);
+        }
+        .lh-btn-outline:hover { background: #fafbfe; border-color: var(--blue); color: var(--blue); }
+
+        .lh-hero-contact {
+          display: flex; gap: 24px; margin-top: 28px; flex-wrap: wrap;
+        }
+        .lh-hero-contact a {
+          color: var(--text-secondary); font-size: 0.85rem;
+          text-decoration: none; display: flex; align-items: center; gap: 6px;
+          transition: color 0.2s;
+        }
+        .lh-hero-contact a:hover { color: var(--blue); }
+
+        /* Hero right showcase card */
+        .lh-hero-right {
+          display: flex; justify-content: center;
+        }
+        .lh-hero-showcase {
+          background: #ffffff;
+          border: 1px solid rgba(11, 102, 120, 0.12); border-radius: var(--radius-lg);
+          padding: 40px 32px; width: 100%; max-width: 400px;
+          box-shadow: 0 10px 40px rgba(11, 102, 120, 0.03);
+        }
+        .lh-hero-showcase-icon {
+          font-size: 3.5rem; margin-bottom: 20px; display: block;
+          animation: float-icon 3s ease-in-out infinite;
+        }
+        @keyframes float-icon { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+        .lh-hero-showcase-title { color: var(--text-primary); font-size: 1.5rem; font-weight: 800; margin-bottom: 6px; }
+        .lh-hero-showcase-tag { font-size: 0.88rem; font-weight: 700; margin-bottom: 24px; }
+        .lh-hero-showcase-item {
+          display: flex; align-items: center; gap: 10px;
+          padding: 11px 0; border-bottom: 1px solid #F3F4F6;
+          color: var(--text-secondary); font-size: 0.88rem;
+        }
+        .lh-hero-showcase-check { color: #10B981; font-weight: 750; }
+        .lh-dots { display: flex; gap: 6px; margin-top: 24px; }
+        .lh-dot {
+          width: 8px; height: 8px; border-radius: 50%;
+          background: rgba(11, 102, 120, 0.15); cursor: pointer; transition: all 0.3s;
+        }
+        .lh-dot.active { width: 28px; border-radius: 4px; }
+
+        /* ── CATEGORIES SECTION ── */
+        .lh-cats-section {
+          padding: 100px 24px; background: var(--bg);
+        }
+        .lh-cats-grid {
+          display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+          gap: 24px; max-width: 1200px; margin: 0 auto;
+        }
+        @media (max-width: 700px) { .lh-cats-grid { grid-template-columns: 1fr; } }
+
+        .lh-cat-card {
+          background: var(--bg-card); border: 1px solid var(--border);
+          border-radius: var(--radius-lg); padding: 32px 28px;
+          display: flex; flex-direction: column; gap: 14px;
+          position: relative; overflow: hidden;
+          transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+          box-shadow: var(--shadow-sm);
+        }
+        .lh-cat-card:hover, .lh-cat-card.hovered {
+          transform: translateY(-8px);
+          box-shadow: var(--shadow-xl);
+          border-color: transparent;
+        }
+        .lh-cat-card-bar {
+          position: absolute; top: 0; left: 0; right: 0; height: 4px;
+          border-radius: 24px 24px 0 0;
+        }
+        .lh-cat-card-icon {
+          width: 64px; height: 64px; border-radius: 18px;
+          border: 1px solid; display: flex; align-items: center; justify-content: center;
+          font-size: 1.8rem; transition: all 0.3s;
+        }
+        .lh-cat-card:hover .lh-cat-card-icon { transform: scale(1.08) rotate(-5deg); }
+        .lh-cat-card-title { font-size: 1.2rem; font-weight: 800; color: var(--text-primary); margin: 0; }
+        .lh-cat-card-tagline { font-size: 0.82rem; font-weight: 600; margin: 0; }
+        .lh-cat-card-count { color: var(--text-tertiary); font-size: 0.8rem; margin: 0; }
+        .lh-cat-card-actions { display: flex; gap: 10px; margin-top: auto; padding-top: 8px; }
+        .lh-cat-btn {
+          flex: 1; padding: 10px 14px; border-radius: 12px; border: none;
+          font-size: 0.82rem; font-weight: 700; cursor: pointer;
+          transition: all 0.2s;
+        }
+        .lh-cat-btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
+        .lh-cat-btn-outline {
+          background: transparent !important; border: 1.5px solid;
+        }
+        .lh-cat-btn-outline:hover { filter: none; opacity: 0.85; }
+
+        /* ── STATS ── */
+        .lh-stats-section {
+          padding: 80px 24px;
+          background: #F0F4FA;
+        }
+        .lh-stats-grid {
+          display: grid; grid-template-columns: repeat(4, 1fr);
+          gap: 24px; max-width: 1200px; margin: 0 auto;
+        }
+        @media (max-width: 900px) { .lh-stats-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 500px) { .lh-stats-grid { grid-template-columns: 1fr; } }
+        .lh-stat-card {
+          background: #ffffff;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-lg); padding: 36px 24px; text-align: center;
+          transition: transform 0.3s;
+          box-shadow: var(--shadow-sm);
+        }
+        .lh-stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+        .lh-stat-icon { font-size: 1.8rem; margin-bottom: 12px; }
+        .lh-stat-number {
+          font-size: 2.8rem; font-weight: 900; color: var(--blue);
+          letter-spacing: -0.02em;
+        }
+        .lh-stat-label { color: var(--text-secondary); font-size: 0.9rem; margin-top: 6px; }
+
+        /* ── WHY US ── */
+        .lh-why-section { padding: 100px 24px; background: var(--bg-alt); }
+        .lh-why-grid {
+          display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+          gap: 20px; max-width: 1200px; margin: 0 auto;
+        }
+        .lh-why-card {
+          background: var(--bg-card); border: 1px solid var(--border);
+          border-radius: var(--radius); padding: 28px;
+          transition: all 0.3s; cursor: default;
+          box-shadow: var(--shadow-sm);
+        }
+        .lh-why-card:hover {
+          transform: translateY(-4px); box-shadow: var(--shadow-lg);
+          border-color: var(--blue);
+        }
+        .lh-why-card-icon {
+          width: 48px; height: 48px; border-radius: 14px;
+          background: rgba(11, 102, 120, 0.08); display: flex; align-items: center; justify-content: center;
+          font-size: 1.4rem; margin-bottom: 16px;
+        }
+        .lh-why-card:hover .lh-why-card-icon { background: var(--blue); color: #fff; }
+        .lh-why-card-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 8px; color: var(--text-primary); }
+        .lh-why-card-desc { color: var(--text-secondary); font-size: 0.88rem; line-height: 1.6; }
+
+        /* ── CTA (Redesigned "Ready to Book Service") ── */
+        .lh-cta-section { padding: 100px 24px; background: var(--bg); }
+        .lh-cta-band {
+          max-width: 1100px; margin: 0 auto;
+          background: linear-gradient(135deg, #E6F2F5 0%, #FAFBFE 100%);
+          border: 1px solid rgba(11, 102, 120, 0.2);
+          border-radius: var(--radius-lg); padding: 72px 48px;
+          text-align: center; position: relative; overflow: hidden;
+          box-shadow: 0 10px 40px rgba(11, 102, 120, 0.03);
+        }
+        .lh-cta-band::before {
+          content: ''; position: absolute; inset: 0;
+          background: radial-gradient(circle at 30% 50%, rgba(11, 102, 120, 0.08), transparent 60%);
+          pointer-events: none;
+        }
+        .lh-cta-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: 900; color: var(--text-primary); margin-bottom: 16px; position: relative; letter-spacing: -0.02em; }
+        .lh-cta-desc { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 36px; max-width: 580px; margin-left: auto; margin-right: auto; position: relative; line-height: 1.6; }
+        .lh-cta-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; position: relative; }
+        .lh-cta-wa {
+          padding: 15px 32px; border-radius: 14px;
+          background: #25D366; color: #fff; font-weight: 800; font-size: 1rem;
+          text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+          transition: all 0.2s; border: none; cursor: pointer;
+          box-shadow: 0 4px 14px rgba(37, 211, 102, 0.25);
+        }
+        .lh-cta-wa:hover { transform: translateY(-2px); filter: brightness(1.1); }
+        .lh-cta-call {
+          padding: 15px 32px; border-radius: 14px;
+          background: #ffffff; color: var(--blue); font-weight: 800; font-size: 1rem;
+          text-decoration: none; border: 1.5px solid var(--blue);
+          transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
+          box-shadow: var(--shadow-sm);
+        }
+        .lh-cta-call:hover { background: rgba(11, 102, 120, 0.05); transform: translateY(-2px); }
+
+
+        /* ── FOOTER ── */
+        .lh-footer {
+          background: #F3F4F6; border-top: 1px solid #E5E7EB;
+          padding: 60px 24px 32px;
+        }
+        .lh-footer-grid {
+          max-width: 1200px; margin: 0 auto;
+          display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 48px;
+          margin-bottom: 48px;
+        }
+        @media (max-width: 768px) { .lh-footer-grid { grid-template-columns: 1fr; } }
+        .lh-footer-brand { color: var(--blue); font-size: 1.4rem; font-weight: 900; margin-bottom: 16px; }
+        .lh-footer-desc { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.7; max-width: 320px; }
+        .lh-footer-heading { color: var(--text-primary); font-weight: 700; margin-bottom: 16px; font-size: 0.95rem; }
+        .lh-footer-link {
+          color: var(--text-secondary); text-decoration: none;
+          display: block; margin-bottom: 10px; font-size: 0.88rem;
+          transition: color 0.2s;
+        }
+        .lh-footer-link:hover { color: var(--blue-light); }
+        .lh-footer-bottom {
+          max-width: 1200px; margin: 0 auto;
+          border-top: 1px solid #E5E7EB;
+          padding-top: 24px; display: flex; justify-content: space-between;
+          align-items: center; flex-wrap: wrap; gap: 16px;
+        }
+        .lh-footer-copy { color: #6B7280; font-size: 0.82rem; }
       `}</style>
 
-      <div className="lhome">
-
-        {/* ===== HERO ===== */}
-        <section className="lhome-hero">
-          <div className="lhome-orb1" />
-          <div className="lhome-orb2" />
-          <div className="lhome-orb3" />
-          
-          <div className="lhome-hero-grid">
-            {/* Left Column: Text & CTA */}
-            <div className="lhome-hero-left">
-              <div className="lhome-badge">
-                <span className="lhome-badge-dot" />
-                Pure Water Experts Since 2022
-              </div>
-              <h1 className="lhome-h1">
-                Clean Water for a<br /><em>Healthier Tomorrow</em>
-              </h1>
-              <p className="lhome-sub">
-                Anbu Enterprises delivers certified RO purification systems, professional servicing, and genuine spare parts — straight to your doorstep.
-              </p>
-              <div className="lhome-ctas">
-                <button className="lhome-btn-p" onClick={() => navigate("/products")}>Explore Products →</button>
-                <button className="lhome-btn-s" onClick={() => navigate("/services")}>Our Services</button>
-              </div>
-              
-              <div className="lhome-trust-badges">
-                <span>🏆 Certified Experts</span>
-                <span>⭐ 4.9/5 Rating</span>
-                <span>👥 5k+ Clients</span>
-              </div>
+      {/* ── HERO ── */}
+      <section className="lh-hero">
+        <div className="lh-hero-inner">
+          {/* Left */}
+          <div>
+            <div className="lh-hero-badge">
+              <span className="lh-hero-badge-dot" />
+              <span>Tuticorin & Surrounding Areas</span>
             </div>
-            
-            {/* Right Column: Premium Glowing Logo Showcase */}
-            <div className="lhome-hero-right">
-              <div className="lhome-showcase-container">
-                <div className="lhome-showcase-glow" />
-                <div className="lhome-showcase-card">
-                  {/* Glowing Ring around Main Logo */}
-                  <div className="logo-ring-glow">
-                    <img src={mainLogo} alt="Anbu Logo" className="showcase-logo-img" />
-                  </div>
-                  
-                  {/* Stacked Name Logo */}
-                  <div className="showcase-name-block">
-                    <img src={anbuTextLogo} alt="ANBU" className="showcase-text-logo" />
-                    <span className="showcase-enterprises">ENTERPRISES</span>
-                    <span className="showcase-badge-sales">Sales &amp; Service</span>
-                  </div>
-                  
-                  {/* Floating Micro Badge */}
-                  <div className="showcase-floating-pill">
-                    💧 Pure Water Guaranteed
-                  </div>
+
+            <h1 className="lh-hero-title">
+              Your One-Stop<br />
+              <span className="lh-hero-title-accent">Home Appliance</span><br />
+              Service Partner
+            </h1>
+            <p className="lh-hero-desc">
+              ANBU ENTERPRISES — expert sales, installation, service & repairs for AC, Water Purifiers, Refrigerators, Washing Machines, Inverter Batteries, CCTV & Solar Systems.
+            </p>
+
+            <div className="lh-hero-rotating">
+              <span className="lh-hero-rotating-label">Now showing:</span>
+              <span className="lh-hero-rotating-value" key={heroIndex}
+                style={{ color: heroMeta?.accent }}>
+                {heroMeta?.icon} {heroMeta?.title}
+              </span>
+            </div>
+
+            <div className="lh-hero-ctas">
+              <button className="lh-btn-primary" onClick={toggleCart}>📋 Book a Service</button>
+              <button className="lh-btn-outline" onClick={() => navigate("/services")}>Explore Services →</button>
+            </div>
+
+            <div className="lh-hero-contact">
+              {contact.contact_phone && (
+                <a href={`tel:${contact.contact_phone}`}>📞 {contact.contact_phone}</a>
+              )}
+              {contact.contact_email && (
+                <a href={`mailto:${contact.contact_email}`}>✉️ {contact.contact_email}</a>
+              )}
+            </div>
+          </div>
+
+          {/* Right */}
+          <div className="lh-hero-right">
+            <div className="lh-hero-showcase"
+              style={{
+                borderColor: `${heroMeta?.accent || "#0A84FF"}30`,
+                boxShadow: `0 0 60px ${heroMeta?.accent || "#0A84FF"}15`
+              }}>
+              <span className="lh-hero-showcase-icon" key={`ic-${heroIndex}`}>{heroMeta?.icon}</span>
+              <h3 className="lh-hero-showcase-title">{heroMeta?.title}</h3>
+              <p className="lh-hero-showcase-tag" style={{ color: heroMeta?.accent }}>{heroMeta?.tagline}</p>
+              {SERVICES_CATEGORIES.find(c => c.id === heroMeta?.id)?.services.slice(0, 4).map((svc, i) => (
+                <div key={i} className="lh-hero-showcase-item">
+                  <span className="lh-hero-showcase-check">✓</span>
+                  {svc.name}
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ===== STATS BAND ===== */}
-        <div className="lhome-stats-band">
-          <div className="lhome-stats-inner">
-            {stats.map((s, i) => (
-              <div key={i} className="lhome-stat">
-                <div className="lhome-stat-n">{s.num}</div>
-                <div className="lhome-stat-l">{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ===== FEATURES ===== */}
-        <section className="lhome-sec">
-          <div className="lhome-sec-eyebrow">Why Choose Us</div>
-          <h2 className="lhome-sec-h">Everything for pure, safe water</h2>
-          <p className="lhome-sec-p">From installation to annual maintenance, we cover every aspect of your water purification needs.</p>
-          <div className="lhome-feat-grid">
-            {features.map((f, i) => (
-              <div key={i} className="lhome-feat-card">
-                <div className="lhome-feat-icon">{f.icon}</div>
-                <h3 className="lhome-feat-title">{f.title}</h3>
-                <p className="lhome-feat-desc">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ===== BRANCHES ===== */}
-        <div className="lhome-branches-bg">
-          <section className="lhome-sec">
-            <div className="lhome-sec-eyebrow">Our Locations</div>
-            <h2 className="lhome-sec-h">Service Centers Near You</h2>
-            <p className="lhome-sec-p">We operate from multiple branches. Walk in or call — we're always close by.</p>
-
-            {branches.length > 0 ? (
-              <div className="lhome-branch-grid">
-                {branches.map((b) => (
-                  <div key={b.branch_id || b.id} className="lhome-branch-card">
-                    <div className="lhome-branch-icon">📍</div>
-                    <div>
-                      <h4 className="lhome-branch-name">{b.name}</h4>
-                      <p className="lhome-branch-loc">{b.location || "Location details coming soon"}</p>
-                      <span className="lhome-branch-pill">✓ Operational</span>
-                    </div>
-                  </div>
+              ))}
+              <div className="lh-dots">
+                {CATEGORY_KEYS.map((_, i) => (
+                  <div key={i} className={`lh-dot ${i === heroIndex ? "active" : ""}`}
+                    style={{ background: i === heroIndex ? (heroMeta?.accent || "#0A84FF") : "rgba(10, 132, 255, 0.15)" }}
+                    onClick={() => setHeroIndex(i)} />
                 ))}
               </div>
-            ) : (
-              <div style={{ textAlign: "center", padding: "28px", color: "#94a3b8", fontSize: "14px", background: "rgba(255,255,255,0.5)", borderRadius: "18px", border: "1px dashed rgba(11,102,120,0.15)" }}>
-                Loading branch locations…
-              </div>
-            )}
-          </section>
-        </div>
-
-        {/* ===== CTA BANNER ===== */}
-        <div className="lhome-cta-wrap">
-          <div className="lhome-cta-box">
-            <h2 className="lhome-cta-h">Ready to experience pure water?</h2>
-            <p className="lhome-cta-p">Browse our product range or book a service with one click.</p>
-            <div className="lhome-cta-btns">
-              <button className="lhome-cta-btn-w" onClick={() => navigate("/products")}>View Products & Deals</button>
-              <button
-                className="lhome-cta-btn-o"
-                onClick={() => {
-                  window.dispatchEvent(
-                    new CustomEvent("open-booking-modal", {
-                      detail: { product: "RO Purifier", issue: "Service Request from Home Page" }
-                    })
-                  );
-                }}
-              >
-                Book a Service
-              </button>
             </div>
           </div>
         </div>
+      </section>
 
-        {/* ===== FOOTER ===== */}
-        <footer className="lhome-footer">
-          © {new Date().getFullYear()} Anbu Enterprises — Sales &amp; Service. All rights reserved.
-        </footer>
-      </div>
-    </>
+      {/* ── CATEGORIES ── */}
+      <section className="lh-cats-section">
+        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          <div className="lh-section-header">
+            <div className="lh-badge">⚡ Our Expertise</div>
+            <h2 className="lh-title">7 Service Categories</h2>
+            <p className="lh-subtitle">
+              We cover everything from installation to repairs and AMC. Click any category to explore.
+            </p>
+          </div>
+          <div className="lh-cats-grid">
+            {CATEGORY_KEYS.map(key => (
+              <CategoryCard key={key} catKey={key} onNavigate={handleNavigate} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── STATS ── */}
+      <section className="lh-stats-section">
+        <div style={{ maxWidth: "1200px", margin: "0 auto", textAlign: "center" }}>
+          <div className="lh-badge" style={{ background: "rgba(10,132,255,0.08)" }}>📊 Our Numbers</div>
+          <h2 style={{ color: "var(--text-primary)", fontSize: "clamp(1.8rem, 3vw, 2.8rem)", fontWeight: 900, marginBottom: "48px" }}>
+            Trusted by Thousands
+          </h2>
+          <div className="lh-stats-grid">
+            {STATS.map(s => <StatCard key={s.label} {...s} />)}
+          </div>
+        </div>
+      </section>
+
+      {/* ── WHY US ── */}
+      <section className="lh-why-section">
+        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          <div className="lh-section-header">
+            <div className="lh-badge">✅ Why ANBU</div>
+            <h2 className="lh-title">The Anbu Advantage</h2>
+          </div>
+          <div className="lh-why-grid">
+            {[
+              { icon: "⚡", title: "Same-Day Service", desc: "Book before noon and get a technician at your doorstep the same day." },
+              { icon: "📱", title: "Real-Time Tracking", desc: "Track your technician live after booking via WhatsApp." },
+              { icon: "🏠", title: "AMC Packages", desc: "Annual Maintenance Contracts for worry-free appliance upkeep." },
+              { icon: "🌟", title: "All Brands Serviced", desc: "Samsung, LG, Daikin, Voltas, Kent, Aquaguard — we service them all." },
+            ].map(item => (
+              <div key={item.title} className="lh-why-card">
+                <div className="lh-why-card-icon">{item.icon}</div>
+                <h4 className="lh-why-card-title">{item.title}</h4>
+                <p className="lh-why-card-desc">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+
+
+      {/* ── CONTACT & BRANCHES ── */}
+      <section style={{ padding: "60px 24px", background: "linear-gradient(135deg, #0b6678 0%, #044d5c 100%)" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: "36px" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(255,255,255,0.15)", color: "#fff", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", padding: "6px 16px", borderRadius: "100px", marginBottom: "16px" }}>
+              📍 Our Branches
+            </div>
+            <h2 style={{ color: "#ffffff", fontSize: "clamp(1.6rem, 3vw, 2.4rem)", fontWeight: 900, margin: "0 0 10px", letterSpacing: "-0.02em" }}>Find Us Near You</h2>
+            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.95rem" }}>Visit any of our branch locations for sales & service</p>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
+            {branches.length > 0 ? branches.map(b => (
+              <div key={b.branch_id} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "16px", padding: "22px 20px" }}>
+                <div style={{ color: "#7ee8fa", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.2px", marginBottom: "6px" }}>Branch</div>
+                <div style={{ color: "#ffffff", fontWeight: 800, fontSize: "1.05rem", marginBottom: "8px" }}>📍 {b.name}</div>
+                {b.contact_number && (
+                  <a href={`tel:${b.contact_number}`} style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#7ee8fa", fontWeight: 600, fontSize: "0.95rem", textDecoration: "none", marginBottom: "4px" }}>
+                    📞 {b.contact_number}
+                  </a>
+                )}
+                {b.whatsapp_number && (
+                  <a href={`https://wa.me/${b.whatsapp_number.replace(/[+\s-]/g, "")}`} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: "6px", color: "#a7f3d0", fontWeight: 600, fontSize: "0.88rem", textDecoration: "none", marginTop: "4px" }}>
+                    💬 {b.whatsapp_number}
+                  </a>
+                )}
+                {b.location && <div style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.8rem", marginTop: "6px" }}>{b.location}</div>}
+              </div>
+            )) : (
+              ["Eral", "Pudukottai", "Sawyerpuram"].map(loc => (
+                <div key={loc} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "16px", padding: "22px 20px" }}>
+                  <div style={{ color: "#7ee8fa", fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.2px", marginBottom: "6px" }}>Branch</div>
+                  <div style={{ color: "#ffffff", fontWeight: 800, fontSize: "1.05rem" }}>📍 {loc}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA ── */}
+      <section className="lh-cta-section">
+        <div className="lh-cta-band">
+          <h2 className="lh-cta-title">Ready to Book a Service?</h2>
+          <p className="lh-cta-desc">
+            Select your appliances, add services, and submit your request directly to our team via WhatsApp for instant processing.
+          </p>
+          <div className="lh-cta-btns">
+            <button className="lh-btn-primary" onClick={() => navigate('booking')}>📅 Book a Service</button>
+            {contact.whatsapp_number && (
+              <a href={`https://wa.me/${contact.whatsapp_number?.replace(/[+\s-]/g, "")}`}
+                target="_blank" rel="noreferrer" className="lh-cta-wa">
+                💬 WhatsApp Booking
+              </a>
+            )}
+            {contact.contact_phone && (
+              <a href={`tel:${contact.contact_phone}`} className="lh-cta-call">📞 Call Service Team</a>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FOOTER ── */}
+      <footer className="lh-footer">
+        <div className="lh-footer-grid">
+          <div>
+            <div className="lh-footer-brand">ANBU ENTERPRISES</div>
+            <p className="lh-footer-desc">
+              Your complete home appliance partner. Sales, installation, service and repairs for AC, RO, Refrigerator, Washing Machine, Inverter Batteries, CCTV & Solar.
+            </p>
+          </div>
+          <div>
+            <div className="lh-footer-heading">Quick Links</div>
+            <a className="lh-footer-link" href="/">Home</a>
+            <a className="lh-footer-link" href="#/products">Products</a>
+            <a className="lh-footer-link" href="#/services">Services</a>
+          </div>
+          <div>
+            <div className="lh-footer-heading">Categories</div>
+            {CATEGORY_KEYS.slice(0, 5).map(k => (
+              <span key={k} className="lh-footer-link" style={{ cursor: "pointer" }}
+                onClick={() => navigate(`/services?category=${encodeURIComponent(k)}`)}>
+                {CATEGORY_META[k].icon} {CATEGORY_META[k].title}
+              </span>
+            ))}
+          </div>
+          <div>
+            <div className="lh-footer-heading">Contact</div>
+            <a className="lh-footer-link" href="tel:+917539970991" style={{ textDecoration: "none" }}>
+              D. Anito B.Sc &nbsp;· 75399 70991
+            </a>
+            <a className="lh-footer-link" href="tel:+919600700677" style={{ textDecoration: "none" }}>
+              D. Arnold B.Com · 96007 00677
+            </a>
+          </div>
+        </div>
+        <div className="lh-footer-bottom">
+          <p className="lh-footer-copy">© {new Date().getFullYear()} Anbu Enterprises. All rights reserved.</p>
+          <p className="lh-footer-copy">Tuticorin, Tamil Nadu</p>
+        </div>
+      </footer>
+    </div>
   );
 };
 

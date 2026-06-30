@@ -3,9 +3,9 @@ import requests
 # ============================================================
 # SMS Template Configuration
 # ============================================================
-# To change the company name from "V Aqua" to "Ruban electricals":
+# To change the company name from "V Aqua" to "Anbu Enterprises":
 # 1. Login to BSNL DLT Portal (https://dlt.bsnl.co.in)
-# 2. Create new SMS templates with "Ruban electricals" as company name
+# 2. Create new SMS templates with "Anbu Enterprises" as company name
 # 3. Get the new Template IDs and update the values below
 # 
 # Current Template IDs (registered with "V Aqua"):

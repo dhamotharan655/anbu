@@ -37,7 +37,9 @@ import {
   FiMinus,
   FiCreditCard,
   FiCheckCircle,
-  FiMapPin
+  FiMapPin,
+  FiChevronDown,
+  FiChevronUp
 } from "react-icons/fi";
 import StockAlerts from "../components/StockAlerts";
 import { openWhatsAppWithDefaultMessage, generateStaffAssignmentMessage } from "../utils/whatsappUtils";
@@ -3578,245 +3580,250 @@ const Dashboard = () => {
                       <InfoRow icon={<FiPhone />} label="Phone" value={item.customer_phone} />
                       <InfoRow icon={<FiUserCheck />} label="Assigned" value={item.assigned_staff} />
 
-                      {item.client_amount && (
-                        <InfoRow
-                          icon={<FiDollarSign />}
-                          label="Amount"
-                          value={`₹${item.client_amount}`}
-                        />
-                      )}
+                      {isExpand && (
+                        <>
+                          {item.client_amount && (
+                            <InfoRow
+                              icon={<FiDollarSign />}
+                              label="Amount"
+                              value={`₹${item.client_amount}`}
+                            />
+                          )}
 
-                      {item.date_created && (
-                        <InfoRow
-                          icon={<FiCalendar />}
-                          label="Booking"
-                          value={(() => {
-                            try {
-                              return new Date(item.date_created).toLocaleDateString();
-                            } catch (e) {
-                              return item.date_created;
-                            }
-                          })()}
-                        />
-                      )}
+                          {item.date_created && (
+                            <InfoRow
+                              icon={<FiCalendar />}
+                              label="Booking"
+                              value={(() => {
+                                try {
+                                  return new Date(item.date_created).toLocaleDateString();
+                                } catch (e) {
+                                  return item.date_created;
+                                }
+                              })()}
+                            />
+                          )}
 
-                      {item.assigned_at && (
-                        <InfoRow
-                          icon={<FiUserCheck />}
-                          label="Assigned"
-                          value={(() => {
-                            try {
-                              return new Date(item.assigned_at).toLocaleDateString();
-                            } catch (e) {
-                              return item.assigned_at;
-                            }
-                          })()}
-                        />
-                      )}
+                          {item.assigned_at && (
+                            <InfoRow
+                              icon={<FiUserCheck />}
+                              label="Assigned"
+                              value={(() => {
+                                try {
+                                  return new Date(item.assigned_at).toLocaleDateString();
+                                } catch (e) {
+                                  return item.assigned_at;
+                                }
+                              })()}
+                            />
+                          )}
 
-                      {!isPending && (
-                        <InfoRow
-                          icon={<FiCheck />}
-                          label="Completed"
-                          value={(() => {
-                            if (item.assigned_completed_at) {
-                              try {
-                                return new Date(item.assigned_completed_at).toLocaleDateString();
-                              } catch (e) {
-                                return item.assigned_completed_at;
+                          {!isPending && (
+                            <InfoRow
+                              icon={<FiCheck />}
+                              label="Completed"
+                              value={(() => {
+                                if (item.assigned_completed_at) {
+                                  try {
+                                    return new Date(item.assigned_completed_at).toLocaleDateString();
+                                  } catch (e) {
+                                    return item.assigned_completed_at;
+                                  }
+                                }
+                                return "N/A";
+                              })()}
+                            />
+                          )}
+
+                          {userRole === "bigadmin" && !isPending && item.grand_total !== undefined && item.grand_total !== null && (
+                            <InfoRow
+                              icon={<FiDollarSign />}
+                              label="Total Price"
+                              value={`₹${parseFloat(item.grand_total).toFixed(2)}`}
+                            />
+                          )}
+
+                          {userRole === "bigadmin" && !isPending && item.due_amount !== undefined && item.due_amount !== null && (
+                            <InfoRow
+                              icon={<FiClock />}
+                              label="Due Amount"
+                              value={`₹${parseFloat(item.due_amount).toFixed(2)}`}
+                            />
+                          )}
+
+                          {userRole === "bigadmin" && !isPending && item.payment_indicator && (
+                            <InfoRow
+                              icon={<FiCheckCircle />}
+                              label="Payment"
+                              value={
+                                <span className={`payment-badge-${item.payment_indicator}`} style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                                  {item.payment_indicator}
+                                </span>
                               }
-                            }
-                            return "N/A";
-                          })()}
-                        />
-                      )}
-
-                      {userRole === "bigadmin" && !isPending && item.grand_total !== undefined && item.grand_total !== null && (
-                        <InfoRow
-                          icon={<FiDollarSign />}
-                          label="Total Price"
-                          value={`₹${parseFloat(item.grand_total).toFixed(2)}`}
-                        />
-                      )}
-
-                      {userRole === "bigadmin" && !isPending && item.due_amount !== undefined && item.due_amount !== null && (
-                        <InfoRow
-                          icon={<FiClock />}
-                          label="Due Amount"
-                          value={`₹${parseFloat(item.due_amount).toFixed(2)}`}
-                        />
-                      )}
-
-                      {userRole === "bigadmin" && !isPending && item.payment_indicator && (
-                        <InfoRow
-                          icon={<FiCheckCircle />}
-                          label="Payment"
-                          value={
-                            <span className={`payment-badge-${item.payment_indicator}`} style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                              {item.payment_indicator}
-                            </span>
-                          }
-                        />
+                            />
+                          )}
+                        </>
                       )}
                     </div>
 
-                    <InfoRow icon={<FiMapPin />} label="Address" value={item.address} />
-                    <InfoRow icon={<FiAlertCircle />} label="Issue" value={item.complaint_details} />
+                    {isExpand && (
+                      <>
+                        <InfoRow icon={<FiMapPin />} label="Address" value={item.address} />
+                        <InfoRow icon={<FiAlertCircle />} label="Issue" value={item.complaint_details} />
 
-                    {item.remarks && (
-                      <InfoRow
-                        icon={<FiMessageSquare />}
-                        label="Remarks"
-                        value={item.remarks}
-                      />
-                    )}
-
-                    {/* Action Buttons Grid - 2x2 Layout */}
-                    {!isPending && (
-                      <div 
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: '1fr 1fr',
-                          gap: '6px',
-                          marginTop: '8px'
-                        }}
-                      >
-                        {/* WhatsApp Button */}
-                        {(() => {
-                          const isSent = item.whatsapp_sent_to_customer === true;
-                          return (
-                          <button
-                            className="whatsapp-button"
-                            disabled={isSent}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openWhatsAppWithDefaultMessage(
-                                item.customer_phone,
-                                item.customer_name,
-                                item.complaint_no
-                              );
-                              // Update WhatsApp status on backend
-                              (async () => {
-                                try {
-                                  await api.post('update-whatsapp-status/', {
-                                    complaint_no: item.complaint_no,
-                                    whatsapp_sent_to_customer: true
-                                  });
-                                  fetchComplaints();
-                                } catch (err) {
-                                  console.error('Failed to update WhatsApp status:', err);
-                                }
-                              })();
-                            }}
-                            title={isSent ? "Message already sent" : "Send WhatsApp Message"}
-                            style={{
-                              padding: '6px 8px',
-                              fontSize: '10px',
-                              width: '100%',
-                              justifyContent: 'center',
-                              ...(isSent ? { background: '#25D366', cursor: 'not-allowed' } : {})
-                            }}
-                          >
-                            <FiMessageCircle size={12} />
-                            <span>{isSent ? "Sent ✓" : "WhatsApp"}</span>
-                          </button>
-                        );})()}
-
-                        {/* Invoice Button */}
-                        <a
-                          href={`#/invoice/${encodeURIComponent(item.complaint_no)}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                          style={{
-                            background: '#4CAF50',
-                            color: 'white',
-                            border: 'none',
-                            padding: '6px 8px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px',
-                            fontWeight: '600',
-                            fontSize: '10px',
-                            textDecoration: 'none'
-                          }}
-                          title="Generate Invoice"
-                        >
-                          <FiFileText size={12} />
-                          <span>Invoice</span>
-                        </a>
-
-                        {/* Payment Button */}
-                        {userRole === "bigadmin" && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openPaymentModal(item);
-                            }}
-                            style={{
-                              background: '#FF9800',
-                              color: 'white',
-                              border: 'none',
-                              padding: '6px 8px',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '4px',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              width: '100%'
-                            }}
-                            title="Payment Details"
-                          >
-                            <FiDollarSign size={12} />
-                            <span>Payment</span>
-                          </button>
+                        {item.remarks && (
+                          <InfoRow
+                            icon={<FiMessageSquare />}
+                            label="Remarks"
+                            value={item.remarks}
+                          />
                         )}
 
-                        {/* ⭐ NEW: History Button */}
-                        {userRole === "bigadmin" && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Always use item for history - it contains payment_details
-                              setPaymentHistoryData(item);
-                              setShowPaymentHistoryModal(true);
-                            }}
+                        {/* Action Buttons Grid - 2x2 Layout */}
+                        {!isPending && (
+                          <div 
+                            onClick={(e) => e.stopPropagation()}
                             style={{
-                              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                              color: 'white',
-                              border: 'none',
-                              padding: '6px 8px',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '4px',
-                              fontWeight: '600',
-                              fontSize: '10px',
-                              width: '100%'
+                              display: 'grid',
+                              gridTemplateColumns: '1fr 1fr',
+                              gap: '6px',
+                              marginTop: '8px'
                             }}
-                            title="View Payment History"
                           >
-                            <FiDatabase size={12} />
-                            <span>History</span>
-                          </button>
+                            {/* WhatsApp Button */}
+                            {(() => {
+                              const isSent = item.whatsapp_sent_to_customer === true;
+                              return (
+                              <button
+                                className="whatsapp-button"
+                                disabled={isSent}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openWhatsAppWithDefaultMessage(
+                                    item.customer_phone,
+                                    item.customer_name,
+                                    item.complaint_no
+                                  );
+                                  // Update WhatsApp status on backend
+                                  (async () => {
+                                    try {
+                                      await api.post('update-whatsapp-status/', {
+                                        complaint_no: item.complaint_no,
+                                        whatsapp_sent_to_customer: true
+                                      });
+                                      fetchComplaints();
+                                    } catch (err) {
+                                      console.error('Failed to update WhatsApp status:', err);
+                                    }
+                                  })();
+                                }}
+                                title={isSent ? "Message already sent" : "Send WhatsApp Message"}
+                                style={{
+                                  padding: '6px 8px',
+                                  fontSize: '10px',
+                                  width: '100%',
+                                  justifyContent: 'center',
+                                  ...(isSent ? { background: '#25D366', cursor: 'not-allowed' } : {})
+                                }}
+                              >
+                                <FiMessageCircle size={12} />
+                                <span>{isSent ? "Sent ✓" : "WhatsApp"}</span>
+                              </button>
+                            );})()}
+
+                            {/* Invoice Button */}
+                            <a
+                              href={`#/invoice/${encodeURIComponent(item.complaint_no)}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                              style={{
+                                background: '#4CAF50',
+                                color: 'white',
+                                border: 'none',
+                                padding: '6px 8px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px',
+                                fontWeight: '600',
+                                fontSize: '10px',
+                                textDecoration: 'none'
+                              }}
+                              title="Generate Invoice"
+                            >
+                              <FiFileText size={12} />
+                              <span>Invoice</span>
+                            </a>
+
+                            {/* Payment Button */}
+                            {userRole === "bigadmin" && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPaymentModal(item);
+                                }}
+                                style={{
+                                  background: '#FF9800',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '6px 8px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '4px',
+                                  fontWeight: '600',
+                                  fontSize: '10px',
+                                  width: '100%'
+                                }}
+                                title="Payment Details"
+                              >
+                                <FiDollarSign size={12} />
+                                <span>Payment</span>
+                              </button>
+                            )}
+
+                            {/* ⭐ NEW: History Button */}
+                            {userRole === "bigadmin" && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Always use item for history - it contains payment_details
+                                  setPaymentHistoryData(item);
+                                  setShowPaymentHistoryModal(true);
+                                }}
+                                style={{
+                                  background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '6px 8px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '4px',
+                                  fontWeight: '600',
+                                  fontSize: '10px',
+                                  width: '100%'
+                                }}
+                                title="View Payment History"
+                              >
+                                <FiDatabase size={12} />
+                                <span>History</span>
+                              </button>
+                            )}
+                          </div>
                         )}
-
-
-                      </div>
+                      </>
                     )}
 
-
-                    {/* Total Products Purchased - Only for completed jobs */}
-                    {!isPending && (isExpand || filter === "completed" || filter === "due" || filter === "overdue") && (() => {
+                    {/* Total Products Purchased - Only for completed jobs when expanded */}
+                    {!isPending && isExpand && (() => {
                       const bookedProds = item.product_name ? parseBookedProducts(item.product_name, item.product_quantity) : [];
                       const additionalProds = item.additional_product ? parseAdditionalProducts(item.additional_product) : [];
                       const hasProducts = bookedProds.length > 0 || additionalProds.length > 0;
@@ -3943,6 +3950,32 @@ const Dashboard = () => {
                         </div>
                       );
                     })()}
+
+                    {/* Details Chevron Toggle Bar */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginTop: '8px',
+                      paddingTop: '8px',
+                      borderTop: '1px solid rgba(0,0,0,0.03)',
+                      color: 'var(--color-primary)',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      gap: '4px'
+                    }}>
+                      {isExpand ? (
+                        <>
+                          <span>Show Less Details</span>
+                          <FiChevronUp size={16} />
+                        </>
+                      ) : (
+                        <>
+                          <span>Show More Details</span>
+                          <FiChevronDown size={16} />
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {isPending && isExpand && filter !== "pending" && (
