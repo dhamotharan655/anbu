@@ -988,8 +988,8 @@ const PermissionPage = () => {
               </select>
             </div>
 
-            <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
-              <div className="form-group" style={{ flex: 1 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", marginBottom: "1rem" }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Price (e.g. ₹500)</label>
                 <input 
                   className="form-input" 
@@ -999,7 +999,7 @@ const PermissionPage = () => {
                   placeholder="₹500" 
                 />
               </div>
-              <div className="form-group" style={{ flex: 1 }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Duration (e.g. 45 Mins)</label>
                 <input 
                   className="form-input" 

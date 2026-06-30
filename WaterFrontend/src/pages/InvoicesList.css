@@ -673,3 +673,49 @@
   from { transform: translateY(30px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .invoices-hero {
+    padding: 30px 20px 40px;
+  }
+  .invoices-hero h1 {
+    font-size: 28px;
+  }
+  .invoice-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .invoice-card {
+    min-width: unset;
+    width: 100%;
+  }
+  .search-input {
+    font-size: 13px;
+  }
+  .search-wrapper {
+    width: 100%;
+  }
+  .card-header {
+    padding: 14px 16px;
+  }
+  .card-body {
+    padding: 16px;
+  }
+  .inv-modal-card {
+    width: 95%;
+    margin: 20px auto;
+  }
+  .inv-form-grid {
+    grid-template-columns: 1fr;
+  }
+  /* Settings buttons responsive */
+  .invoices-hero > div[style*="display: flex"] {
+    flex-direction: column;
+    align-items: center;
+  }
+  .inv-modal-overlay {
+    align-items: flex-start;
+    padding-top: 40px;
+  }
+}

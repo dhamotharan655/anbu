@@ -2330,13 +2330,7 @@ const Dashboard = () => {
 
   /* ================= CARD CLICK ================= */
   const handleCardClick = (item, isPending, isExpand) => {
-    if (isPending && (!item.assigned_staff || item.assigned_staff === "N/A")) {
-      // URL-encode the complaint number to handle special characters like '#'
-      const encodedComplaintNo = encodeURIComponent(item.complaint_no);
-      navigate(`/select-staff?complaintNo=${encodedComplaintNo}`);
-    } else {
-      setExpandedId(isExpand ? null : getId(item));
-    }
+    setExpandedId(isExpand ? null : getId(item));
   };
 
   /* ================= PAYMENT HANDLERS ================= */
@@ -3678,6 +3672,38 @@ const Dashboard = () => {
                             value={item.remarks}
                           />
                         )}
+                        
+                        {isPending && (!item.assigned_staff || item.assigned_staff === "N/A") && (
+                          <div 
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ marginTop: '12px' }}
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const encodedComplaintNo = encodeURIComponent(item.complaint_no);
+                                navigate(`/select-staff?complaintNo=${encodedComplaintNo}`);
+                              }}
+                              style={{
+                                width: '100%',
+                                background: '#0ea5e9',
+                                color: 'white',
+                                border: 'none',
+                                padding: '10px',
+                                borderRadius: '8px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}
+                            >
+                              <FiUserCheck size={16} />
+                              Assign Staff
+                            </button>
+                          </div>
+                        )}
 
                         {/* Action Buttons Grid - 2x2 Layout */}
                         {!isPending && (
@@ -3978,7 +4004,7 @@ const Dashboard = () => {
                     </div>
                   </div>
 
-                  {isPending && isExpand && filter !== "pending" && (
+                  {displayStatus === "Assigned" && isExpand && (
                     <div className="card-actions">
                       <label className="form-label">Complete This Job</label>
 

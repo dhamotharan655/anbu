@@ -68,7 +68,7 @@ const InvoicesList = () => {
       setSettingsSaving(true);
       await api.post('site-settings/update/', settingsData);
       alert('Invoice and company settings updated successfully!');
-      setShowSettingsModal(false);
+      // Don't close modal anymore, it's a tab
     } catch (error) {
       console.error('Error saving site settings:', error);
       alert('Failed to save settings. Please try again.');
@@ -78,10 +78,10 @@ const InvoicesList = () => {
   };
 
   useEffect(() => {
-    if (showSettingsModal) {
+    if (activeTab === 'settings') {
       fetchSettings();
     }
-  }, [showSettingsModal]);
+  }, [activeTab]);
 
   useEffect(() => {
     fetchInvoices();
@@ -237,7 +237,7 @@ ${fullPdfUrl}`;
           <FiArrowLeft /> Back
         </button>
 
-        <button className="settings-btn" onClick={() => setShowSettingsModal(true)}>
+        <button className="settings-btn" onClick={() => setActiveTab('settings')}>
           ⚙️ Invoice Settings
         </button>
 
@@ -309,119 +309,141 @@ ${fullPdfUrl}`;
         >
           Estimations
         </button>
+        <button
+          onClick={() => setActiveTab('settings')}
+          style={{
+            padding: '12px 24px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'settings' ? '3px solid #0b6678' : '3px solid transparent',
+            color: activeTab === 'settings' ? '#0b6678' : '#6b7280',
+            fontWeight: activeTab === 'settings' ? 700 : 500,
+            fontSize: '1rem',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          Invoice Settings
+        </button>
       </div>
 
       {/* Section Header */}
       <div className="section-header">
-        <div className="section-title">{activeTab === 'invoices' ? 'All Invoices' : 'All Estimations'}</div>
-        <div className="invoice-count">{filteredInvoices.length} {activeTab === 'invoices' ? 'invoice' : 'estimation'}{filteredInvoices.length !== 1 ? 's' : ''} found</div>
+        <div className="section-title">
+          {activeTab === 'invoices' ? 'All Invoices' : activeTab === 'estimations' ? 'All Estimations' : 'Invoice Settings'}
+        </div>
+        {activeTab !== 'settings' && (
+          <div className="invoice-count">{filteredInvoices.length} {activeTab === 'invoices' ? 'invoice' : 'estimation'}{filteredInvoices.length !== 1 ? 's' : ''} found</div>
+        )}
       </div>
 
       {/* Invoice Grid */}
-      {filteredInvoices.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">🔍</div>
-          <h3>No {activeTab === 'invoices' ? 'invoices' : 'estimations'} found</h3>
-          <p>{searchQuery ? 'Try a different search term' : `No ${activeTab === 'invoices' ? 'invoices' : 'estimations'} have been generated yet`}</p>
-        </div>
-      ) : (
-        <div className="invoice-grid">
-          {filteredInvoices.map((invoice, index) => (
-            <div
-              key={invoice.id}
-              className="invoice-card"
-              data-search={`${invoice.invoice_number} ${invoice.customer_name} ${invoice.customer_phone} ${invoice.complaint_no}`.toLowerCase()}
-              onClick={() => handleViewInvoice(invoice)}
-              style={{ animationDelay: `${index * 0.08}s` }}
-            >
-              <div className="card-header">
-                <div className="inv-number">{invoice.invoice_number}</div>
-                <div className="inv-date">
-                  <FiCalendar size={12} />
-                  {invoice.invoice_generated_at
-                    ? new Date(invoice.invoice_generated_at).toLocaleDateString('en-GB')
-                    : 'N/A'}
-                </div>
-              </div>
-
-              <div className="card-body">
-                <div className="info-row">
-                  <FiUser size={15} />
-                  <span>{invoice.customer_name}</span>
-                </div>
-                <div className="info-row">
-                  <FiPhone size={15} />
-                  <span>{invoice.customer_phone}</span>
-                </div>
-                {invoice.status !== 'estimation' && (
-                  <div className="info-row">
-                    <FiFileText size={15} />
-                    <span>Complaint: {invoice.complaint_no}</span>
+      {/* Invoice Grid */}
+      {activeTab !== 'settings' && (
+        filteredInvoices.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">🔍</div>
+            <h3>No {activeTab === 'invoices' ? 'invoices' : 'estimations'} found</h3>
+            <p>{searchQuery ? 'Try a different search term' : `No ${activeTab === 'invoices' ? 'invoices' : 'estimations'} have been generated yet`}</p>
+          </div>
+        ) : (
+          <div className="invoice-grid">
+            {filteredInvoices.map((invoice, index) => (
+              <div
+                key={invoice.id}
+                className="invoice-card"
+                data-search={`${invoice.invoice_number} ${invoice.customer_name} ${invoice.customer_phone} ${invoice.complaint_no}`.toLowerCase()}
+                onClick={() => handleViewInvoice(invoice)}
+                style={{ animationDelay: `${index * 0.08}s` }}
+              >
+                <div className="card-header">
+                  <div className="inv-number">{invoice.invoice_number}</div>
+                  <div className="inv-date">
+                    <FiCalendar size={12} />
+                    {invoice.invoice_generated_at
+                      ? new Date(invoice.invoice_generated_at).toLocaleDateString('en-GB')
+                      : 'N/A'}
                   </div>
-                )}
-
-                <div className="amount-row">
-                  <span className="amount-label">Grand Total</span>
-                  <span className="amount-value grand-total">₹{(invoice.grand_total || invoice.amount)?.toFixed(2) || '0.00'}</span>
                 </div>
 
-                <div className="card-actions">
-                  <button
-                    className="btn-view"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleViewInvoice(invoice);
-                    }}
-                  >
-                    <FiEye size={14} />
-                    {activeTab === 'estimations' ? 'View Estimation' : 'View Invoice'}
-                  </button>
-                  <button
-                    className="btn-icon"
-                    onClick={(e) => handleDownloadPDF(invoice, e)}
-                    title="Download Invoice PDF"
-                  >
-                    <FiDownload size={15} />
-                  </button>
-                  <button
-                    className="btn-icon"
-                    onClick={(e) => handleDownloadEstimation(invoice, e)}
-                    title="Download Estimation PDF"
-                    style={{ color: '#d97706' }}
-                  >
-                    <FiFileText size={15} />
-                  </button>
-                  {activeTab === 'estimations' && (
+                <div className="card-body">
+                  <div className="info-row">
+                    <FiUser size={15} />
+                    <span>{invoice.customer_name}</span>
+                  </div>
+                  <div className="info-row">
+                    <FiPhone size={15} />
+                    <span>{invoice.customer_phone}</span>
+                  </div>
+                  {invoice.status !== 'estimation' && (
+                    <div className="info-row">
+                      <FiFileText size={15} />
+                      <span>Complaint: {invoice.complaint_no}</span>
+                    </div>
+                  )}
+
+                  <div className="amount-row">
+                    <span className="amount-label">Grand Total</span>
+                    <span className="amount-value grand-total">₹{(invoice.grand_total || invoice.amount)?.toFixed(2) || '0.00'}</span>
+                  </div>
+
+                  <div className="card-actions">
+                    <button
+                      className="btn-view"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewInvoice(invoice);
+                      }}
+                    >
+                      <FiEye size={14} />
+                      {activeTab === 'estimations' ? 'View Estimation' : 'View Invoice'}
+                    </button>
                     <button
                       className="btn-icon"
-                      onClick={(e) => { e.stopPropagation(); handleEditEstimation(invoice); }}
-                      title="Edit Estimation"
-                      style={{ color: '#0ea5e9' }}
+                      onClick={(e) => handleDownloadPDF(invoice, e)}
+                      title="Download Invoice PDF"
                     >
-                      <FiEdit size={15} />
+                      <FiDownload size={15} />
                     </button>
-                  )}
-                  <button
-                    className="btn-icon btn-whatsapp"
-                    onClick={(e) => handleSendWhatsApp(invoice, e)}
-                    title="Send via WhatsApp"
-                  >
-                    <FiMessageCircle size={15} />
-                  </button>
+                    <button
+                      className="btn-icon"
+                      onClick={(e) => handleDownloadEstimation(invoice, e)}
+                      title="Download Estimation PDF"
+                      style={{ color: '#d97706' }}
+                    >
+                      <FiFileText size={15} />
+                    </button>
+                    {activeTab === 'estimations' && (
+                      <button
+                        className="btn-icon"
+                        onClick={(e) => { e.stopPropagation(); handleEditEstimation(invoice); }}
+                        title="Edit Estimation"
+                        style={{ color: '#0ea5e9' }}
+                      >
+                        <FiEdit size={15} />
+                      </button>
+                    )}
+                    <button
+                      className="btn-icon btn-whatsapp"
+                      onClick={(e) => handleSendWhatsApp(invoice, e)}
+                      title="Send via WhatsApp"
+                    >
+                      <FiMessageCircle size={15} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )
       )}
 
-      {/* Settings Modal */}
-      {showSettingsModal && (
-        <div className="settings-modal-overlay" onClick={() => setShowSettingsModal(false)}>
-          <div className="inv-modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="inv-modal-header">
+      {/* Settings Tab Content */}
+      {activeTab === 'settings' && (
+        <div className="settings-container" style={{ padding: '0 24px 40px', maxWidth: '800px', margin: '0 auto' }}>
+          <div className="inv-modal-card" style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.08)', animation: 'none' }}>
+            <div className="inv-modal-header" style={{ background: '#f8fafc' }}>
               <h3>Edit Company &amp; Bank Details</h3>
-              <button className="inv-modal-close" onClick={() => setShowSettingsModal(false)}>✕</button>
             </div>
             
             {settingsLoading ? (
@@ -431,7 +453,7 @@ ${fullPdfUrl}`;
               </div>
             ) : (
               <form onSubmit={saveSettings}>
-                <div className="inv-modal-body">
+                <div className="inv-modal-body" style={{ maxHeight: 'none', overflowY: 'visible' }}>
                   <div className="inv-form-grid">
                     
                     {/* Company Name */}
@@ -564,9 +586,8 @@ ${fullPdfUrl}`;
                   </div>
                 </div>
                 
-                <div className="inv-modal-footer">
-                  <button type="button" className="inv-btn inv-btn-secondary" onClick={() => setShowSettingsModal(false)}>Cancel</button>
-                  <button type="submit" className="inv-btn inv-btn-primary" disabled={settingsSaving}>
+                <div className="inv-modal-footer" style={{ background: '#f8fafc' }}>
+                  <button type="submit" className="inv-btn inv-btn-primary" disabled={settingsSaving} style={{ marginLeft: 'auto', minWidth: '150px' }}>
                     {settingsSaving ? 'Saving...' : 'Save Settings'}
                   </button>
                 </div>
